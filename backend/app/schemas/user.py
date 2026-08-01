@@ -1,26 +1,24 @@
 import uuid
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from app.models.user import RoleEnum
-
-class UserCreate(BaseModel):
-    full_name: str
-    email: EmailStr
-    password: str
-    role: RoleEnum = RoleEnum.creator
 
 class UserOut(BaseModel):
     id: uuid.UUID
     full_name: str
-    email: EmailStr
     role: RoleEnum
     is_active: bool
 
     class Config:
         from_attributes = True
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
 
-class TokenData(BaseModel):
-    user_id: str | None = None
+# from pydantic import BaseModel, EmailStr
+# from typing import Optional
+# class UserCreate(BaseModel):
+# full_name: str
+# email: EmailStr
+# role: str
+# class UserUpdate(BaseModel):
+# full_name: Optional[str] = None
+# email: Optional[EmailStr] = None
+# role: Optional[str] = None

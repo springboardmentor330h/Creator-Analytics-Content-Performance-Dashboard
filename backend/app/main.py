@@ -1,23 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.database import Base, engine
+from app.routers import dashboard, users
+from app.api.user_api import router as user_practice_router
+from app.models import practice_user   # NEW — registers PracticeUser table with Base
 
-# 1. Create the app instance
-app = FastAPI()
+Base.metadata.create_all(bind=engine)
 
-# 2. Add middleware (must be after 'app' is created)
+app = FastAPI(title="CreatorIQ API")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-    ],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 3. Add routes
+app.include_router(users.router)
+app.include_router(dashboard.router)
+app.include_router(user_practice_router)
+
 @app.get("/")
-def read_root():
-    return {"message": "Hello World"}   
+def root():
+    return {"status": "CreatorIQ API running"}

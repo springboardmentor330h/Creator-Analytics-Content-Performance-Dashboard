@@ -1,3 +1,7 @@
+# NOT USED YET.
+# When you add real authentication later, this file already has
+# password hashing + JWT creation ready to wire into a /auth router.
+
 from datetime import datetime, timedelta
 from jose import jwt
 from passlib.context import CryptContext
