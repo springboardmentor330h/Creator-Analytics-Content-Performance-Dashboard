@@ -1,24 +1,12 @@
-import enum
-import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, Enum
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
-from app.database import Base
+from sqlalchemy import Column, Integer, String
+from app.db.database import Base
 
-class RoleEnum(str, enum.Enum):
-    creator = "creator"
-    agency = "agency"
-    marketing_team = "marketing_team"
-    admin = "admin"
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    full_name = Column(String, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=True)  # nullable: no login yet
-    hashed_password = Column(String, nullable=True)                  # nullable: no login yet
-    role = Column(Enum(RoleEnum), default=RoleEnum.creator, nullable=False)
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    password = Column(String(255), nullable=False)
+    role = Column(String(50), nullable=False)
