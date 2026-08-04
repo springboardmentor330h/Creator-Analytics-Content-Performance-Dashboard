@@ -1,0 +1,7 @@
+.vscode/
+creatoriq_backend/venv/
+creatoriq_backend/.env
+__pycache__/
+*.pyc
+.idea/
+.DS_Store
