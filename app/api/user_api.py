@@ -1,70 +1,37 @@
-from fastapi import APIRouter
-from app.schemas.user_schema import User
+"""
+Additional user API routes.
 
-router = APIRouter()
+This file demonstrates how the JWT authentication
+dependency can be reused in another API module.
+"""
 
-# Temporary storage
-users = []
+from fastapi import APIRouter, Depends
 
-
-# Health API
-@router.get("/health")
-def health():
-    return {"status": "healthy"}
+from app.core.auth import get_current_user
+from app.models.user import User
 
 
-# GET All Users
-@router.get("/users")
-def get_users():
-    return users
+router = APIRouter(
+    prefix="/api/users",
+    tags=["User API"]
+)
 
 
-# GET User by ID
-@router.get("/users/{user_id}")
-def get_user(user_id: int):
-    for user in users:
-        if user.id == user_id:
-            return user
-    return {"message": "User not found"}
+@router.get("/profile")
+def profile(
+    current_user: User = Depends(
+        get_current_user
+    )
+):
+    """
+    Return the authenticated user's profile.
 
-
-# POST User
-@router.post("/users")
-def create_user(user: User):
-
-    # Check for duplicate ID
-    for existing_user in users:
-        if existing_user.id == user.id:
-            return {"message": "User ID already exists"}
-
-    users.append(user)
+    A valid JWT token is required.
+    """
 
     return {
-        "message": "User created successfully",
-        "user": user
+        "id": current_user.id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "role": current_user.role
     }
-
-
-# PUT User
-@router.put("/users/{user_id}")
-def update_user(user_id: int, updated_user: User):
-    for index, user in enumerate(users):
-        if user.id == user_id:
-            users[index] = updated_user
-            return {
-                "message": "User updated successfully",
-                "user": updated_user
-            }
-
-    return {"message": "User not found"}
-
-
-# DELETE User
-@router.delete("/users/{user_id}")
-def delete_user(user_id: int):
-    for user in users:
-        if user.id == user_id:
-            users.remove(user)
-            return {"message": "User deleted successfully"}
-
-    return {"message": "User not found"}

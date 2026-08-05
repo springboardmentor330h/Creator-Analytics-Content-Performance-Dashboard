@@ -1,31 +1,100 @@
-'''
-from fastapi import FastAPI
-from app.api.user_api import router as user_router
+"""
+Main FastAPI application.
 
-app = FastAPI(title="CreatorIQ API")
-
-app.include_router(user_router)
-
-@app.get("/")
-def home():
-    return {"message": "CreatorIQ API is running"}
-'''
-
+This file:
+1. Creates the FastAPI application.
+2. Initializes the database.
+3. Registers all routers.
+"""
 
 from fastapi import FastAPI
 
-from app.db.database import engine, Base
-from app.models.user import User
-from app.routers.users import router as user_router
+from app.db.init_db import init_db
 
-Base.metadata.create_all(bind=engine)
+from app.routers import (
+    analytics,
+    audience,
+    auth,
+    content,
+    revenue,
+    users
+)
 
-app = FastAPI(title="CreatorIQ API")
 
-app.include_router(user_router)
+# ============================================================
+# CREATE FASTAPI APPLICATION
+# ============================================================
+
+app = FastAPI(
+    title="CreatorIQ API",
+
+    description=(
+        "Creator Analytics & Content Performance "
+        "Dashboard API"
+    ),
+
+    version="1.0.0"
+)
+
+
+# ============================================================
+# DATABASE STARTUP
+# ============================================================
+
+@app.on_event("startup")
+def startup():
+    """
+    Create database tables when the application starts.
+    """
+
+    init_db()
+
+
+# ============================================================
+# REGISTER ROUTERS
+# ============================================================
+
+# Authentication APIs.
+app.include_router(auth.router)
+
+# User APIs.
+app.include_router(users.router)
+
+# Other project APIs.
+app.include_router(analytics.router)
+app.include_router(audience.router)
+app.include_router(content.router)
+app.include_router(revenue.router)
+
+
+# ============================================================
+# ROOT ENDPOINT
+# ============================================================
 
 @app.get("/")
-def home():
+def root():
+    """
+    Basic API information.
+    """
+
     return {
-        "message": "CreatorIQ API is running"
+        "message": "CreatorIQ API is running",
+        "version": "1.0.0"
+    }
+
+
+# ============================================================
+# HEALTH CHECK
+# ============================================================
+
+@app.get("/health")
+def health_check():
+    """
+    Health check endpoint.
+
+    Useful for checking whether the API is running.
+    """
+
+    return {
+        "status": "healthy"
     }
