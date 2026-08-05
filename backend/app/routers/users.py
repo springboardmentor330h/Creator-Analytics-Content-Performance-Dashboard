@@ -6,6 +6,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from app.schemas.user import UserUpdate
 from fastapi import Query
+from app.core.security import hash_password
 
 router = APIRouter()
 
@@ -24,7 +25,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         full_name=user.full_name,
         email=user.email,
-        password=user.password,
+        password=hash_password(user.password),
         role=user.role
     )
 
