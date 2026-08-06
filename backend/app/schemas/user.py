@@ -19,6 +19,13 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    role: RoleEnum
+    full_name: str
+    id: str
+
 class UserOut(BaseModel):
     id: uuid.UUID
     full_name: str

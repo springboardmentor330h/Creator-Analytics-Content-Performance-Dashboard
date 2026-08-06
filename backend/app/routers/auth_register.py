@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User, RoleEnum
-from app.schemas.user import UserCreate, UserUpdate, UserLogin
-from app.core.security import hash_password, verify_password
+from app.schemas.user import UserCreate, UserUpdate, UserLogin, Token
+from app.core.security import hash_password, verify_password, create_access_token
 
 router = APIRouter()
 
@@ -43,14 +43,8 @@ def get_users(db: Session = Depends(get_db)):
     return {"count": len(users), "data": [serialize_user(u) for u in users]}
 
 
-# IMPORTANT: /users/search must be defined BEFORE /users/{user_id},
-# otherwise FastAPI will try to match "search" as a user_id.
 @router.get("/users/search")
 def search_users(role: RoleEnum, db: Session = Depends(get_db)):
-    """
-    GET /auth/users/search?role=creator
-    Filters users by role, returns matching users and total count.
-    """
     users = db.query(User).filter(User.role == role).all()
     return {
         "role": role,
@@ -103,11 +97,18 @@ def delete_user(user_id: str, db: Session = Depends(get_db)):
     return {"message": "User deleted successfully"}
 
 
-@router.post("/login")
+@router.post("/login", response_model=Token)
 def login(credentials: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == credentials.email).first()
     if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is inactive")
-    return {"message": "Login successful", "data": serialize_user(user)}
+
+    access_token = create_access_token({"sub": str(user.id), "role": user.role})
+    return Token(
+        access_token=access_token,
+        role=user.role,
+        full_name=user.full_name,
+        id=str(user.id),
+    )

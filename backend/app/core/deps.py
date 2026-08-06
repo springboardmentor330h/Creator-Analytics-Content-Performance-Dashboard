@@ -1,27 +1,39 @@
-"""
-CURRENT BEHAVIOR (no auth yet):
-The frontend sends the chosen role in an `X-Role` header on every request.
-This function just reads that header and returns it.
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt, JWTError
+from sqlalchemy.orm import Session
 
-WHEN YOU ADD REAL AUTH LATER:
-Replace the body of `get_current_role` with JWT decoding (using
-core/security.py, which is already written). Every router that depends on
-`get_current_role` will keep working unchanged, because the *shape* of what
-it returns (a role string) stays the same.
-"""
+from app.database import get_db
+from app.config import settings
+from app.models.user import User
 
-from fastapi import Header, HTTPException
-from app.models.user import RoleEnum
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-def get_current_role(x_role: str = Header(default=None)) -> str:
-    if x_role is None or x_role not in RoleEnum._value2member_map_:
-        raise HTTPException(status_code=400, detail="Missing or invalid X-Role header")
-    return x_role
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+def get_current_role(current_user: User = Depends(get_current_user)) -> str:
+    return current_user.role
 
 def require_role(*roles):
-    def role_checker(current_role: str = Header(default=None, alias="X-Role")):
-        role = get_current_role(current_role)
-        if role not in roles:
+    def role_checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in roles:
             raise HTTPException(status_code=403, detail="Insufficient permissions")
-        return role
+        return current_user.role
     return role_checker

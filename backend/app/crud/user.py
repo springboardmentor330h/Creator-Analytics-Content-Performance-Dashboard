@@ -6,7 +6,6 @@ def get_or_create_demo_user(db: Session, role: str):
     Temporary helper: since there's no login yet, we don't have real user
     records tied to a person. This just fetches (or creates) one demo user
     per role, so dashboard endpoints have something to attach data to.
-    Remove this once real registration/login exists.
     """
     user = db.query(User).filter(User.role == role).first()
     if not user:

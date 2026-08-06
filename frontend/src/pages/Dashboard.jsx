@@ -16,12 +16,16 @@ export default function Dashboard() {
       <div className="flex-1">
         <Navbar />
         <main className="p-6">
-          <h1 className="mb-4 text-2xl font-semibold">Overview</h1>
+          <h1 className="mb-4 text-2xl font-semibold">
+            {data?.message || "Loading..."}
+          </h1>
           {data && (
             <div className="grid grid-cols-4 gap-4">
               {Object.entries(data.kpis).map(([key, value]) => (
                 <div key={key} className="rounded-xl bg-white p-4 shadow">
-                  <p className="text-sm text-gray-500 capitalize">{key.replace("_", " ")}</p>
+                  <p className="text-sm text-gray-500 capitalize">
+                    {key.replace(/_/g, " ")}
+                  </p>
                   <p className="text-2xl font-bold">{value}</p>
                 </div>
               ))}
