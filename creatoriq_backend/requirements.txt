@@ -1,0 +1,5 @@
+fastapi
+sqlalchemy
+python-dotenv
+email-validator
+uvicorn[standard]

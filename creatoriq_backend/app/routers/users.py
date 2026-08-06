@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user, require_admin
+from app.core.security import hash_password
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user_schema import UserCreate, UserUpdate
@@ -13,7 +15,11 @@ router = APIRouter()
 # -------------------------
 
 @router.get("/users/search")
-def search_users(role: str, db: Session = Depends(get_db)):
+def search_users(
+    role: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
 
     users = db.query(User).filter(User.role == role).all()
 
@@ -36,7 +42,11 @@ def search_users(role: str, db: Session = Depends(get_db)):
 # -------------------------
 
 @router.post("/users")
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
 
     existing_user = db.query(User).filter(
         User.email == user.email
@@ -44,14 +54,14 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
     if existing_user:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists"
         )
 
     new_user = User(
         full_name=user.full_name,
         email=user.email,
-        password=user.password,
+        password=hash_password(user.password),
         role=user.role
     )
 
@@ -75,7 +85,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 # -------------------------
 
 @router.get("/users")
-def get_users(db: Session = Depends(get_db)):
+def get_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
 
     users = db.query(User).all()
 
@@ -97,7 +107,14 @@ def get_users(db: Session = Depends(get_db)):
 # -------------------------
 
 @router.get("/users/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+
+    if current_user.id != user_id and current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this user")
 
     user = db.query(User).filter(
         User.id == user_id
@@ -125,8 +142,15 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
 def update_user(
     user_id: int,
     updated_user: UserUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+
+    if current_user.id != user_id and current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user")
+
+    if updated_user.role is not None and current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can change roles")
 
     user = db.query(User).filter(
         User.id == user_id
@@ -146,7 +170,7 @@ def update_user(
 
         if existing_user and existing_user.id != user_id:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_409_CONFLICT,
                 detail="Email already exists"
             )
 
@@ -157,7 +181,7 @@ def update_user(
         user.email = updated_user.email
 
     if updated_user.password is not None:
-        user.password = updated_user.password
+        user.password = hash_password(updated_user.password)
 
     if updated_user.role is not None:
         user.role = updated_user.role
@@ -183,8 +207,12 @@ def update_user(
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+
+    if current_user.id != user_id and current_user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this user")
 
     user = db.query(User).filter(
         User.id == user_id
