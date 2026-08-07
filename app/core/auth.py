@@ -59,3 +59,38 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+def require_roles(*allowed_roles: str):
+    """
+    Dependency factory for role-based access control (RBAC).
+
+    Usage:
+        @router.get("/admin-only", dependencies=[Depends(require_roles("administrator"))])
+
+    Or to also get the user object:
+        def endpoint(current_user: User = Depends(require_roles("administrator"))):
+            ...
+
+    Raises 403 if the authenticated user's role is not in allowed_roles.
+    Role comparison is case-insensitive so legacy values like "Admin"
+    still work if they happen to match (case-insensitively) one of the
+    allowed roles passed in.
+    """
+
+    normalized_allowed = {role.lower() for role in allowed_roles}
+
+    def dependency(
+        current_user: User = Depends(get_current_user)
+    ) -> User:
+        if (current_user.role or "").lower() not in normalized_allowed:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "You do not have permission to perform this action. "
+                    f"Required role(s): {', '.join(sorted(normalized_allowed))}."
+                )
+            )
+        return current_user
+
+    return dependency

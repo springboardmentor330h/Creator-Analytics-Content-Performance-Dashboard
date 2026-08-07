@@ -1,20 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_roles
 from app.db.database import get_db
-from app.models.user import User
+from app.models.user import RoleEnum, User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
 
 
 # Create API router
+#
+# RBAC note: these endpoints manage OTHER users' accounts and are
+# restricted to Administrators (search is also open to Marketing Team
+# for outreach). A logged-in user managing their OWN account should
+# use /account/settings and /account/password instead (see
+# app/routers/account.py) — those are open to every role.
 router = APIRouter()
 
 
 # ============================================================
 # CREATE USER
 # ============================================================
-@router.post("/users")
+@router.post("/users", dependencies=[Depends(require_roles(RoleEnum.ADMINISTRATOR.value))])
 def create_user(
     user: UserCreate,
     db: Session = Depends(get_db)
@@ -44,7 +51,7 @@ def create_user(
     new_user = User(
         full_name=user.full_name,
         email=user.email,
-        password=hashed_password,
+        hashed_password=hashed_password,
         role=user.role
     )
 
@@ -65,7 +72,7 @@ def create_user(
 # ============================================================
 # GET ALL USERS
 # ============================================================
-@router.get("/users")
+@router.get("/users", dependencies=[Depends(require_roles(RoleEnum.ADMINISTRATOR.value))])
 def get_users(
     db: Session = Depends(get_db)
 ):
@@ -93,7 +100,15 @@ def get_users(
 # ============================================================
 # SEARCH USERS BY ROLE
 # ============================================================
-@router.get("/users/search")
+@router.get(
+    "/users/search",
+    dependencies=[
+        Depends(require_roles(
+            RoleEnum.ADMINISTRATOR.value,
+            RoleEnum.MARKETING_TEAM.value,
+        ))
+    ],
+)
 def search_users_by_role(
     role: str,
     db: Session = Depends(get_db)
@@ -128,7 +143,7 @@ def search_users_by_role(
 # ============================================================
 # GET USER BY ID
 # ============================================================
-@router.get("/users/{user_id}")
+@router.get("/users/{user_id}", dependencies=[Depends(require_roles(RoleEnum.ADMINISTRATOR.value))])
 def get_user(
     user_id: int,
     db: Session = Depends(get_db)
@@ -158,7 +173,7 @@ def get_user(
 # ============================================================
 # UPDATE USER
 # ============================================================
-@router.put("/users/{user_id}")
+@router.put("/users/{user_id}", dependencies=[Depends(require_roles(RoleEnum.ADMINISTRATOR.value))])
 def update_user(
     user_id: int,
     updated_user: UserUpdate,
@@ -219,7 +234,7 @@ def update_user(
             updated_user.password
         )
 
-        user.password = hashed_password
+        user.hashed_password = hashed_password
 
     # --------------------------------------------------------
     # Update role
@@ -246,7 +261,7 @@ def update_user(
 # ============================================================
 # DELETE USER
 # ============================================================
-@router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}", dependencies=[Depends(require_roles(RoleEnum.ADMINISTRATOR.value))])
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db)
