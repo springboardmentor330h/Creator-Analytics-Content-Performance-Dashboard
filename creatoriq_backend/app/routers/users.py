@@ -249,5 +249,5 @@ def delete_user(
     db.commit()
 
     return {
-        "message": "User deleted successfully"
+        "message": "User Deleted Successfully"
     }
