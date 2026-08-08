@@ -1,61 +1,139 @@
-# from app.schemas.user_schema import User
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from app.models.user import User
+from app.schemas.user import UserCreate, UserUpdate
+from app.core.security import hash_password
 
-# users = []
 
-# def add_user(user):
+def create_user(db: Session, user_data: UserCreate):
+    """
+    Create a new user in the database.
+    """
 
-#     for existing_user in users:
-#         if existing_user.id == user.id:
-#             return {
-#                 "message": "User ID already exists"
-#             }
+    existing_user = db.query(User).filter(
+        User.email == user_data.email
+    ).first()
 
-#     users.append(user)
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists"
+        )
 
-#     return {
-#         "message": "User created successfully",
-#         "user": user
-#     }
+    new_user = User(
+        full_name=user_data.full_name,
+        email=user_data.email,
+        hashed_password=hash_password(user_data.password),
+        role=user_data.role
+    )
 
-# def get_all_users():
-#     return users
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
 
-# def get_user_by_id(user_id: int):
-#     for user in users:
-#         if user.id == user_id:
-#             return user
+    return new_user
 
-#     return {
-#         "message": "User not found"
-#     }
 
-# def update_existing_user(user_id: int, updated_user: User):
+def get_all_users(db: Session):
+    """
+    Get all users from the database.
+    """
 
-#     for index, user in enumerate(users):
+    return db.query(User).all()
 
-#         if user.id == user_id:
-#             users[index] = updated_user
 
-#             return {
-#                 "message": "User updated successfully",
-#                 "user": updated_user
-#             }
+def get_user_by_id(db: Session, user_id: int):
+    """
+    Get a user by ID.
+    """
 
-#     return {
-#         "message": "User not found"
-#     }
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
 
-# def delete_existing_user(user_id: int):
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
 
-#     for user in users:
+    return user
 
-#         if user.id == user_id:
-#             users.remove(user)
 
-#             return {
-#                 "message": "User deleted successfully"
-#             }
+def search_users_by_role(db: Session, role: str):
+    """
+    Get users filtered by role.
+    """
 
-#     return {
-#         "message": "User not found"
-#     }
+    return db.query(User).filter(
+        User.role == role
+    ).all()
+
+
+def update_user(
+    db: Session,
+    user_id: int,
+    updated_user: UserUpdate
+):
+    """
+    Update an existing user.
+    """
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    if updated_user.email is not None:
+
+        existing_user = db.query(User).filter(
+            User.email == updated_user.email
+        ).first()
+
+        if existing_user and existing_user.id != user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already exists"
+            )
+
+        user.email = updated_user.email
+
+    if updated_user.full_name is not None:
+        user.full_name = updated_user.full_name
+
+    if updated_user.password is not None:
+        user.hashed_password = hash_password(updated_user.password)
+
+    if updated_user.role is not None:
+        user.role = updated_user.role
+
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+def delete_user(db: Session, user_id: int):
+    """
+    Delete a user.
+    """
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return True
