@@ -4,7 +4,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # Load YouTube API key from environment variables or fallback to your generated key
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "AIzaSyCYgm66pyz7r3PTfy62JFQ9mRT2cI8tiTQ")
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "YOUR_YOUTUBE_API_KEY_HERE")  # Replace with your actual API key or set in environment
 
 
 def get_youtube_client():
