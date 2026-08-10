@@ -7,14 +7,15 @@ from sqlalchemy import engine_from_config, pool
 
 from app.db.database import Base
 from app.models.user import User  # noqa: F401 - registers model metadata
+from app.models.content import Content  # noqa: F401 - registers model metadata
 
 load_dotenv()
 
 config = context.config
-database_url = os.getenv("DATABASE_URL")
+database_url = os.getenv('DATABASE_URL')
 if not database_url:
-    raise RuntimeError("DATABASE_URL must be configured before running migrations")
-config.set_main_option("sqlalchemy.url", database_url)
+    raise RuntimeError('DATABASE_URL must be configured before running migrations')
+config.set_main_option('sqlalchemy.url', database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -27,7 +28,7 @@ def run_migrations_offline() -> None:
         url=database_url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        dialect_opts={'paramstyle': 'named'},
         compare_type=True,
     )
     with context.begin_transaction():
@@ -37,7 +38,7 @@ def run_migrations_offline() -> None:
 def run_migrations_online() -> None:
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:

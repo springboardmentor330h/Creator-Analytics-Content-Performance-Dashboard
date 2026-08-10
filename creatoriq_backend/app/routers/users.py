@@ -61,7 +61,7 @@ def get_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.id != user_id and current_user.role != "admin":
+    if current_user.id != user_id and current_user.role != "Administrator":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to view this user")
     user = get_user_by_id(db, user_id)
     if user is None:
@@ -76,10 +76,10 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.id != user_id and current_user.role != "admin":
+    if current_user.id != user_id and current_user.role != "Administrator":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to update this user")
     updates = updated_user.model_dump(exclude_unset=True)
-    if updates.get("role") is not None and current_user.role != "admin":
+    if updates.get("role") is not None and current_user.role != "Administrator":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only administrators can change roles")
     user = get_user_by_id(db, user_id)
     if user is None:
@@ -97,7 +97,7 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.id != user_id and current_user.role != "admin":
+    if current_user.id != user_id and current_user.role != "Administrator":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to delete this user")
     user = get_user_by_id(db, user_id)
     if user is None:

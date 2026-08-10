@@ -7,7 +7,7 @@ class UserCreate(BaseModel):
     full_name: str = Field(min_length=3, max_length=100)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    role: str = Field(default="creator", max_length=50)
+    role: str = Field(default="Creator", max_length=50)
 
 
 class UserRegister(BaseModel):

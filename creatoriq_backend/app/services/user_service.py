@@ -29,13 +29,14 @@ def list_users(db: Session, role: Optional[str] = None) -> list[User]:
 
 
 def create_user(
-    db: Session, *, full_name: str, email: str, password: str, role: str = "creator"
+    db: Session, *, full_name: str, email: str, password: str, role: str = 'Creator'
 ) -> User:
     user = User(
         full_name=full_name,
         email=email.lower(),
-        password=hash_password(password),
+        password_hash=hash_password(password),
         role=role,
+        status='active',
     )
     db.add(user)
     try:
@@ -61,7 +62,7 @@ def update_user(
     if email is not None:
         user.email = email.lower()
     if password is not None:
-        user.password = hash_password(password)
+        user.password_hash = hash_password(password)
     if role is not None:
         user.role = role
     try:
