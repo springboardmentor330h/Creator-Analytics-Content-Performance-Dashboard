@@ -2,9 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
 from app.routers import dashboard, users
-from app.routers.auth_register import router as auth_register_router   # NEW
+from app.routers.auth_register import router as auth_register_router
+from app.routers.content_analytics import router as content_router
+from app.routers.audience_analytics import router as audience_router      # NEW
+from app.routers.growth_analytics import router as growth_router          # NEW
 from app.api.user_api import router as user_practice_router
 from app.models import practice_user
+from app.models import content as content_model
+from app.models import audience as audience_model                        # NEW
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,7 +26,10 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(dashboard.router)
 app.include_router(user_practice_router)
-app.include_router(auth_register_router, prefix="/auth", tags=["auth"])   # NEW
+app.include_router(auth_register_router, prefix="/auth", tags=["auth"])
+app.include_router(content_router)
+app.include_router(audience_router)   # NEW
+app.include_router(growth_router)     # NEW
 
 @app.get("/")
 def root():
