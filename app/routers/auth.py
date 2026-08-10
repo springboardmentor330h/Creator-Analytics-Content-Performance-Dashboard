@@ -12,7 +12,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.database import get_db
-from app.models.user import RoleEnum, User
+from app.models.user import User
 from app.schemas.user import (
     TokenResponse,
     UserRegister,
@@ -44,22 +44,6 @@ def register(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
-        )
-
-    # Public self-registration is only allowed to create the two
-    # self-service roles. Marketing Team and Administrator accounts
-    # must be created by an existing Administrator via POST /users,
-    # otherwise anyone could grant themselves elevated access.
-    self_service_roles = {RoleEnum.CREATOR, RoleEnum.AGENCY}
-
-    if user_data.role not in self_service_roles:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Public registration only supports the 'creator' and 'agency' "
-                "roles. Marketing Team and Administrator accounts must be "
-                "created by an existing Administrator."
-            ),
         )
 
     new_user = User(

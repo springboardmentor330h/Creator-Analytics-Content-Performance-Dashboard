@@ -12,13 +12,10 @@ from fastapi import FastAPI
 from app.db.init_db import init_db
 
 from app.routers import (
-    account,
-    agency_profile,
     analytics,
     audience,
     auth,
     content,
-    creator_profile,
     revenue,
     users
 )
@@ -62,11 +59,6 @@ app.include_router(auth.router)
 
 # User APIs.
 app.include_router(users.router)
-
-# User Management Module additions: profiles + account settings.
-app.include_router(creator_profile.router)
-app.include_router(agency_profile.router)
-app.include_router(account.router)
 
 # Other project APIs.
 app.include_router(analytics.router)
