@@ -1,9 +1,3 @@
-Here is an updated, production-ready **`README.md`** for your repository.
-
-It aligns your project structure with the **SQLAlchemy ORM** database setup (`app/db/` and `app/models/`), documents the **Content Analytics CRUD API** (including single & bulk endpoints), and provides step-by-step setup and running instructions for team members and reviewers.
-
----
-
 # 📊 Creator Analytics & Content Performance Dashboard
 
 A high-performance FastAPI backend designed for content creators, agencies, and social media managers to track, analyze, and store content metrics across multiple platforms.
