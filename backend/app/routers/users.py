@@ -7,7 +7,7 @@ from app.schemas.user import UserCreate
 from app.schemas.user import UserUpdate
 from fastapi import Query
 from app.core.security import hash_password
-
+from app.core.auth import get_current_user
 router = APIRouter()
 
 # Create User
@@ -42,7 +42,10 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 # Get All Users
 @router.get("/users")
-def get_users(db: Session = Depends(get_db)):
+def get_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
 
     users = db.query(User).all()
 
@@ -150,7 +153,6 @@ def delete_user(
     user = db.query(User).filter(
         User.id == user_id
     ).first()
-
     if not user:
         raise HTTPException(
             status_code=404,
