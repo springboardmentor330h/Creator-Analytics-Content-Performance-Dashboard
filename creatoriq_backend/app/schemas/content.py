@@ -1,17 +1,18 @@
 from datetime import date, datetime
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 Platform = Literal['YouTube', 'Instagram', 'TikTok', 'Facebook', 'X', 'LinkedIn']
 ContentType = Literal['Video', 'Post', 'Reel', 'Short', 'Article', 'Live']
 
 
 class ContentCreate(BaseModel):
-    title: str = Field(min_length=2, max_length=255)
+    creator_id: Optional[int] = None
+    title: str = Field(min_length=3, max_length=255, validation_alias=AliasChoices('title', 'content_title'))
     platform: Platform
-    content_type: ContentType
-    published_at: date
+    content_type: ContentType = 'Video'
+    published_at: date = Field(validation_alias=AliasChoices('published_at', 'published_date'))
     views: int = Field(ge=0, default=0)
     likes: int = Field(ge=0, default=0)
     comments: int = Field(ge=0, default=0)
@@ -24,16 +25,16 @@ class ContentCreate(BaseModel):
     @classmethod
     def strip_title(cls, value: str) -> str:
         cleaned = value.strip()
-        if len(cleaned) < 2:
-            raise ValueError('title must be at least 2 characters')
+        if len(cleaned) < 3:
+            raise ValueError('title must be at least 3 characters')
         return cleaned
 
 
 class ContentUpdate(BaseModel):
-    title: Optional[str] = Field(default=None, min_length=2, max_length=255)
+    title: Optional[str] = Field(default=None, min_length=3, max_length=255, validation_alias=AliasChoices('title', 'content_title'))
     platform: Optional[Platform] = None
     content_type: Optional[ContentType] = None
-    published_at: Optional[date] = None
+    published_at: Optional[date] = Field(default=None, validation_alias=AliasChoices('published_at', 'published_date'))
     views: Optional[int] = Field(default=None, ge=0)
     likes: Optional[int] = Field(default=None, ge=0)
     comments: Optional[int] = Field(default=None, ge=0)
@@ -48,8 +49,8 @@ class ContentUpdate(BaseModel):
         if value is None:
             return value
         cleaned = value.strip()
-        if len(cleaned) < 2:
-            raise ValueError('title must be at least 2 characters')
+        if len(cleaned) < 3:
+            raise ValueError('title must be at least 3 characters')
         return cleaned
 
 

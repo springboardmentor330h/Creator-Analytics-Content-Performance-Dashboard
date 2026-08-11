@@ -123,6 +123,22 @@ def test_register_login_profile(client, db_session):
     assert profile.json()['role'] == 'Creator'
 
 
+def test_register_role_case_insensitive(client, db_session):
+    response = client.post(
+        '/auth/register',
+        json={
+            'full_name': 'Agency User',
+            'email': 'agency@example.com',
+            'password': 'Password123!',
+            'role': 'agency',
+            'accept_terms': True,
+        },
+    )
+    assert response.status_code == 201
+    assert response.json()['email'] == 'agency@example.com'
+    assert response.json()['role'] == 'Agency'
+
+
 def test_content_crud_and_analytics(client, db_session):
     creator = _create_user(db_session, email='creator@example.com', role='Creator')
     headers = _auth_header(creator)

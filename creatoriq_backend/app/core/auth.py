@@ -8,7 +8,7 @@ from app.core.security import decode_access_token
 from app.db.database import get_db
 from app.models.user import User
 
-bearer_scheme = HTTPBearer(auto_error=False)
+bearer_scheme = HTTPBearer(bearerFormat='JWT', scheme_name='Bearer', auto_error=False)
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,

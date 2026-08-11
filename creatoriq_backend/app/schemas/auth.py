@@ -36,11 +36,13 @@ class RegisterRequest(BaseModel):
     @classmethod
     def validate_role(cls, value: str) -> str:
         cleaned = value.strip()
-        if cleaned not in PUBLIC_REGISTER_ROLES:
+        normalized_roles = {role.casefold(): role for role in PUBLIC_REGISTER_ROLES}
+        normalized = normalized_roles.get(cleaned.casefold())
+        if normalized is None:
             raise ValueError(
                 f'Invalid role. Allowed registration roles: {", ".join(PUBLIC_REGISTER_ROLES)}'
             )
-        return cleaned
+        return normalized
 
     @field_validator('accept_terms')
     @classmethod
