@@ -1,6 +1,5 @@
 from app.services.youtube_service import get_video_details
 
-
 def get_content_analytics(video_id: str):
 
     video = get_video_details(video_id)
