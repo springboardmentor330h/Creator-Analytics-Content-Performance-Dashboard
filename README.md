@@ -1,31 +1,5 @@
-# CreatorIQ Backend
+# CreatorIQ
 
-Backend API for the Creator Analytics & Content Performance Dashboard.
+CreatorIQ is a Creator Analytics and Content Performance Dashboard that helps creators, agencies, marketing teams, and administrators manage and analyze creator and content performance.
 
-## Technologies
-
-- FastAPI
-- PostgreSQL
-- SQLAlchemy
-- Pydantic
-- JWT
-- Bcrypt
-
-## Authentication
-
-The application implements:
-
-- User registration
-- Password hashing
-- Password verification
-- JWT authentication
-- Protected endpoints
-- Token expiration
-- Current-user authentication
-
-## Setup
-
-Create a virtual environment:
-
-```bash
-python -m venv venv
+The project includes authentication, role-based access control, creator and agency management, content analytics, audience insights, revenue analytics, and dashboard visualizations.
