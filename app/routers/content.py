@@ -1,20 +1,39 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from app.db.database import get_db  # Updated path
+from app.db.database import get_db
 from app.models.content import Content
 from app.schemas.content import ContentCreate, ContentResponse, ContentUpdate
 
 router = APIRouter(prefix="/content", tags=["Content Analytics"])
 
 
-@router.post("/", response_model=ContentResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/", response_model=ContentResponse, status_code=status.HTTP_201_CREATED
+)
 def create_content(payload: ContentCreate, db: Session = Depends(get_db)):
     db_content = Content(**payload.model_dump())
     db.add(db_content)
     db.commit()
     db.refresh(db_content)
     return db_content
+
+
+@router.post(
+    "/bulk",
+    response_model=List[ContentResponse],
+    status_code=status.HTTP_201_CREATED,
+)
+def create_bulk_content(
+    payload: List[ContentCreate], db: Session = Depends(get_db)
+):
+    """Inserts multiple content items into PostgreSQL in a single request."""
+    db_contents = [Content(**item.model_dump()) for item in payload]
+    db.add_all(db_contents)
+    db.commit()
+    for item in db_contents:
+        db.refresh(item)
+    return db_contents
 
 
 @router.get("/", response_model=List[ContentResponse])
