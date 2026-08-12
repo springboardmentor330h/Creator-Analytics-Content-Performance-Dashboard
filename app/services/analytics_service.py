@@ -35,7 +35,7 @@ def compare_content(db: Session, content_ids: list[int]):
     for content in contents:
         comparison_data.append({
             "content_id": content.id,
-            "title": content.title,
+            "title": content.content_title,
             "platform": content.platform,
             "views": content.views,
             "likes": content.likes,
@@ -63,7 +63,7 @@ def get_top_performing_content(
     return [
         {
             "content_id": content.id,
-            "title": content.title,
+            "title": content.content_title,
             "platform": content.platform,
             "views": content.views,
             "likes": content.likes,
@@ -90,7 +90,7 @@ def get_reach_analysis(
     return [
         {
             "content_id": content.id,
-            "title": content.title,
+            "title": content.content_title,
             "platform": content.platform,
             "reach": content.reach
         }
@@ -111,7 +111,7 @@ def get_performance_trends(
     return [
         {
             "content_id": content.id,
-            "title": content.title,
+            "title": content.content_title,
             "platform": content.platform,
             "views": content.views,
             "likes": content.likes,
