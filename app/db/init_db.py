@@ -1,5 +1,7 @@
 from app.db.database import Base, engine
-import app.models.user  # Registers user models
+
+import app.models.user
+import app.models.content
 
 
 def init_db():
