@@ -7,6 +7,7 @@ from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
 from app.routers.social_connections import router as social_connections_router
 from app.routers.users import router as user_router
+from app.routers.analytics import router as analytics_router
 
 settings = get_settings()
 frontend_origin = str(settings.FRONTEND_URL).rstrip('/')
@@ -24,6 +25,7 @@ app.include_router(user_router)
 app.include_router(content_router)
 app.include_router(agency_router)
 app.include_router(social_connections_router)
+app.include_router(analytics_router)
 
 
 @app.get('/')
