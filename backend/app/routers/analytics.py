@@ -28,7 +28,7 @@ def get_content_engagement(id: int, db: Session = Depends(get_db)):
 
 @router.get("/top-content", response_model=List[TopContentResponse])
 @router.get("/top-content/", response_model=List[TopContentResponse])
-def get_top_content(limit: int = 5, db: Session = Depends(get_db)):
+def get_top_content(limit: int = 3, db: Session = Depends(get_db)):
     return AnalyticsService.get_top_performing_content(db, limit=limit)
 
 @router.get("/platform-performance", response_model=List[PlatformPerformanceResponse])

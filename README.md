@@ -1,4 +1,4 @@
-Below is a **README you can paste directly into your project's `README.md`**. It covers the flow from authentication/login through Content APIs and the Analytics APIs you've described.
+
 
 # Creator Analytics & Content Performance Dashboard
 
