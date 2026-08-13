@@ -1,44 +1,29 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import date
 
 class ContentCreate(BaseModel):
-    user_id: int
-    title: str = Field(..., min_length=3)
+    creator_id: int
     platform: str
-    views: int = 0
-    likes: int = 0
-    comments: int = 0
-    shares: int = 0
-    saves: int = 0
-    watch_time: float = 0.0
-    reach: int = 0
+    content_title: str = Field(..., min_length=3)
+    views: int = Field(0, ge=0)
+    likes: int = Field(0, ge=0)
+    comments: int = Field(0, ge=0)
+    shares: int = Field(0, ge=0)
+    saves: int = Field(0, ge=0)
+    watch_time: float = Field(0.0, ge=0)
+    reach: int = Field(0, ge=0)
+    published_date: date
 
 class ContentUpdate(BaseModel):
-    title: Optional[str] = None
+    creator_id: Optional[int] = None
     platform: Optional[str] = None
-    views: Optional[int] = None
-    likes: Optional[int] = None
-    comments: Optional[int] = None
-    shares: Optional[int] = None
-    saves: Optional[int] = None
-    watch_time: Optional[float] = None
-    reach: Optional[int] = None
-
-class ContentOut(BaseModel):
-    id: int
-    user_id: int
-    title: str
-    platform: str
-    views: int
-    likes: int
-    comments: int
-    shares: int
-    saves: int
-    watch_time: float
-    reach: int
-    engagement_rate: float
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+    content_title: Optional[str] = Field(None, min_length=3)
+    views: Optional[int] = Field(None, ge=0)
+    likes: Optional[int] = Field(None, ge=0)
+    comments: Optional[int] = Field(None, ge=0)
+    shares: Optional[int] = Field(None, ge=0)
+    saves: Optional[int] = Field(None, ge=0)
+    watch_time: Optional[float] = Field(None, ge=0)
+    reach: Optional[int] = Field(None, ge=0)
+    published_date: Optional[date] = None
