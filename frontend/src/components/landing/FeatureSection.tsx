@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   ArrowRight,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const features = [
   {
@@ -14,6 +15,7 @@ const features = [
     description: 'Track views, likes, comments, shares and more in real-time.',
     icon: BarChart3,
     color: 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white',
+    path: '/content-analytics',
   },
   {
     id: 'audience-insights',
@@ -46,6 +48,8 @@ const features = [
 ]
 
 export default function FeatureSection() {
+  const navigate = useNavigate()
+
   return (
     <section id="features" className="bg-white py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -71,9 +75,10 @@ export default function FeatureSection() {
             return (
               <div
                 key={feature.id}
+                onClick={() => feature.path && navigate(feature.path)}
                 className={`group relative rounded-2xl border border-slate-200/80 bg-white p-7 shadow-sm transition-all duration-200 ease-out hover:-translate-y-1 hover:border-brand-300 hover:shadow-lg ${
                   isLastOnLg ? 'sm:col-span-2 lg:col-span-1' : ''
-                }`}
+                } ${feature.path ? 'cursor-pointer' : ''}`}
               >
                 {/* Icon Container */}
                 <div

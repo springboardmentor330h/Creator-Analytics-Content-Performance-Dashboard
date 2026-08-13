@@ -37,6 +37,7 @@ export default {
         'float': 'float 6s ease-in-out infinite',
         'fade-in': 'fadeIn 0.3s ease-out forwards',
         'spin-slow': 'spin 12s linear infinite',
+        'marquee-horizontal': 'marquee-horizontal 30s linear infinite',
       },
       keyframes: {
         float: {
@@ -46,6 +47,10 @@ export default {
         fadeIn: {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0px)' },
+        },
+        'marquee-horizontal': {
+          'from': { transform: 'translateX(0)' },
+          'to': { transform: 'translateX(-50%)' },
         },
       },
     },
