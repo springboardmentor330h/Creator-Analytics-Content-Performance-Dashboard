@@ -1,1 +1,10 @@
 backend_git_backup/
+__pycache__/
+*.pyc
+venv/
+.env
+.vscode/
+.idea/
+.DS_Store
+.pytest_cache/
+*.log

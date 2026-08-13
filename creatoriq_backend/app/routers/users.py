@@ -7,13 +7,17 @@ from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
 
 
-# Create API router
+# ============================================================
+# CREATE API ROUTER
+# ============================================================
+
 router = APIRouter()
 
 
 # ============================================================
 # CREATE USER
 # ============================================================
+
 @router.post("/users")
 def create_user(
     user: UserCreate,
@@ -22,11 +26,11 @@ def create_user(
     """
     Create a new user.
 
-    The password is hashed before it is stored in the database.
-    The original password is never stored or returned.
+    The password is hashed before it is stored
+    in the database.
     """
 
-    # Check whether the email already exists
+    # Check whether email already exists
     existing_user = db.query(User).filter(
         User.email == user.email
     ).first()
@@ -37,23 +41,24 @@ def create_user(
             detail="Email already exists"
         )
 
-    # Hash the user's password
-    hashed_password = get_password_hash(user.password)
+    # Hash password
+    hashed_password = get_password_hash(
+        user.password
+    )
 
-    # Create new user
+    # Create user
     new_user = User(
         full_name=user.full_name,
         email=user.email,
-        password=hashed_password,
+        hashed_password=hashed_password,
         role=user.role
     )
 
-    # Add user to database
+    # Save to database
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
 
-    # Never return the password
     return {
         "id": new_user.id,
         "full_name": new_user.full_name,
@@ -63,8 +68,105 @@ def create_user(
 
 
 # ============================================================
+# CREATE MULTIPLE USERS
+# ============================================================
+
+@router.post("/users/bulk")
+def create_multiple_users(
+    users: list[UserCreate],
+    db: Session = Depends(get_db)
+):
+    """
+    Create multiple users at once.
+
+    Passwords are hashed before storing them
+    in the database.
+    """
+
+    # --------------------------------------------------------
+    # CHECK FOR DUPLICATE EMAILS IN DATABASE
+    # --------------------------------------------------------
+
+    for user in users:
+
+        existing_user = db.query(User).filter(
+            User.email == user.email
+        ).first()
+
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Email already exists: {user.email}"
+            )
+
+    # --------------------------------------------------------
+    # CHECK FOR DUPLICATE EMAILS IN REQUEST
+    # --------------------------------------------------------
+
+    emails = [
+        user.email
+        for user in users
+    ]
+
+    if len(emails) != len(set(emails)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate email found in request"
+        )
+
+    # --------------------------------------------------------
+    # CREATE USERS
+    # --------------------------------------------------------
+
+    new_users = []
+
+    for user in users:
+
+        hashed_password = get_password_hash(
+            user.password
+        )
+
+        new_user = User(
+            full_name=user.full_name,
+            email=user.email,
+            hashed_password=hashed_password,
+            role=user.role
+        )
+
+        db.add(new_user)
+
+        new_users.append(new_user)
+
+    # --------------------------------------------------------
+    # SAVE ALL USERS
+    # --------------------------------------------------------
+
+    db.commit()
+
+    result = []
+
+    for user in new_users:
+
+        db.refresh(user)
+
+        result.append({
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role
+        })
+
+    return {
+        "message": "Users created successfully",
+        "total_users_created": len(result),
+        "users": result
+    }
+
+
+# ============================================================
 # GET ALL USERS
 # ============================================================
+
 @router.get("/users")
 def get_users(
     db: Session = Depends(get_db)
@@ -80,6 +182,7 @@ def get_users(
     result = []
 
     for user in users:
+
         result.append({
             "id": user.id,
             "full_name": user.full_name,
@@ -93,16 +196,17 @@ def get_users(
 # ============================================================
 # SEARCH USERS BY ROLE
 # ============================================================
+
 @router.get("/users/search")
 def search_users_by_role(
     role: str,
     db: Session = Depends(get_db)
 ):
     """
-    Search users by their role.
+    Search users by role.
 
     Example:
-        GET /users/search?role=admin
+    /users/search?role=creator
     """
 
     users = db.query(User).filter(
@@ -112,6 +216,7 @@ def search_users_by_role(
     result = []
 
     for user in users:
+
         result.append({
             "id": user.id,
             "full_name": user.full_name,
@@ -128,6 +233,7 @@ def search_users_by_role(
 # ============================================================
 # GET USER BY ID
 # ============================================================
+
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
@@ -158,6 +264,7 @@ def get_user(
 # ============================================================
 # UPDATE USER
 # ============================================================
+
 @router.put("/users/{user_id}")
 def update_user(
     user_id: int,
@@ -167,8 +274,8 @@ def update_user(
     """
     Update an existing user.
 
-    If the password is changed, the new password is hashed
-    before being stored in the database.
+    If the password is changed, it is hashed
+    before storing it in the database.
     """
 
     # Find user
@@ -183,55 +290,62 @@ def update_user(
         )
 
     # --------------------------------------------------------
-    # Check email uniqueness
+    # CHECK EMAIL UNIQUENESS
     # --------------------------------------------------------
+
     if updated_user.email is not None:
 
         existing_user = db.query(User).filter(
             User.email == updated_user.email
         ).first()
 
-        if existing_user and existing_user.id != user_id:
+        if (
+            existing_user
+            and existing_user.id != user_id
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Email already exists"
             )
 
     # --------------------------------------------------------
-    # Update full name
+    # UPDATE FULL NAME
     # --------------------------------------------------------
+
     if updated_user.full_name is not None:
         user.full_name = updated_user.full_name
 
     # --------------------------------------------------------
-    # Update email
+    # UPDATE EMAIL
     # --------------------------------------------------------
+
     if updated_user.email is not None:
         user.email = updated_user.email
 
     # --------------------------------------------------------
-    # Update password
+    # UPDATE PASSWORD
     # --------------------------------------------------------
+
     if updated_user.password is not None:
 
-        # Hash the new password
-        hashed_password = get_password_hash(
+        user.hashed_password = get_password_hash(
             updated_user.password
         )
 
-        user.password = hashed_password
+    # --------------------------------------------------------
+    # UPDATE ROLE
+    # --------------------------------------------------------
 
-    # --------------------------------------------------------
-    # Update role
-    # --------------------------------------------------------
     if updated_user.role is not None:
         user.role = updated_user.role
 
-    # Save changes
+    # --------------------------------------------------------
+    # SAVE CHANGES
+    # --------------------------------------------------------
+
     db.commit()
     db.refresh(user)
 
-    # Do not return the password
     return {
         "message": "User updated successfully",
         "data": {
@@ -246,6 +360,7 @@ def update_user(
 # ============================================================
 # DELETE USER
 # ============================================================
+
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,
@@ -255,7 +370,6 @@ def delete_user(
     Delete a user using their ID.
     """
 
-    # Find user
     user = db.query(User).filter(
         User.id == user_id
     ).first()
@@ -266,7 +380,6 @@ def delete_user(
             detail="User not found"
         )
 
-    # Delete user
     db.delete(user)
     db.commit()
 
