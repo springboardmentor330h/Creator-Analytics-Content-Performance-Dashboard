@@ -6,10 +6,13 @@ from app.models.content import Content
 from app.schemas.content import ContentCreate, ContentUpdate
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/content",
+    tags=["Content"]
+)
 
 
-@router.post("/content")
+@router.post("")
 def create_content(
     content: ContentCreate,
     db: Session = Depends(get_db)
@@ -38,7 +41,7 @@ def create_content(
     }
 
 
-@router.get("/content")
+@router.get("")
 def get_contents(db: Session = Depends(get_db)):
     contents = db.query(Content).all()
 
@@ -49,7 +52,7 @@ def get_contents(db: Session = Depends(get_db)):
     }
 
 
-@router.get("/content/{id}")
+@router.get("/{id}")
 def get_content(id: int, db: Session = Depends(get_db)):
     content = db.query(Content).filter(Content.id == id).first()
 
@@ -65,7 +68,7 @@ def get_content(id: int, db: Session = Depends(get_db)):
     }
 
 
-@router.put("/content/{id}")
+@router.put("/{id}")
 def update_content(
     id: int,
     content_data: ContentUpdate,
@@ -93,7 +96,7 @@ def update_content(
     }
 
 
-@router.delete("/content/{id}")
+@router.delete("/{id}")
 def delete_content(id: int, db: Session = Depends(get_db)):
     content = db.query(Content).filter(Content.id == id).first()
 
