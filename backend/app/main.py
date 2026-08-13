@@ -13,6 +13,8 @@ from app.models import practice_user
 from app.models import content as content_model
 from app.models import audience as audience_model                       # NEW
 from app.models import revenue as revenue_model                         # NEW
+from app.routers.analytics import router as analytics_router   # NEW
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -35,6 +37,7 @@ app.include_router(audience_router)             # NEW
 app.include_router(revenue_router)               # NEW
 app.include_router(growth_router)                # NEW
 app.include_router(analytics_dashboard_router)   # NEW
+app.include_router(analytics_router)   # NEW
 
 @app.get("/")
 def root():
