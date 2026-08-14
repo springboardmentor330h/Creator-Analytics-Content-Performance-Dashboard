@@ -60,10 +60,16 @@ app.include_router(auth.router)
 # User APIs.
 app.include_router(users.router)
 
-# Other project APIs.
+# Analytics APIs.
 app.include_router(analytics.router)
+
+# Audience APIs - Sprint 3.
 app.include_router(audience.router)
+
+# Content APIs.
 app.include_router(content.router)
+
+# Revenue APIs.
 app.include_router(revenue.router)
 
 
