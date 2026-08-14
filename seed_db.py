@@ -1,91 +1,66 @@
 import random
 from datetime import date, timedelta
 from app.db.database import SessionLocal
+from app.models.audience import Audience
 from app.models.content import Content
+from app.models.growth import Growth
 
-# Platforms and topic generator
-PLATFORMS = ["YouTube", "Instagram", "LinkedIn", "TikTok", "Twitter"]
-
-TOPICS = [
-    "FastAPI",
-    "Python 3.13",
-    "PostgreSQL",
-    "Docker",
-    "Kubernetes",
-    "System Design",
-    "React",
-    "Next.js",
-    "SQLAlchemy",
-    "GraphQL",
-    "Microservices",
-    "Data Structures",
-    "Redis",
-    "CI/CD Pipelines",
-    "AWS",
-]
-
-FORMATS = [
-    "Tutorial",
-    "Crash Course",
-    "Best Practices",
-    "Mistakes to Avoid",
-    "Architecture Guide",
-    "Deep Dive",
-    "Tips & Tricks",
-    "Real-World Masterclass",
-]
+# Seed options
+COUNTRIES = ["India", "United States", "United Kingdom", "Canada", "Germany"]
+CITIES = ["Bangalore", "Mumbai", "New York", "London", "Toronto"]
+AGE_GROUPS = ["18-24", "25-34", "35-44", "45-54"]
+GENDERS = ["Male", "Female"]
+DEVICES = ["Mobile", "Desktop", "Tablet"]
 
 
 def seed_database(count: int = 100):
     db = SessionLocal()
     try:
-        contents = []
-        start_date = date(2026, 1, 1)
+        print("Seeding database for Sprint 3...")
 
-        print(f"Generating {count} realistic content records...")
-
-        for i in range(1, count + 1):
-            platform = random.choice(PLATFORMS)
-            topic = random.choice(TOPICS)
-            fmt = random.choice(FORMATS)
-
-            views = random.randint(1000, 150000)
-            reach = int(views * random.uniform(1.1, 2.2))
-            likes = int(views * random.uniform(0.04, 0.12))
-            comments = int(likes * random.uniform(0.05, 0.20))
-            shares = int(likes * random.uniform(0.02, 0.15))
-            saves = int(likes * random.uniform(0.05, 0.35))
-
-            watch_time = (
-                round(random.uniform(500.0, 18000.0), 1)
-                if platform in ["YouTube", "TikTok"]
-                else 0.0
+        # 1. Seed Audience records
+        audience_list = []
+        for i in range(1, 50):
+            aud = Audience(
+                creator_id=random.randint(1, 10),
+                age_group=random.choice(AGE_GROUPS),
+                gender=random.choice(GENDERS),
+                country=random.choice(COUNTRIES),
+                city=random.choice(CITIES),
+                device_type=random.choice(DEVICES),
+                active_hour=random.randint(0, 23),
+                followers=random.randint(1000, 10000),
+                impressions=random.randint(5000, 50000),
+                reach=random.randint(3000, 30000),
             )
+            audience_list.append(aud)
 
-            published_date = start_date + timedelta(
-                days=random.randint(0, 220)
-            )
+        db.add_all(audience_list)
 
-            content = Content(
-                creator_id=random.randint(1, 15),
-                platform=platform,
-                content_title=f"{topic} {fmt} #{i}",
-                views=views,
-                likes=likes,
-                comments=comments,
-                shares=shares,
-                saves=saves,
-                watch_time=watch_time,
+        # 2. Seed 30-day Growth historical trend records
+        growth_list = []
+        base_followers = 100000
+        start_date = date(2026, 7, 1)
+
+        for day in range(30):
+            daily_date = start_date + timedelta(days=day)
+            base_followers += random.randint(200, 1500)
+            reach = random.randint(15000, 45000)
+            engagement_rate = round(random.uniform(4.5, 9.8), 2)
+
+            growth_item = Growth(
+                creator_id=1,
+                date=daily_date,
+                followers=base_followers,
                 reach=reach,
-                published_date=published_date,
+                engagement_rate=engagement_rate,
             )
-            contents.append(content)
+            growth_list.append(growth_item)
 
-        db.add_all(contents)
+        db.add_all(growth_list)
         db.commit()
-        print(
-            f"Successfully inserted {count} records into your PostgreSQL database!"
-        )
+
+        print("Successfully seeded Audience and Growth records into PostgreSQL!")
 
     except Exception as e:
         db.rollback()
@@ -95,4 +70,4 @@ def seed_database(count: int = 100):
 
 
 if __name__ == "__main__":
-    seed_database(500)
+    seed_database(300)
