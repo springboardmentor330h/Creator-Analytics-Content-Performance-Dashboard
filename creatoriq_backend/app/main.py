@@ -1,12 +1,3 @@
-# from fastapi import FastAPI
-
-# from app.db.database import engine, Base
-# from app.models.user import User
-# from app.routers.users import router as user_router
-# from app.routers.auth import router as auth_router
-# from app.routers.youtube import router as youtube_router
-# from app.routers.content_analytics import router as content_analytics_router
-
 from fastapi import FastAPI
 
 from app.db.database import engine, Base
@@ -21,6 +12,12 @@ from app.routers.content_analytics import router as content_analytics_router
 from app.routers.content import router as content_router
 from app.routers.analytics import router as analytics_router
 
+from app.models.user import User
+from app.models.content import Content
+from app.models.audience import Audience
+from app.models.growth import Growth
+from app.routers.audience import router as audience_router
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -34,6 +31,8 @@ app.include_router(content_analytics_router)
 #
 app.include_router(content_router)
 app.include_router(analytics_router)
+#
+app.include_router(audience_router)
 
 
 
