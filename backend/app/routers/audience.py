@@ -2,37 +2,42 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.audience import AudienceData
+from app.models.audience import Audience
+from app.models.growth import Growth
 from app.schemas.audience import AudienceCreate, AudienceUpdate, AudienceOut
+from app.schemas.growth import GrowthCreate, GrowthOut
+from app.services import audience_service
 
-router = APIRouter(prefix="/audience", tags=["audience"])
+router = APIRouter()
 
 
-@router.post("", response_model=AudienceOut, status_code=201)
-def create_audience_record(payload: AudienceCreate, db: Session = Depends(get_db)):
-    record = AudienceData(**payload.model_dump())
+# ---- Audience CRUD ----
+
+@router.post("/audience", response_model=AudienceOut, status_code=201)
+def create_audience(payload: AudienceCreate, db: Session = Depends(get_db)):
+    record = Audience(**payload.model_dump())
     db.add(record)
     db.commit()
     db.refresh(record)
     return record
 
 
-@router.get("", response_model=list[AudienceOut])
-def get_all_audience_records(db: Session = Depends(get_db)):
-    return db.query(AudienceData).all()
+@router.get("/audience", response_model=list[AudienceOut])
+def get_all_audience(db: Session = Depends(get_db)):
+    return db.query(Audience).all()
 
 
-@router.get("/{id}", response_model=AudienceOut)
-def get_audience_record(id: int, db: Session = Depends(get_db)):
-    record = db.query(AudienceData).filter(AudienceData.id == id).first()
+@router.get("/audience/{id}", response_model=AudienceOut)
+def get_audience(id: int, db: Session = Depends(get_db)):
+    record = db.query(Audience).filter(Audience.id == id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Audience record not found")
     return record
 
 
-@router.put("/{id}", response_model=AudienceOut)
-def update_audience_record(id: int, payload: AudienceUpdate, db: Session = Depends(get_db)):
-    record = db.query(AudienceData).filter(AudienceData.id == id).first()
+@router.put("/audience/{id}", response_model=AudienceOut)
+def update_audience(id: int, payload: AudienceUpdate, db: Session = Depends(get_db)):
+    record = db.query(Audience).filter(Audience.id == id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Audience record not found")
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -42,9 +47,9 @@ def update_audience_record(id: int, payload: AudienceUpdate, db: Session = Depen
     return record
 
 
-@router.delete("/{id}")
-def delete_audience_record(id: int, db: Session = Depends(get_db)):
-    record = db.query(AudienceData).filter(AudienceData.id == id).first()
+@router.delete("/audience/{id}")
+def delete_audience(id: int, db: Session = Depends(get_db)):
+    record = db.query(Audience).filter(Audience.id == id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Audience record not found")
     db.delete(record)
@@ -52,14 +57,34 @@ def delete_audience_record(id: int, db: Session = Depends(get_db)):
     return {"message": "Audience record deleted successfully"}
 
 
-@router.get("/creator/{creator_id}/latest", response_model=AudienceOut)
-def latest_for_creator(creator_id: int, db: Session = Depends(get_db)):
-    record = (
-        db.query(AudienceData)
-        .filter(AudienceData.creator_id == creator_id)
-        .order_by(AudienceData.recorded_date.desc())
-        .first()
-    )
-    if not record:
-        raise HTTPException(status_code=404, detail="No audience data found for this creator")
+# ---- Growth CRUD (needed to populate data for the reports below) ----
+
+@router.post("/growth", response_model=GrowthOut, status_code=201)
+def create_growth(payload: GrowthCreate, db: Session = Depends(get_db)):
+    record = Growth(**payload.model_dump())
+    db.add(record)
+    db.commit()
+    db.refresh(record)
     return record
+
+
+@router.get("/growth", response_model=list[GrowthOut])
+def get_all_growth(db: Session = Depends(get_db)):
+    return db.query(Growth).order_by(Growth.date.asc()).all()
+
+
+# ---- Analytics reports ----
+
+@router.get("/analytics/audience")
+def audience_report(db: Session = Depends(get_db)):
+    return audience_service.get_audience_report(db)
+
+
+@router.get("/analytics/growth")
+def growth_report(db: Session = Depends(get_db)):
+    return audience_service.get_growth_report(db, days=30)
+
+
+@router.get("/analytics/audience-trends")
+def audience_trends(db: Session = Depends(get_db)):
+    return audience_service.get_audience_trends(db)

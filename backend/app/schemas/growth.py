@@ -1,25 +1,37 @@
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, field_validator
+from typing import Optional
+from datetime import date
 
 
-class HashtagCount(BaseModel):
-    tag: str
-    count: int
+class GrowthCreate(BaseModel):
+    creator_id: int
+    date: date
+    followers: int = 0
+    reach: int = 0
+    engagement_rate: float = 0
+
+    @field_validator("followers", "reach", "engagement_rate")
+    @classmethod
+    def no_negative(cls, value):
+        if value < 0:
+            raise ValueError("Value cannot be negative")
+        return value
 
 
-class GrowthSummary(BaseModel):
-    total_content_count: int
-    avg_views_per_content: float
-    trending_direction: str
-    top_keywords: List[HashtagCount]
-    reach_prediction_next_period: int
+class GrowthUpdate(BaseModel):
+    date: Optional[date] = None
+    followers: Optional[int] = None
+    reach: Optional[int] = None
+    engagement_rate: Optional[float] = None
 
 
-class AudienceGrowthPoint(BaseModel):
-    recorded_date: str
+class GrowthOut(BaseModel):
+    id: int
+    creator_id: int
+    date: date
     followers: int
+    reach: int
+    engagement_rate: float
 
-
-class AudienceGrowthForecast(BaseModel):
-    history: List[AudienceGrowthPoint]
-    net_growth: int
+    class Config:
+        from_attributes = True
