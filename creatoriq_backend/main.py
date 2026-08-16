@@ -8,6 +8,7 @@ from app.routers.content import router as content_router
 from app.routers.social_connections import router as social_connections_router
 from app.routers.users import router as user_router
 from app.routers.analytics import router as analytics_router
+from app.routers.audience import router as audience_router
 
 settings = get_settings()
 frontend_origin = str(settings.FRONTEND_URL).rstrip('/')
@@ -26,6 +27,7 @@ app.include_router(content_router)
 app.include_router(agency_router)
 app.include_router(social_connections_router)
 app.include_router(analytics_router)
+app.include_router(audience_router)
 
 
 @app.get('/')

@@ -8,6 +8,8 @@ from sqlalchemy import engine_from_config, pool
 from app.db.database import Base
 from app.models.user import User  # noqa: F401 - registers model metadata
 from app.models.content import Content  # noqa: F401 - registers model metadata
+from app.models.audience import Audience  # noqa: F401 - registers model metadata
+from app.models.growth import Growth  # noqa: F401 - registers model metadata
 
 load_dotenv()
 

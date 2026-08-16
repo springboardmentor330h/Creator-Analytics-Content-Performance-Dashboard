@@ -33,41 +33,44 @@ def calculate_engagement_rate(likes: int, comments: int, shares: int, saves: int
 
 
 def can_view_content(user: User, content: Content) -> bool:
-    if user.role == 'Administrator':
-        return True
-    if user.role == 'Marketing Team':
+    role = user.role.lower() if user.role else ''
+    if role in {'administrator', 'admin', 'marketing team', 'marketing'}:
         return True
     if content.creator_id == user.id:
         return True
-    if user.role == 'Agency':
+    if role == 'agency':
         assigned_ids = {creator.id for creator in (user.assigned_creators or [])}
         return content.creator_id in assigned_ids
     return False
 
 
 def can_modify_content(user: User, content: Content) -> bool:
-    if user.role == 'Administrator':
+    role = user.role.lower() if user.role else ''
+    if role in {'administrator', 'admin'}:
         return True
-    if user.role == 'Creator' and content.creator_id == user.id:
-        return True
-    return False
+    if role in {'creator', 'agency', 'marketing team', 'marketing'}:
+        if content.creator_id == user.id or role in {'administrator', 'admin', 'agency'}:
+            return True
+    return content.creator_id == user.id
 
 
 def can_create_content(user: User) -> bool:
-    return user.role in {'Creator', 'Administrator'}
+    role = user.role.lower() if user.role else ''
+    return role in {'creator', 'administrator', 'admin', 'agency', 'marketing team', 'marketing'}
 
 
 def _apply_scope(stmt: Select[Any], user: User) -> Select[Any]:
-    if user.role in {'Administrator', 'Marketing Team'}:
+    role = user.role.lower() if user.role else ''
+    if role in {'administrator', 'admin', 'marketing team', 'marketing'}:
         return stmt
-    if user.role == 'Creator':
+    if role == 'creator':
         return stmt.where(Content.creator_id == user.id)
-    if user.role == 'Agency':
+    if role == 'agency':
         assigned_ids = [creator.id for creator in (user.assigned_creators or [])]
         if not assigned_ids:
-            return stmt.where(Content.creator_id == -1)
+            return stmt.where(Content.creator_id == user.id)
         return stmt.where(Content.creator_id.in_(assigned_ids))
-    return stmt.where(Content.creator_id == -1)
+    return stmt.where(Content.creator_id == user.id)
 
 
 def _apply_filters(
@@ -108,13 +111,17 @@ def create_content(db: Session, creator: User, payload: ContentCreate) -> Conten
     if payload.content_type not in CONTENT_TYPES:
         raise ValueError('Invalid content type')
 
+    target_creator_id = payload.creator_id if payload.creator_id is not None else creator.id
+    if db.get(User, target_creator_id) is None:
+        target_creator_id = creator.id
+
     engagement_rate = calculate_engagement_rate(
         payload.likes, payload.comments, payload.shares, payload.saves, payload.reach
     )
     content = Content(
-        creator_id=creator.id,
+        creator_id=target_creator_id,
         platform=payload.platform,
-        content_id=f'{creator.id}-{payload.title[:40]}'.replace(' ', '-').lower(),
+        content_id=f'{target_creator_id}-{payload.title[:40]}'.replace(' ', '-').lower(),
         title=payload.title,
         content_type=payload.content_type,
         published_at=payload.published_at,
