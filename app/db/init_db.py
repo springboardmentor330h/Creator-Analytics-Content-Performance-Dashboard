@@ -1,7 +1,8 @@
 from app.db.database import Base, engine
-
-import app.models.user
-import app.models.content
+from app.models.user import User
+from app.models.content import Content
+import app.models.audience
+import app.models.growth
 
 
 def init_db():
