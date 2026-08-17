@@ -11,14 +11,26 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
+TOTAL_USERS = 50
+TOTAL_CONTENT = 300
+
 # ---------- Seed Users ----------
 roles = ["creator", "agency", "marketing team", "administrator"]
-first_names = ["Riya", "Aman", "Trisha", "Karan", "Sneha", "Aditi", "Rohan",
-               "Meera", "Vikram", "Anjali", "Farhan", "Priya", "Sahil", "Neha", "Arjun"]
+first_names = [
+    "Riya", "Aman", "Trisha", "Karan", "Sneha", "Aditi", "Rohan", "Meera",
+    "Vikram", "Anjali", "Farhan", "Priya", "Sahil", "Neha", "Arjun", "Divya",
+    "Rahul", "Pooja", "Aryan", "Kavya", "Nikhil", "Isha", "Varun", "Simran",
+    "Aditya", "Tanvi", "Yash", "Ritu", "Manav", "Shreya", "Kabir", "Ananya",
+    "Dev", "Naina", "Ishaan", "Radhika", "Siddharth", "Palak", "Harsh", "Bhavna",
+    "Om", "Jhanvi", "Vivaan", "Sanya", "Reyansh", "Diya", "Ayaan", "Myra",
+    "Kunal", "Tara"
+]
+
+last_names = ["Sharma", "Verma", "Gupta", "Mehta", "Iyer", "Reddy", "Nair", "Patel"]
 
 created_users = []
 
-for i, name in enumerate(first_names, start=1):
+for i, name in enumerate(first_names[:TOTAL_USERS], start=1):
     email = f"{name.lower()}{i}@example.com"
 
     existing = db.query(User).filter(User.email == email).first()
@@ -27,7 +39,7 @@ for i, name in enumerate(first_names, start=1):
         continue
 
     user = User(
-        full_name=f"{name} Sharma",
+        full_name=f"{name} {random.choice(last_names)}",
         email=email,
         password=get_password_hash("password123"),
         role=random.choice(roles)
@@ -39,8 +51,13 @@ for i, name in enumerate(first_names, start=1):
 
 print(f"Seeded {len(created_users)} users.")
 
+
 # ---------- Seed Content ----------
-platforms = ["YouTube", "Instagram", "LinkedIn", "TikTok", "Facebook"]
+platforms = [
+    "YouTube", "Instagram", "LinkedIn", "TikTok", "Facebook",
+    "Twitter", "Snapchat", "Pinterest", "Threads", "Twitch"
+]
+
 title_templates = [
     "How I Grew My Channel to {n}K",
     "5 Tips for Better {platform} Content",
@@ -51,10 +68,32 @@ title_templates = [
     "Vlog: A Day in My Life",
     "Top {n} Mistakes Creators Make",
     "Collab Special with Guest Creator",
-    "Product Launch Announcement"
+    "Product Launch Announcement",
+    "{n} Hacks Every Creator Should Know",
+    "Reacting to My Old {platform} Posts",
+    "The Truth About Growing on {platform}",
+    "Unboxing: {n} Products I'm Loving",
+    "My {n}-Day Content Creation Routine",
+    "Why I Almost Quit {platform}",
+    "Ask Me Anything: Creator Edition",
+    "Ranking {n} Trends This Month",
+    "How to Get More Views on {platform}",
+    "A Beginner's Guide to {platform} Growth",
+    "{n} Lessons I Learned This Year",
+    "Live Q&A Highlights",
+    "My Studio Setup Tour",
+    "Reacting to Fan Comments",
+    "Testing {n} Viral Trends",
+    "How I Plan My Content Calendar",
+    "Monthly Recap: {n}K Milestone",
+    "Behind the Algorithm: What Really Works",
+    "My Biggest Fails as a Creator",
+    "Interview With a Fellow Creator"
 ]
 
-for i in range(50):
+content_count = 0
+
+for i in range(TOTAL_CONTENT):
     platform = random.choice(platforms)
     title = random.choice(title_templates).format(
         n=random.choice([5, 10, 30, 60, 100]),
@@ -85,8 +124,13 @@ for i in range(50):
         published_date=published_date
     )
     db.add(content)
+    content_count += 1
 
 db.commit()
-print("Seeded 50 content records.")
+print(f"Seeded {content_count} content records.")
+
+print("\n--- Sample Seeded User Login Credentials (first 5) ---")
+for user in created_users[:5]:
+    print(f"{user.full_name:<20} | {user.email:<25} | password123")
 
 db.close()

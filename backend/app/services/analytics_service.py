@@ -112,11 +112,9 @@ def get_dashboard_summary(db: Session):
     engagement_rates = [calculate_engagement(c)["engagement_rate"] for c in all_content]
     average_engagement_rate = round(sum(engagement_rates) / total_content, 2)
 
-    # Best-performing platform = highest average engagement rate
     platform_stats = get_platform_performance(db)
     best_platform = max(platform_stats, key=lambda p: p["average_engagement_rate"])["platform"] if platform_stats else None
 
-    # Top content = highest single engagement rate
     top = max(all_content, key=lambda c: calculate_engagement(c)["engagement_rate"])
     top_content_title = top.content_title
 

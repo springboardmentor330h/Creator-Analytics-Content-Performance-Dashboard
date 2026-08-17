@@ -3,19 +3,23 @@ from fastapi import FastAPI
 from app.db.database import engine, Base
 from app.models.user import User
 from app.models.content import Content
+from app.models.audience import Audience
+from app.models.growth import Growth
 from app.routers.users import router as user_router
 from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
 from app.routers.analytics import router as analytics_router
+from app.routers.audience import router as audience_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CreatorIQ API")
 
-app.include_router(user_router)
-app.include_router(auth_router)
-app.include_router(content_router)
-app.include_router(analytics_router)
+app.include_router(user_router, tags=["User Management"])
+app.include_router(auth_router, tags=["Authentication"])
+app.include_router(content_router, tags=["Content Analytics"])
+app.include_router(analytics_router, tags=["Engagement Analytics"])
+app.include_router(audience_router, tags=["Audience Analytics"])
 
 @app.get("/")
 def home():
