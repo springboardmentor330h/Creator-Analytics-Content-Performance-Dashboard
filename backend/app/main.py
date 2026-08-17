@@ -14,6 +14,9 @@ from app.models import content as content_model
 from app.models import audience as audience_model
 from app.models import growth as growth_model
 from app.models import revenue as revenue_model
+from app.routers.growth_trends import router as growth_trends_router
+from app.routers.notifications import router as notifications_router
+from app.routers.reports import router as reports_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -36,6 +39,10 @@ app.include_router(audience_router, tags=["audience"])
 app.include_router(revenue_router)
 app.include_router(analytics_router)
 app.include_router(analytics_dashboard_router)
+app.include_router(growth_trends_router)
+app.include_router(notifications_router)
+app.include_router(reports_router)
+
 
 @app.get("/")
 def root():

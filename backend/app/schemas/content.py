@@ -61,3 +61,11 @@ class ContentOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+
+class YouTubeSyncRequest(BaseModel):
+    creator_id: int
+    channel_id: Optional[str] = None
+    search_query: Optional[str] = None
+    max_results: int = 10

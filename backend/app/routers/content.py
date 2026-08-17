@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.content import Content
 from app.schemas.content import ContentCreate, ContentUpdate, ContentOut
+from app.schemas.content import YouTubeSyncRequest
+from app.services import youtube_service
 
 router = APIRouter(prefix="/content", tags=["content"])
 
@@ -54,3 +56,25 @@ def delete_content(id: int, db: Session = Depends(get_db)):
     db.delete(content)
     db.commit()
     return {"message": "Content deleted successfully"}
+
+
+
+@router.post("/sync/youtube", response_model=list[ContentOut])
+def sync_youtube_content(payload: YouTubeSyncRequest, db: Session = Depends(get_db)):
+    if payload.channel_id:
+        video_ids = youtube_service.get_channel_video_ids(payload.channel_id, payload.max_results)
+    elif payload.search_query:
+        video_ids = youtube_service.search_video_ids(payload.search_query, payload.max_results)
+    else:
+        raise HTTPException(status_code=400, detail="Provide either channel_id or search_query")
+
+    video_data = youtube_service.get_video_details(video_ids)
+
+    saved = []
+    for v in video_data:
+        new_content = Content(creator_id=payload.creator_id, platform="YouTube", **v)
+        db.add(new_content)
+        db.commit()
+        db.refresh(new_content)
+        saved.append(new_content)
+    return saved
