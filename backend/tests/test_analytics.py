@@ -6,7 +6,7 @@ from sqlalchemy.pool import StaticPool
 
 from backend.app.main import app
 from backend.app.db.database import Base, get_db
-from backend.app.models.content import Content
+from backend.app.models import Content
 from backend.app.services.analytics_service import AnalyticsService
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -18,6 +18,7 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 def override_get_db():
     db = TestingSessionLocal()
     try:
@@ -25,13 +26,14 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
+
 
 class TestAnalytics(unittest.TestCase):
 
     def setUp(self):
+        app.dependency_overrides[get_db] = override_get_db
         Base.metadata.create_all(bind=engine)
         self.db = TestingSessionLocal()
         self.db.query(Content).delete()
@@ -91,8 +93,9 @@ class TestAnalytics(unittest.TestCase):
         self.db.commit()
 
     def tearDown(self):
+        self.db.query(Content).delete()
+        self.db.commit()
         self.db.close()
-        Base.metadata.drop_all(bind=engine)
 
     def test_calculate_engagement_rate_unit(self):
         rate = AnalyticsService.calculate_engagement_rate(600, 300, 100, 20, 15000)
@@ -118,7 +121,7 @@ class TestAnalytics(unittest.TestCase):
         self.assertEqual(response.json()["detail"], "Content not found")
 
     def test_get_top_content(self):
-        response = client.get("/analytics/top-content")
+        response = client.get("/analytics/top-content?limit=5")
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(len(data), 4)
@@ -154,6 +157,7 @@ class TestAnalytics(unittest.TestCase):
         self.assertEqual(data["average_engagement_rate"], 6.33)
         self.assertEqual(data["best_platform"], "Instagram")
         self.assertEqual(data["top_content"], "Tech Tips Reel")
+
 
 if __name__ == "__main__":
     unittest.main()
