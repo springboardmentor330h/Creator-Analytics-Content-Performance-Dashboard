@@ -17,6 +17,7 @@ from app.routers import (
     auth,
     content,
     revenue,
+    social,
     users
 )
 
@@ -54,24 +55,26 @@ def startup():
 # REGISTER ROUTERS
 # ============================================================
 
-# Authentication APIs.
+# Authentication APIs
 app.include_router(auth.router)
 
-# User APIs.
+# User APIs
 app.include_router(users.router)
 
-# Analytics APIs.
-app.include_router(analytics.router)
-
-# Audience APIs - Sprint 3.
-app.include_router(audience.router)
-
-# Content APIs.
+# Content APIs
 app.include_router(content.router)
 
-# Revenue APIs.
+# Analytics APIs
+app.include_router(analytics.router)
+
+# Audience APIs
+app.include_router(audience.router)
+
+# Revenue APIs
 app.include_router(revenue.router)
 
+# Social Media APIs
+app.include_router(social.router)
 
 # ============================================================
 # ROOT ENDPOINT

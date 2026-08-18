@@ -45,9 +45,11 @@ def calculate_distribution(records, field_name):
 
         value = getattr(record, field_name)
 
-        distribution[value] = (
-            distribution.get(value, 0) + 1
-        )
+        if value:
+
+            distribution[value] = (
+                distribution.get(value, 0) + 1
+            )
 
     result = {}
 
@@ -65,50 +67,85 @@ def calculate_distribution(records, field_name):
     return result
 
 
-def get_top_value(records, field_name):
+# ============================================================
+# TOP VALUES
+# ============================================================
+
+def get_top_values(
+    records,
+    field_name,
+    limit=3
+):
 
     if not records:
-        return None
+        return []
 
     counts = {}
 
     for record in records:
 
-        value = getattr(record, field_name)
-
-        counts[value] = (
-            counts.get(value, 0) + 1
+        value = getattr(
+            record,
+            field_name
         )
 
-    return max(
-        counts,
-        key=counts.get
+        if value:
+
+            counts[value] = (
+                counts.get(value, 0) + 1
+            )
+
+    sorted_values = sorted(
+        counts.items(),
+        key=lambda item: item[1],
+        reverse=True
     )
+
+    return [
+        {
+            field_name: value,
+            "count": count
+        }
+        for value, count
+        in sorted_values[:limit]
+    ]
 
 
 def get_top_countries(records):
 
-    return get_top_value(
+    return get_top_values(
         records,
-        "country"
+        "country",
+        3
     )
 
 
 def get_top_cities(records):
 
-    return get_top_value(
+    return get_top_values(
         records,
-        "city"
+        "city",
+        3
     )
 
 
 def get_top_device(records):
 
-    return get_top_value(
+    top_devices = get_top_values(
         records,
-        "device_type"
+        "device_type",
+        1
     )
 
+    if not top_devices:
+        return None
+
+    return top_devices[0]["device_type"]
+
+
+# ============================================================
+# AUDIENCE REPORT
+# ============================================================
 
 def get_audience_report(db: Session):
 
@@ -140,10 +177,10 @@ def get_audience_report(db: Session):
                 "age_group"
             ),
 
-        "top_country":
+        "top_countries":
             get_top_countries(records),
 
-        "top_city":
+        "top_cities":
             get_top_cities(records),
 
         "device_usage":
@@ -163,12 +200,19 @@ def get_audience_report(db: Session):
 
 def get_growth_report(db: Session):
 
+    # Fetch the most recent 30 records (newest first), then reverse
+    # to chronological order for the response. Ordering ascending
+    # with a plain limit would return the OLDEST 30 records instead
+    # once more than 30 rows exist — the wrong end of the timeline
+    # for a "last 30 days" report.
     growth_records = (
         db.query(Growth)
-        .order_by(Growth.date.asc())
+        .order_by(Growth.date.desc())
         .limit(30)
         .all()
     )
+
+    growth_records = list(reversed(growth_records))
 
     result = []
 
@@ -233,10 +277,12 @@ def get_audience_trends(db: Session):
 
     growth_records = (
         db.query(Growth)
-        .order_by(Growth.date.asc())
+        .order_by(Growth.date.desc())
         .limit(30)
         .all()
     )
+
+    growth_records = list(reversed(growth_records))
 
     result = []
 
