@@ -25,6 +25,22 @@ def platform_performance(db: Session = Depends(get_db)):
     return analytics_service.get_platform_performance(db)
 
 
+
 @router.get("/summary")
-def dashboard_summary(db: Session = Depends(get_db)):
-    return analytics_service.get_dashboard_summary(db)
+def kpi_summary(db: Session = Depends(get_db)):
+    return analytics_service.get_kpi_summary(db)
+
+
+@router.get("/chart/engagement")
+def engagement_chart(db: Session = Depends(get_db)):
+    return analytics_service.get_engagement_chart(db)
+
+
+@router.get("/chart/followers")
+def followers_chart(db: Session = Depends(get_db)):
+    return analytics_service.get_followers_chart(db)
+
+
+@router.get("/platform-comparison")
+def platform_comparison(db: Session = Depends(get_db)):
+    return analytics_service.get_platform_comparison(db)

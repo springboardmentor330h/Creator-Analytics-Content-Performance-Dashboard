@@ -17,6 +17,9 @@ from app.models import revenue as revenue_model
 from app.routers.growth_trends import router as growth_trends_router
 from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
+from app.routers.social import router as social_router
+from app.models import social_connection as social_connection_model
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -42,6 +45,7 @@ app.include_router(analytics_dashboard_router)
 app.include_router(growth_trends_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
+app.include_router(social_router)
 
 
 @app.get("/")

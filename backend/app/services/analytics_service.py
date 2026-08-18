@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.content import Content
-
+from collections import defaultdict
+from app.models.growth import Growth
 
 def calculate_engagement_rate(content: Content) -> float:
     """Engagement Rate = (Likes + Comments + Shares + Saves) / Reach * 100"""
@@ -115,3 +116,73 @@ def get_dashboard_summary(db: Session):
         "best_platform": best_platform,
         "top_content": top_content.content_title,
     }
+
+
+def get_kpi_summary(db: Session):
+    content_items = db.query(Content).all()
+    total_views = sum(c.views for c in content_items)
+    total_likes = sum(c.likes for c in content_items)
+    total_comments = sum(c.comments for c in content_items)
+    total_shares = sum(c.shares for c in content_items)
+    total_reach = sum(c.reach for c in content_items)
+
+    rates = [calculate_engagement_rate(c) for c in content_items]
+    avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
+
+    # total_followers = latest follower count per creator, summed
+    growth_rows = db.query(Growth).order_by(Growth.creator_id, Growth.date.asc()).all()
+    latest_per_creator = {}
+    for g in growth_rows:
+        latest_per_creator[g.creator_id] = g.followers  # keeps overwriting -> ends on latest since sorted asc
+    total_followers = sum(latest_per_creator.values())
+
+    return {
+        "total_views": total_views,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "total_shares": total_shares,
+        "total_reach": total_reach,
+        "total_followers": total_followers,
+        "average_engagement_rate": avg_rate,
+    }
+
+
+def get_engagement_chart(db: Session):
+    rows = db.query(Growth).order_by(Growth.date.asc()).all()
+    daily = defaultdict(list)
+    for r in rows:
+        daily[r.date.isoformat()].append(r.engagement_rate)
+
+    labels = sorted(daily.keys())
+    values = [round(sum(daily[d]) / len(daily[d]), 2) for d in labels]
+    return {"labels": labels, "values": values}
+
+
+def get_followers_chart(db: Session):
+    rows = db.query(Growth).order_by(Growth.date.asc()).all()
+    daily = defaultdict(int)
+    for r in rows:
+        daily[r.date.isoformat()] += r.followers
+
+    labels = sorted(daily.keys())
+    values = [daily[d] for d in labels]
+    return {"labels": labels, "values": values}
+
+
+def get_platform_comparison(db: Session):
+    content_items = db.query(Content).all()
+    grouped: dict[str, list[Content]] = defaultdict(list)
+    for c in content_items:
+        grouped[c.platform].append(c)
+
+    result = {}
+    for platform, items in grouped.items():
+        rates = [calculate_engagement_rate(c) for c in items]
+        result[platform] = {
+            "views": sum(i.views for i in items),
+            "reach": sum(i.reach for i in items),
+            "likes": sum(i.likes for i in items),
+            "comments": sum(i.comments for i in items),
+            "engagement_rate": round(sum(rates) / len(rates), 2) if rates else 0.0,
+        }
+    return result

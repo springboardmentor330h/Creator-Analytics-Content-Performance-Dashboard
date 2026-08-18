@@ -8,7 +8,7 @@ class RevenueRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, nullable=False, index=True)
     platform = Column(String, nullable=False)
-    source = Column(String, nullable=False)  # sponsorship, ad_revenue, affiliate, brand_collab, subscription
+    source = Column(String, nullable=False) 
     description = Column(String, nullable=True)
     amount = Column(Float, nullable=False)
     currency = Column(String, default="USD")

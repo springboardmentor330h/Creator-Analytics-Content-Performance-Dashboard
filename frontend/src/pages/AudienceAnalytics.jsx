@@ -4,77 +4,104 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
 export default function AudienceAnalytics() {
-  const [snapshot, setSnapshot] = useState(null);
+  const [report, setReport] = useState(null);
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    age_group: "18-24", gender: "male", country: "India", city: "Bangalore",
+    device_type: "Mobile", active_hour: 19, followers: 0, impressions: 0, reach: 0,
+  });
 
   const load = async () => {
-    const res = await api.get("/audience/latest");
-    setSnapshot(res.data);
+    setError("");
+    try {
+      const res = await api.get("/analytics/audience");
+      setReport(res.data);
+    } catch {
+      setError("Could not load audience analytics");
+    }
   };
 
   useEffect(() => { load(); }, []);
 
-  const refresh = async () => {
-    await api.post("/audience/refresh");
-    load();
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/audience", {
+        ...form,
+        creator_id: 1,
+        active_hour: Number(form.active_hour), followers: Number(form.followers),
+        impressions: Number(form.impressions), reach: Number(form.reach),
+      });
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.detail?.[0]?.msg || "Failed to add audience record");
+    }
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
       <Sidebar />
       <div className="flex-1 overflow-y-auto">
         <Navbar />
-        <main className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">Audience Analytics</h1>
-            <button onClick={refresh} className="rounded bg-indigo-600 px-4 py-2 text-white">
-              Refresh Snapshot
-            </button>
-          </div>
+        <main className="p-4 sm:p-6">
+          <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Audience Analytics</h1>
+          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
 
-          {snapshot && (
+          <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-9">
+            <input name="age_group" placeholder="Age Group" value={form.age_group} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="gender" placeholder="Gender" value={form.gender} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="country" placeholder="Country" value={form.country} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="city" placeholder="City" value={form.city} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="device_type" placeholder="Device" value={form.device_type} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="active_hour" type="number" min="0" max="23" value={form.active_hour} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="followers" type="number" placeholder="Followers" value={form.followers} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+            <button type="submit" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Add</button>
+          </form>
+
+          {report && (
             <>
-              <div className="mb-6 grid grid-cols-4 gap-4">
+              <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <Stat label="Total Followers" value={report.total_followers?.toLocaleString()} />
+                <Stat label="Total Reach" value={report.total_reach?.toLocaleString()} />
+                <Stat label="Total Impressions" value={report.total_impressions?.toLocaleString()} />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="text-sm text-gray-500">Followers</p>
-                  <p className="text-2xl font-bold">{snapshot.followers.toLocaleString()}</p>
+                  <p className="mb-2 font-medium">Gender Distribution</p>
+                  {Object.entries(report.gender_distribution || {}).map(([k, v]) => (
+                    <p key={k} className="text-sm">{k}: {v}%</p>
+                  ))}
                 </div>
                 <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="text-sm text-gray-500">New Followers</p>
-                  <p className="text-2xl font-bold">+{snapshot.new_followers}</p>
-                </div>
-                <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="text-sm text-gray-500">Impressions</p>
-                  <p className="text-2xl font-bold">{snapshot.impressions.toLocaleString()}</p>
-                </div>
-                <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="text-sm text-gray-500">Reach</p>
-                  <p className="text-2xl font-bold">{snapshot.reach.toLocaleString()}</p>
+                  <p className="mb-2 font-medium">Age Distribution</p>
+                  {Object.entries(report.age_distribution || {}).map(([k, v]) => (
+                    <p key={k} className="text-sm">{k}: {v}%</p>
+                  ))}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="mb-2 font-medium">Age Distribution</p>
-                  <p className="text-sm">13-17: {snapshot.age_13_17}%</p>
-                  <p className="text-sm">18-24: {snapshot.age_18_24}%</p>
-                  <p className="text-sm">25-34: {snapshot.age_25_34}%</p>
-                  <p className="text-sm">35-44: {snapshot.age_35_44}%</p>
-                  <p className="text-sm">45+: {snapshot.age_45_plus}%</p>
-                </div>
-                <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="mb-2 font-medium">Gender & Location</p>
-                  <p className="text-sm">Male: {snapshot.male_pct}%</p>
-                  <p className="text-sm">Female: {snapshot.female_pct}%</p>
-                  <p className="text-sm">Other: {snapshot.other_pct}%</p>
-                  <p className="mt-2 text-sm">Top Country: {snapshot.top_country}</p>
-                  <p className="text-sm">Top Device: {snapshot.top_device}</p>
-                  <p className="text-sm">Peak Active Hour: {snapshot.peak_active_hour}:00</p>
-                </div>
+              <div className="mt-4 rounded-xl bg-white p-4 shadow text-sm">
+                <p>Top Country: <b>{report.top_country || "—"}</b></p>
+                <p>Top City: <b>{report.top_city || "—"}</b></p>
+                <p>Top Device: <b>{report.top_device || "—"}</b></p>
               </div>
             </>
           )}
         </main>
       </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="rounded-xl bg-white p-3 shadow sm:p-4">
+      <p className="text-xs text-gray-500 sm:text-sm">{label}</p>
+      <p className="text-lg font-bold sm:text-2xl">{value}</p>
     </div>
   );
 }
