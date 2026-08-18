@@ -156,10 +156,13 @@ class AudienceService:
         }
 
     @staticmethod
-    def growth_trend_generation(db: Session, creator_id: Optional[int] = None, limit: int = 30) -> List[Dict[str, Any]]:
+    def growth_trend_generation(db: Session, creator_id: Optional[int] = None, platform: Optional[str] = None, limit: int = 30) -> List[Dict[str, Any]]:
         query = db.query(Growth)
         if creator_id is not None:
             query = query.filter(Growth.creator_id == creator_id)
+        if platform and platform != "All":
+            query = query.filter(Growth.platform == platform)
+
         records = query.order_by(Growth.date.asc()).limit(limit).all()
 
         results = []
@@ -173,24 +176,31 @@ class AudienceService:
 
             results.append({
                 "date": str(rec.date),
+                "platform": getattr(rec, 'platform', 'All') or 'All',
                 "followers": rec.followers,
+                "reach": rec.reach or 0,
                 "daily_growth": daily_growth,
                 "growth_percentage": growth_pct
             })
         return results
 
     @staticmethod
-    def get_audience_trends(db: Session, creator_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_audience_trends(db: Session, creator_id: Optional[int] = None, platform: Optional[str] = None) -> List[Dict[str, Any]]:
         query = db.query(Growth)
         if creator_id is not None:
             query = query.filter(Growth.creator_id == creator_id)
+        if platform and platform != "All":
+            query = query.filter(Growth.platform == platform)
+
         records = query.order_by(Growth.date.asc()).all()
 
         return [
             {
                 "date": str(rec.date),
+                "platform": getattr(rec, 'platform', 'All') or 'All',
                 "followers": rec.followers,
                 "reach": rec.reach
             }
             for rec in records
         ]
+

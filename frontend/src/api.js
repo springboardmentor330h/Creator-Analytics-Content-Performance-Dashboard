@@ -50,16 +50,22 @@ export const api = {
     return await request('/analytics/summary');
   },
 
+  getReachBreakdown: async () => {
+    return await request('/analytics/reach-breakdown');
+  },
+
   getAudienceReport: async () => {
     return await request('/analytics/audience');
   },
 
-  getGrowthReport: async () => {
-    return await request('/analytics/growth');
+  getGrowthReport: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/growth${query}`);
   },
 
-  getAudienceTrends: async () => {
-    return await request('/analytics/audience-trends');
+  getAudienceTrends: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/audience-trends${query}`);
   },
 
   getTopContent: async () => {
@@ -68,6 +74,44 @@ export const api = {
 
   getPlatformPerformance: async () => {
     return await request('/analytics/platform-performance');
+  },
+
+  getEngagementChart: async () => {
+    return await request('/analytics/chart/engagement');
+  },
+
+  getFollowerGrowthChart: async () => {
+    return await request('/analytics/chart/followers');
+  },
+
+  getPlatformComparison: async () => {
+    return await request('/analytics/platform-comparison');
+  },
+
+  // Social Media Workflow APIs
+  connectSocialPlatform: async (platform, accountName) => {
+    return await request('/social/connect', {
+      method: 'POST',
+      body: JSON.stringify({ platform, account_name: accountName })
+    });
+  },
+
+  getConnectedSocialPlatforms: async () => {
+    return await request('/social/platforms');
+  },
+
+  syncSocialPlatform: async (platform) => {
+    return await request('/social/sync', {
+      method: 'POST',
+      body: JSON.stringify({ platform })
+    });
+  },
+
+  // YouTube Integration
+  syncYouTube: async (channelId) => {
+    return await request(`/youtube/sync/${encodeURIComponent(channelId)}`, {
+      method: 'POST'
+    });
   },
 
   // Audience CRUD
@@ -96,8 +140,9 @@ export const api = {
   },
 
   // Content CRUD
-  getContent: async () => {
-    return await request('/content');
+  getContent: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/content${query}`);
   },
 
   createContent: async (payload) => {
@@ -120,3 +165,4 @@ export const api = {
     });
   }
 };
+

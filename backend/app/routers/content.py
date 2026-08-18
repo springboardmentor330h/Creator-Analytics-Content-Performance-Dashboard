@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from backend.app.db.database import get_db
 from backend.app.models.content import Content
@@ -34,9 +34,11 @@ def create_content(content: ContentCreate, db: Session = Depends(get_db)):
 
 @router.get("", response_model=List[ContentResponse])
 @router.get("/", response_model=List[ContentResponse])
-def get_all_content(db: Session = Depends(get_db)):
-    contents = db.query(Content).all()
-    return contents
+def get_all_content(platform: Optional[str] = None, db: Session = Depends(get_db)):
+    query = db.query(Content)
+    if platform and platform != "All":
+        query = query.filter(Content.platform.ilike(platform))
+    return query.all()
 
 @router.get("/{content_id}", response_model=ContentResponse)
 def get_content_by_id(content_id: int, db: Session = Depends(get_db)):

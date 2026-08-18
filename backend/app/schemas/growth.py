@@ -5,6 +5,7 @@ from typing import Optional
 
 class GrowthCreate(BaseModel):
     creator_id: int
+    platform: Optional[str] = "All"
     date: date
     followers: int = Field(0, ge=0)
     reach: int = Field(0, ge=0)
@@ -13,6 +14,7 @@ class GrowthCreate(BaseModel):
 
 class GrowthUpdate(BaseModel):
     creator_id: Optional[int] = None
+    platform: Optional[str] = None
     date: Optional[date] = None
     followers: Optional[int] = Field(None, ge=0)
     reach: Optional[int] = Field(None, ge=0)
@@ -22,6 +24,7 @@ class GrowthUpdate(BaseModel):
 class GrowthResponse(BaseModel):
     id: int
     creator_id: int
+    platform: Optional[str] = "All"
     date: date
     followers: int = 0
     reach: int = 0
@@ -30,3 +33,4 @@ class GrowthResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+

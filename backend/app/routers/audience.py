@@ -95,14 +95,15 @@ def get_audience_analytics(creator_id: Optional[int] = None, db: Session = Depen
 
 @router.get("/analytics/growth")
 @router.get("/analytics/growth/")
-def get_growth_analytics(creator_id: Optional[int] = None, limit: int = 30, db: Session = Depends(get_db)):
-    return AudienceService.growth_trend_generation(db, creator_id=creator_id, limit=limit)
+def get_growth_analytics(creator_id: Optional[int] = None, platform: Optional[str] = None, limit: int = 30, db: Session = Depends(get_db)):
+    return AudienceService.growth_trend_generation(db, creator_id=creator_id, platform=platform, limit=limit)
 
 
 @router.get("/analytics/audience-trends")
 @router.get("/analytics/audience-trends/")
-def get_audience_trends(creator_id: Optional[int] = None, db: Session = Depends(get_db)):
-    return AudienceService.get_audience_trends(db, creator_id=creator_id)
+def get_audience_trends(creator_id: Optional[int] = None, platform: Optional[str] = None, db: Session = Depends(get_db)):
+    return AudienceService.get_audience_trends(db, creator_id=creator_id, platform=platform)
+
 
 
 @router.post("/growth", response_model=GrowthResponse, status_code=status.HTTP_201_CREATED)
@@ -110,6 +111,7 @@ def get_audience_trends(creator_id: Optional[int] = None, db: Session = Depends(
 def create_growth(growth: GrowthCreate, db: Session = Depends(get_db)):
     db_growth = Growth(
         creator_id=growth.creator_id,
+        platform=growth.platform or "All",
         date=growth.date,
         followers=growth.followers,
         reach=growth.reach,

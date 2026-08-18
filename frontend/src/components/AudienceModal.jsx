@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function AudienceModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
@@ -16,10 +16,23 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
   });
 
   const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusAlert, setStatusAlert] = useState(null);
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        creator_id: initialData.creator_id || 1,
+        age_group: initialData.age_group || '18-30',
+        gender: initialData.gender || 'Male',
+        country: initialData.country || 'United States',
+        city: initialData.city || 'New York',
+        device_type: initialData.device_type || 'Desktop',
+        active_hour: initialData.active_hour ?? 18,
+        followers: initialData.followers ?? 10000,
+        impressions: initialData.impressions ?? 50000,
+        reach: initialData.reach ?? 40000
+      });
     } else {
       setFormData({
         creator_id: 1,
@@ -35,6 +48,8 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
       });
     }
     setErrors({});
+    setStatusAlert(null);
+    setIsSubmitting(false);
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -51,47 +66,76 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
-    onSave(formData);
-    onClose();
+
+    setIsSubmitting(true);
+    setStatusAlert(null);
+
+    try {
+      await onSave(formData);
+      setStatusAlert({ type: 'success', text: initialData ? 'Audience record updated successfully!' : 'Audience record created successfully!' });
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onClose();
+      }, 600);
+    } catch (err) {
+      setIsSubmitting(false);
+      setStatusAlert({ type: 'error', text: `Failed: ${err.message}` });
+    }
   };
 
   return (
     <div className="modal-overlay">
       <div className="modal-card">
         <div className="modal-header">
-          <h3 className="modal-title">{initialData ? 'Edit Audience Record' : 'Add Audience Record'}</h3>
-          <button className="action-btn" onClick={onClose}><X size={20} /></button>
+          <div>
+            <h3 className="modal-title">
+              {initialData ? `Edit Audience Record #${initialData.id}` : 'Create Audience Demographic Record'}
+            </h3>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>
+              {initialData ? 'Update demographics, location, and device metrics' : 'Add new demographic segment'}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: '#f1f5f9',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={16} color="#64748b" />
+          </button>
         </div>
 
+        {statusAlert && (
+          <div style={{
+            backgroundColor: statusAlert.type === 'success' ? '#f0fdf4' : '#ffe4e6',
+            border: `1px solid ${statusAlert.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
+            borderRadius: '8px',
+            padding: '10px 14px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: statusAlert.type === 'success' ? '#166534' : '#be123c',
+            fontSize: '13px',
+            fontWeight: 600
+          }}>
+            {statusAlert.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            <span>{statusAlert.text}</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="form-grid">
-          <div className="form-group">
-            <label className="form-label">Creator ID</label>
-            <input
-              type="number"
-              className="form-input"
-              value={formData.creator_id}
-              onChange={(e) => setFormData({ ...formData, creator_id: parseInt(e.target.value) || 1 })}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Age Group</label>
-            <select
-              className="form-input"
-              value={formData.age_group}
-              onChange={(e) => setFormData({ ...formData, age_group: e.target.value })}
-            >
-              <option value="<18">&lt;18</option>
-              <option value="18-30">18-30</option>
-              <option value="30-45">30-45</option>
-              <option value=">45">&gt;45</option>
-            </select>
-          </div>
-
           <div className="form-group">
             <label className="form-label">Gender</label>
             <select
@@ -106,15 +150,16 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
           </div>
 
           <div className="form-group">
-            <label className="form-label">Device Type</label>
+            <label className="form-label">Age Group</label>
             <select
               className="form-input"
-              value={formData.device_type}
-              onChange={(e) => setFormData({ ...formData, device_type: e.target.value })}
+              value={formData.age_group}
+              onChange={(e) => setFormData({ ...formData, age_group: e.target.value })}
             >
-              <option value="Desktop">Desktop</option>
-              <option value="Mobile">Mobile</option>
-              <option value="Tablet">Tablet</option>
+              <option value="<18">&lt;18</option>
+              <option value="18-30">18-30</option>
+              <option value="30-45">30-45</option>
+              <option value=">45">&gt;45</option>
             </select>
           </div>
 
@@ -141,6 +186,19 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
           </div>
 
           <div className="form-group">
+            <label className="form-label">Device Type</label>
+            <select
+              className="form-input"
+              value={formData.device_type}
+              onChange={(e) => setFormData({ ...formData, device_type: e.target.value })}
+            >
+              <option value="Desktop">Desktop</option>
+              <option value="Mobile">Mobile</option>
+              <option value="Tablet">Tablet</option>
+            </select>
+          </div>
+
+          <div className="form-group">
             <label className="form-label">Active Hour (0-23)</label>
             <input
               type="number"
@@ -150,7 +208,7 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
               value={formData.active_hour}
               onChange={(e) => setFormData({ ...formData, active_hour: parseInt(e.target.value) || 0 })}
             />
-            {errors.active_hour && <span style={{ color: 'red', fontSize: '11px' }}>{errors.active_hour}</span>}
+            {errors.active_hour && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.active_hour}</span>}
           </div>
 
           <div className="form-group">
@@ -162,7 +220,7 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
               value={formData.followers}
               onChange={(e) => setFormData({ ...formData, followers: parseInt(e.target.value) || 0 })}
             />
-            {errors.followers && <span style={{ color: 'red', fontSize: '11px' }}>{errors.followers}</span>}
+            {errors.followers && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.followers}</span>}
           </div>
 
           <div className="form-group">
@@ -174,10 +232,10 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
               value={formData.reach}
               onChange={(e) => setFormData({ ...formData, reach: parseInt(e.target.value) || 0 })}
             />
-            {errors.reach && <span style={{ color: 'red', fontSize: '11px' }}>{errors.reach}</span>}
+            {errors.reach && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.reach}</span>}
           </div>
 
-          <div className="form-group">
+          <div className="form-group full">
             <label className="form-label">Impressions</label>
             <input
               type="number"
@@ -186,15 +244,21 @@ export default function AudienceModal({ isOpen, onClose, onSave, initialData }) 
               value={formData.impressions}
               onChange={(e) => setFormData({ ...formData, impressions: parseInt(e.target.value) || 0 })}
             />
-            {errors.impressions && <span style={{ color: 'red', fontSize: '11px' }}>{errors.impressions}</span>}
+            {errors.impressions && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.impressions}</span>}
           </div>
 
           <div className="modal-actions form-group full">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary">Save Record</button>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? <RefreshCw size={16} className="spin" /> : null}
+              <span>{isSubmitting ? 'Saving Changes...' : initialData ? 'Update Record' : 'Create Record'}</span>
+            </button>
           </div>
         </form>
       </div>
     </div>
   );
 }
+

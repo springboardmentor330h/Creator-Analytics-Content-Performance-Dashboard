@@ -6,6 +6,8 @@ from backend.app.routers.auth import router as auth_router
 from backend.app.routers.content import router as content_router
 from backend.app.routers.analytics import router as analytics_router
 from backend.app.routers.audience import router as audience_router
+from backend.app.routers.youtube import router as youtube_router
+from backend.app.routers.social import router as social_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -34,6 +36,12 @@ app.include_router(
 )
 app.include_router(
     audience_router
+)
+app.include_router(
+    youtube_router
+)
+app.include_router(
+    social_router
 )
 
 @app.get("/")
