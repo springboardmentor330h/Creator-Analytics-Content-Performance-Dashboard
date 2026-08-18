@@ -75,10 +75,24 @@ class PlatformPerformanceResponse(BaseModel):
     total_reach: int
     average_engagement_rate: float
 
+#Replaced the summary response
 class SummaryResponse(BaseModel):
-    total_content: int
     total_views: int
+    total_likes: int
+    total_comments: int
+    total_shares: int
     total_reach: int
+    total_followers: int
     average_engagement_rate: float
-    best_platform: str
-    top_content: str
+
+class ChartResponse(BaseModel):
+    labels: list[str]
+    values: list[float]
+
+class PlatformComparisonResponse(BaseModel):
+    platform: str
+    views: int
+    reach: int
+    engagement_rate: float
+    likes: int
+    comments: int

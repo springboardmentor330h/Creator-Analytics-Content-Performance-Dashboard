@@ -11,7 +11,9 @@ from app.schemas.analytics import (
     PerformanceTrendsResponse,
     TopContentResponse,
     PlatformPerformanceResponse,
-    SummaryResponse
+    SummaryResponse,
+    ChartResponse,
+    PlatformComparisonResponse
 )
 
 from app.services.analytics_service import (
@@ -22,7 +24,10 @@ from app.services.analytics_service import (
     get_performance_trends,
     get_top_content,
     get_platform_performance,
-    get_dashboard_summary
+    get_dashboard_summary,
+    get_engagement_chart,
+    get_follower_chart,
+     get_platform_comparison
 )
 
 
@@ -166,3 +171,30 @@ def get_dashboard_summary_api(
     db: Session = Depends(get_db)
 ):
     return get_dashboard_summary(db=db)
+
+@router.get(
+    "/chart/engagement",
+    response_model=ChartResponse
+)
+def get_engagement_chart_api(
+    db: Session = Depends(get_db)
+):
+    return get_engagement_chart(db=db)
+
+@router.get(
+    "/chart/followers",
+    response_model=ChartResponse
+)
+def get_follower_chart_api(
+    db: Session = Depends(get_db)
+):
+    return get_follower_chart(db=db)
+
+@router.get(
+    "/platform-comparison",
+    response_model=list[PlatformComparisonResponse]
+)
+def get_platform_comparison_api(
+    db: Session = Depends(get_db)
+):
+    return get_platform_comparison(db=db)
