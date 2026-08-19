@@ -8,7 +8,14 @@ class ConnectRequest(BaseModel):
     account_name: str
 
 
-class SyncRequest(BaseModel):
+class YouTubeSyncRequest(BaseModel):
     creator_id: int
+    channel_id: Optional[str] = None
+    search_query: Optional[str] = None
+    max_results: int = 10
+
+
+class SyncResult(BaseModel):
     platform: str
-    published_date: Optional[date_type] = None
+    status: str
+    records_synced: int

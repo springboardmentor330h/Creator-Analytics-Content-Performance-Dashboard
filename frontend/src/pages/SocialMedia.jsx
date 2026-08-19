@@ -15,6 +15,11 @@ export default function SocialMedia() {
   const [error, setError] = useState("");
   const [syncing, setSyncing] = useState(false);
 
+  // Real YouTube sync form state
+  const [ytChannelId, setYtChannelId] = useState("");
+  const [ytSearchQuery, setYtSearchQuery] = useState("");
+  const [ytSyncing, setYtSyncing] = useState(false);
+
   const loadConnections = async () => {
     try {
       const res = await api.get("/social/platforms");
@@ -42,7 +47,7 @@ export default function SocialMedia() {
     }
   };
 
-  const handleSync = async (platform) => {
+  const handleMockSync = async (platform) => {
     setSyncing(true); setError(""); setMessage("");
     try {
       const res = await api.post("/social/sync", { creator_id: creatorId, platform });
@@ -51,6 +56,24 @@ export default function SocialMedia() {
       setError(err.response?.data?.detail || "Sync failed");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleYouTubeSync = async (e) => {
+    e.preventDefault();
+    setYtSyncing(true); setError(""); setMessage("");
+    try {
+      const res = await api.post("/social/youtube/sync", {
+        creator_id: creatorId,
+        channel_id: ytChannelId || undefined,
+        search_query: ytSearchQuery || undefined,
+        max_results: 10,
+      });
+      setMessage(`YouTube sync successful: ${res.data.records_synced} records synced.`);
+    } catch (err) {
+      setError(err.response?.data?.detail || "YouTube sync failed");
+    } finally {
+      setYtSyncing(false);
     }
   };
 
@@ -64,15 +87,43 @@ export default function SocialMedia() {
           {message && <p className="mb-3 rounded bg-green-50 p-2 text-sm text-green-700">{message}</p>}
           {error && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
 
+          {/* Real YouTube Sync */}
+          <div className="mb-6 rounded-xl bg-white p-4 shadow">
+            <p className="mb-2 font-medium">YouTube — Real API Sync</p>
+            <form onSubmit={handleYouTubeSync} className="flex flex-wrap gap-2">
+              <input
+                type="text"
+                placeholder="Channel ID (optional)"
+                value={ytChannelId}
+                onChange={(e) => setYtChannelId(e.target.value)}
+                className="rounded border px-3 py-2 text-sm"
+              />
+              <input
+                type="text"
+                placeholder="Or search query (e.g. react tutorial)"
+                value={ytSearchQuery}
+                onChange={(e) => setYtSearchQuery(e.target.value)}
+                className="flex-1 min-w-[200px] rounded border px-3 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={ytSyncing || (!ytChannelId && !ytSearchQuery)}
+                className="rounded bg-red-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+              >
+                {ytSyncing ? "Syncing..." : "Sync from YouTube"}
+              </button>
+            </form>
+            <p className="mt-2 text-xs text-gray-500">Provide either a Channel ID or a search query, not both.</p>
+          </div>
+
+          {/* Connect platforms (mock) */}
           <form onSubmit={handleConnect} className="mb-6 flex flex-wrap gap-2 rounded-xl bg-white p-4 shadow">
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
               className="rounded border px-3 py-2 text-sm"
             >
-              {AVAILABLE_PLATFORMS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
+              {AVAILABLE_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
             <input
               type="text"
@@ -97,13 +148,18 @@ export default function SocialMedia() {
                       {isConnected ? "Connected" : "Not connected"}
                     </span>
                   </div>
-                  <button
-                    onClick={() => handleSync(platform)}
-                    disabled={!isConnected || syncing}
-                    className="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
-                  >
-                    {syncing ? "Syncing..." : "Sync Data"}
-                  </button>
+                  {platform !== "YouTube" && (
+                    <button
+                      onClick={() => handleMockSync(platform)}
+                      disabled={!isConnected || syncing}
+                      className="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
+                    >
+                      {syncing ? "Syncing..." : "Sync Mock Data"}
+                    </button>
+                  )}
+                  {platform === "YouTube" && (
+                    <p className="text-xs text-gray-500">Use the real sync form above ↑</p>
+                  )}
                 </div>
               );
             })}
