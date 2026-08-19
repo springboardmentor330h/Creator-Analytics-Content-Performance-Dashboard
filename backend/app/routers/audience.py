@@ -32,13 +32,13 @@ def audience_report(db: Session = Depends(get_db)):
 
 
 @router.get("/analytics/growth")
-def growth_report(creator_id: int, db: Session = Depends(get_db)):
-    return audience_service.get_growth_report(db, creator_id=creator_id, days=30)
+def growth_report(db: Session = Depends(get_db)):
+    return audience_service.get_growth_report(db, days=30)
 
 
 @router.get("/analytics/audience-trends")
-def audience_trends(creator_id: int, db: Session = Depends(get_db)):
-    return audience_service.get_audience_trends(db, creator_id=creator_id)
+def audience_trends(db: Session = Depends(get_db)):
+    return audience_service.get_audience_trends(db)
 
 
 # ----- CRUD -----

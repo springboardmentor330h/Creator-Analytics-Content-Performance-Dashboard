@@ -77,47 +77,59 @@ def get_audience_report(db: Session) -> dict:
     }
 
 
-def get_growth_report(db: Session, creator_id: int, days: int = 30) -> list:
-    """Returns a clean day-by-day growth trend for ONE specific creator."""
-    records = (
-        db.query(Growth)
-        .filter(Growth.creator_id == creator_id)
-        .order_by(Growth.date.asc())
-        .limit(days)
-        .all()
-    )
+def get_growth_report(db: Session, days: int = 30) -> list:
+    all_records = db.query(Growth).order_by(Growth.date.asc()).all()
+
+    # Group by date, summing followers across all creators for that date
+    daily_totals = {}
+    for record in all_records:
+        if record.date not in daily_totals:
+            daily_totals[record.date] = 0
+        daily_totals[record.date] += record.followers
+
+    sorted_dates = sorted(daily_totals.keys())[:days]
 
     result = []
     previous_followers = None
 
-    for record in records:
+    for d in sorted_dates:
+        followers = daily_totals[d]
         if previous_followers is None:
             daily_growth = 0
             growth_percentage = 0.0
         else:
-            daily_growth = record.followers - previous_followers
+            daily_growth = followers - previous_followers
             growth_percentage = round((daily_growth / previous_followers) * 100, 2) if previous_followers > 0 else 0.0
 
         result.append({
-            "date": record.date,
-            "followers": record.followers,
+            "date": d,
+            "followers": followers,
             "daily_growth": daily_growth,
             "growth_percentage": growth_percentage
         })
-        previous_followers = record.followers
+        previous_followers = followers
 
     return result
 
 
-def get_audience_trends(db: Session, creator_id: int) -> list:
-    """Returns chart-ready date/followers/reach data for ONE specific creator."""
-    records = (
-        db.query(Growth)
-        .filter(Growth.creator_id == creator_id)
-        .order_by(Growth.date.asc())
-        .all()
-    )
-    return [
-        {"date": r.date, "followers": r.followers, "reach": r.reach}
-        for r in records
-    ]
+def get_audience_trends(db: Session) -> list:
+    all_records = db.query(Growth).order_by(Growth.date.asc()).all()
+
+    daily_totals = {}
+    for record in all_records:
+        if record.date not in daily_totals:
+            daily_totals[record.date] = {"followers": 0, "reach": 0}
+        daily_totals[record.date]["followers"] += record.followers
+        daily_totals[record.date]["reach"] += record.reach
+
+    sorted_dates = sorted(daily_totals.keys())
+
+    result = []
+    for d in sorted_dates:
+        result.append({
+            "date": d,
+            "followers": daily_totals[d]["followers"],
+            "reach": daily_totals[d]["reach"]
+        })
+
+    return result
