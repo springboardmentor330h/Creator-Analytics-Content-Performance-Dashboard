@@ -30,7 +30,7 @@ from app.services.audience_service import (
 
 
 router = APIRouter(
-    tags=["Audience Analytics"]
+    tags=["Audience and Growth Analytics"]
 )
 
 

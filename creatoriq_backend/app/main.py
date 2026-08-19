@@ -71,7 +71,7 @@ app.include_router(analytics.router)
 app.include_router(audience.router)
 
 # Revenue APIs
-app.include_router(revenue.router)
+#app.include_router(revenue.router)
 
 # Social Media APIs
 app.include_router(social.router)
