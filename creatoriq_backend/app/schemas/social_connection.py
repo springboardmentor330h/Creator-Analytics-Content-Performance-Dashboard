@@ -57,3 +57,27 @@ class SyncResultResponse(BaseModel):
     last_synced_at: Optional[datetime] = None
     items_synced: int = 0
     message: str
+
+
+class PlatformConnectRequest(BaseModel):
+    platform: str
+    account_name: str
+
+
+class PlatformConnectResponse(BaseModel):
+    message: str
+
+
+class ConnectedPlatformsResponse(BaseModel):
+    platforms: list[str]
+
+
+class PlatformSyncRequest(BaseModel):
+    platform: str
+
+
+class PlatformSyncResponse(BaseModel):
+    message: str
+    platform: str
+    records_synced: int
+
