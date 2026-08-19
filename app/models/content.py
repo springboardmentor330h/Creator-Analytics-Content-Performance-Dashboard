@@ -1,11 +1,19 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, UniqueConstraint
 from sqlalchemy.sql import func
-from sqlalchemy import column, Integer, String, Date
+from sqlalchemy import Date
 from app.db.database import Base
 
 
 class Content(Base):
     __tablename__ = "content"
+
+    __table_args__ = (
+    UniqueConstraint(
+        "platform",
+        "external_content_id",
+        name="uq_content_platform_external_id"
+    ),
+)
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -13,6 +21,7 @@ class Content(Base):
 
     content_title = Column(String(255), nullable=False)
     platform = Column(String(50), nullable=False)
+    external_content_id = Column(String(255), nullable=True)
     content_type = Column(String(50), nullable=False)
 
     views = Column(Integer, default=0)

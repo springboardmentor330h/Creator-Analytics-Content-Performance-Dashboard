@@ -14,11 +14,7 @@ from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.social import router as social_router
 
-
-
-
 app = FastAPI(title="Creator Analytics Content Performance Dashboard")
-
 
 # Include Auth Router
 app.include_router(user_router)
@@ -35,8 +31,6 @@ app.include_router(audience_router)
 
 #Include Social Router
 app.include_router(social_router)
-
-
 
 @app.get("/")
 def root():
