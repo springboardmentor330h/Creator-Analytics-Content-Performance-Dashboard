@@ -3,11 +3,15 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.content import Content
+from app.services.analytics_service import get_follower_chart
 from app.services.analytics_service import (
     calculate_engagement_rate,
     get_top_content,
     get_platform_performance,
-    get_dashboard_summary
+    get_dashboard_summary,
+    get_kpi_summary,
+    get_engagement_chart,
+    get_platform_comparison
 )
 
 router = APIRouter(
@@ -39,18 +43,41 @@ def get_content_engagement(
         "total_engagement": total_engagement,
         "engagement_rate": engagement_rate
     }
+
+
 @router.get("/top-content")
 def get_top_performing_content(
     db: Session = Depends(get_db)
 ):
     return get_top_content(db)
+
+
 @router.get("/platform-performance")
 def platform_performance(
     db: Session = Depends(get_db)
 ):
     return get_platform_performance(db)
+
+
 @router.get("/summary")
-def dashboard_summary(
+def kpi_summary(
     db: Session = Depends(get_db)
 ):
-    return get_dashboard_summary(db)
+    return get_kpi_summary(db)
+
+
+@router.get("/chart/engagement")
+def engagement_chart(
+    db: Session = Depends(get_db)
+):
+    return get_engagement_chart(db)
+@router.get("/chart/followers")
+def follower_chart(
+    db: Session = Depends(get_db)
+):
+    return get_follower_chart(db)
+@router.get("/platform-comparison")
+def platform_comparison(
+    db: Session = Depends(get_db)
+):
+    return get_platform_comparison(db)

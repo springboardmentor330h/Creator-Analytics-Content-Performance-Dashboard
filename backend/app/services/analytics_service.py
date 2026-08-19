@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.models.content import Content
-
+from app.models.audience import Audience
+from app.models.growth import Growth
 def calculate_engagement_rate(content):
     total_engagement = (
         content.likes
@@ -136,3 +137,71 @@ def get_dashboard_summary(db: Session):
         "best_platform": best_platform_data["platform"],
         "top_content": top_content_data.content_title
     }
+def get_kpi_summary(db: Session):
+    contents = db.query(Content).all()
+    audience_data = db.query(Audience).all()
+
+    total_views = sum(content.views for content in contents)
+    total_likes = sum(content.likes for content in contents)
+    total_comments = sum(content.comments for content in contents)
+    total_shares = sum(content.shares for content in contents)
+    total_reach = sum(content.reach for content in contents)
+
+    total_followers = sum(
+        audience.followers for audience in audience_data
+    )
+
+    engagement_rates = []
+
+    for content in contents:
+        _, engagement_rate = calculate_engagement_rate(content)
+        engagement_rates.append(engagement_rate)
+
+    average_engagement_rate = (
+        sum(engagement_rates) / len(engagement_rates)
+        if engagement_rates else 0
+    )
+
+    return {
+        "total_views": total_views,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "total_shares": total_shares,
+        "total_reach": total_reach,
+        "total_followers": total_followers,
+        "average_engagement_rate": round(
+            average_engagement_rate, 2
+        )
+    }
+def get_engagement_chart(db: Session):
+    contents = db.query(Content).order_by(Content.published_date.asc()).all()
+
+    labels = []
+    values = []
+
+    for content in contents:
+        _, engagement_rate = calculate_engagement_rate(content)
+
+        labels.append(str(content.published_date))
+        values.append(engagement_rate)
+
+    return {
+        "labels": labels,
+        "values": values
+    }
+def get_follower_chart(db: Session):
+    growth_data = db.query(Growth).order_by(Growth.date.asc()).all()
+
+    labels = []
+    values = []
+
+    for record in growth_data:
+        labels.append(str(record.date))
+        values.append(record.followers)
+
+    return {
+        "labels": labels,
+        "values": values
+    }
+def get_platform_comparison(db: Session):
+    return get_platform_performance(db)
