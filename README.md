@@ -171,9 +171,8 @@ This prevents duplicate content records when synchronization is run more than on
 ## Testing Procedure
 
 1. **Swagger UI** (`/docs`): used to manually test every endpoint listed above, including valid and invalid inputs (e.g., invalid `content_id`, invalid `channel_id`, missing required fields).
-2. **Postman**: used for endpoints requiring authentication headers and repeatable request collections.
-3. **pgAdmin**: after each write operation (content CRUD, audience/growth CRUD, YouTube sync), the corresponding table was inspected directly in pgAdmin to confirm the data was correctly persisted.
-4. **End-to-end verification**: after running `POST /social/youtube/sync`, the existing analytics endpoints (`/analytics/summary`, `/analytics/top-content`, `/analytics/platform-comparison`, `/analytics/chart/engagement`, `/analytics/chart/followers`) were re-tested to confirm they correctly include the newly synchronized YouTube data without any YouTube-specific analytics logic.
+2. **pgAdmin**: after each write operation (content CRUD, audience/growth CRUD, YouTube sync), the corresponding table was inspected directly in pgAdmin to confirm the data was correctly persisted.
+3. **End-to-end verification**: after running `POST /social/youtube/sync`, the existing analytics endpoints (`/analytics/summary`, `/analytics/top-content`, `/analytics/platform-comparison`, `/analytics/chart/engagement`, `/analytics/chart/followers`) were re-tested to confirm they correctly include the newly synchronized YouTube data without any YouTube-specific analytics logic.
 
 ---
 
