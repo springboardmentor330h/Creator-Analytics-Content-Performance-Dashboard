@@ -11,16 +11,16 @@ class YouTubeIntegration(BaseSocialIntegration):
 
     def is_configured(self) -> bool:
         settings = get_settings()
-        client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
-        client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', None)
+        client_id = getattr(settings, 'YOUTUBE_CLIENT_ID', None) or getattr(settings, 'GOOGLE_CLIENT_ID', None)
+        client_secret = getattr(settings, 'YOUTUBE_CLIENT_SECRET', None) or getattr(settings, 'GOOGLE_CLIENT_SECRET', None)
         return bool(client_id and client_secret)
 
     def get_authorization_url(self, state: str) -> str:
         if not self.is_configured():
-            raise ValueError("YouTube API credentials (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET) are not configured.")
+            raise ValueError("YouTube API credentials (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET) are not configured.")
         
         settings = get_settings()
-        client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
+        client_id = getattr(settings, 'YOUTUBE_CLIENT_ID', '') or getattr(settings, 'GOOGLE_CLIENT_ID', '')
         redirect_uri = getattr(settings, 'GOOGLE_REDIRECT_URI', f"{str(settings.FRONTEND_URL).rstrip('/')}/api/social/youtube/callback")
         
         params = {
@@ -36,8 +36,8 @@ class YouTubeIntegration(BaseSocialIntegration):
 
     async def exchange_code(self, code: str, state: Optional[str] = None) -> Dict[str, Any]:
         settings = get_settings()
-        client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
-        client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
+        client_id = getattr(settings, 'YOUTUBE_CLIENT_ID', '') or getattr(settings, 'GOOGLE_CLIENT_ID', '')
+        client_secret = getattr(settings, 'YOUTUBE_CLIENT_SECRET', '') or getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
         redirect_uri = getattr(settings, 'GOOGLE_REDIRECT_URI', f"{str(settings.FRONTEND_URL).rstrip('/')}/api/social/youtube/callback")
 
         async with httpx.AsyncClient() as client:
@@ -74,8 +74,8 @@ class YouTubeIntegration(BaseSocialIntegration):
 
     async def refresh_token(self, refresh_token: str) -> Dict[str, Any]:
         settings = get_settings()
-        client_id = getattr(settings, 'GOOGLE_CLIENT_ID', '')
-        client_secret = getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
+        client_id = getattr(settings, 'YOUTUBE_CLIENT_ID', '') or getattr(settings, 'GOOGLE_CLIENT_ID', '')
+        client_secret = getattr(settings, 'YOUTUBE_CLIENT_SECRET', '') or getattr(settings, 'GOOGLE_CLIENT_SECRET', '')
 
         async with httpx.AsyncClient() as client:
             resp = await client.post(

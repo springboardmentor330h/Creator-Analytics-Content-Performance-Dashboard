@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = Field('HS256', env='JWT_ALGORITHM')
     JWT_EXPIRE_MINUTES: int = Field(1440, env='JWT_EXPIRE_MINUTES')
     FRONTEND_URL: AnyHttpUrl = Field('http://localhost:5173', env='FRONTEND_URL')
+    YOUTUBE_API_KEY: str | None = Field(None, env='YOUTUBE_API_KEY')
 
     # Social Token Encryption Key
     SOCIAL_TOKEN_ENCRYPTION_KEY: str | None = Field(None, env='SOCIAL_TOKEN_ENCRYPTION_KEY')
@@ -24,6 +25,8 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str | None = Field(None, env='GOOGLE_CLIENT_ID')
     GOOGLE_CLIENT_SECRET: str | None = Field(None, env='GOOGLE_CLIENT_SECRET')
     GOOGLE_REDIRECT_URI: str | None = Field(None, env='GOOGLE_REDIRECT_URI')
+    YOUTUBE_CLIENT_ID: str | None = Field(None, env='YOUTUBE_CLIENT_ID')
+    YOUTUBE_CLIENT_SECRET: str | None = Field(None, env='YOUTUBE_CLIENT_SECRET')
 
     META_CLIENT_ID: str | None = Field(None, env='META_CLIENT_ID')
     META_CLIENT_SECRET: str | None = Field(None, env='META_CLIENT_SECRET')

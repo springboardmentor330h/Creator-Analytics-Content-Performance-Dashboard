@@ -11,6 +11,8 @@ class ContentCreate(BaseModel):
     creator_id: Optional[int] = None
     title: str = Field(min_length=3, max_length=255, validation_alias=AliasChoices('title', 'content_title'))
     platform: Platform
+    content_id: Optional[str] = None
+    external_content_id: Optional[str] = None
     content_type: ContentType = 'Video'
     published_at: date = Field(validation_alias=AliasChoices('published_at', 'published_date'))
     views: int = Field(ge=0, default=0)
@@ -33,6 +35,7 @@ class ContentCreate(BaseModel):
 class ContentUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=3, max_length=255, validation_alias=AliasChoices('title', 'content_title'))
     platform: Optional[Platform] = None
+    external_content_id: Optional[str] = None
     content_type: Optional[ContentType] = None
     published_at: Optional[date] = Field(default=None, validation_alias=AliasChoices('published_at', 'published_date'))
     views: Optional[int] = Field(default=None, ge=0)
@@ -60,6 +63,7 @@ class ContentResponse(BaseModel):
     id: int
     creator_id: int
     content_id: str
+    external_content_id: Optional[str] = None
     title: str
     platform: str
     content_type: str

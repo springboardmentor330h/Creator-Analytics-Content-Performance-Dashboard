@@ -16,6 +16,7 @@ class Content(Base):
     creator_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
     platform = Column(String(50), nullable=False)
     content_id = Column(String(150), nullable=False)
+    external_content_id = Column(String(150), nullable=True, index=True)
     title = Column(String(255), nullable=False)
     content_type = Column(String(50), nullable=False)
     published_at = Column(Date, nullable=False)

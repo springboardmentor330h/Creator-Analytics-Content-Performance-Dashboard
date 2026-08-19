@@ -5,18 +5,23 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_user
 from app.db.database import get_db
 from app.models.user import User
+from typing import Optional
+
 from app.schemas.social_connection import (
     ConnectedPlatformsResponse,
     PlatformConnectRequest,
     PlatformConnectResponse,
     PlatformSyncRequest,
     PlatformSyncResponse,
+    YouTubeSyncRequest,
+    YouTubeSyncResponse,
 )
 from app.services.social_media import (
     connect_platform,
     get_connected_platforms,
     sync_platform_data,
 )
+from app.services.youtube_service import sync_youtube_data
 
 router = APIRouter(prefix="/social", tags=["Social"])
 
@@ -64,3 +69,23 @@ def sync_social_platform(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/youtube/sync", response_model=YouTubeSyncResponse)
+@router.post("/api/social/youtube/sync", response_model=YouTubeSyncResponse, include_in_schema=False)
+def sync_youtube(
+    payload: Optional[YouTubeSyncRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize YouTube Data API v3 content into PostgreSQL with duplicate handling."""
+    channel_id = payload.channel_id if payload else None
+    query = payload.query if payload else None
+    max_results = payload.max_results if payload and payload.max_results else 10
+    return sync_youtube_data(
+        db=db,
+        user=current_user,
+        channel_id=channel_id,
+        query=query,
+        max_results=max_results,
+    )
