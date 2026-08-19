@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.database import get_db
+from app.models.content import Content
 from app.services.analytics_service import AnalyticsService
 
 router = APIRouter(prefix="/analytics", tags=["Dashboard Analytics"])
@@ -28,3 +29,17 @@ def get_follower_chart(db: Session = Depends(get_db)):
 def get_platform_comparison(db: Session = Depends(get_db)):
     """Task 4: Return platform performance comparison metrics."""
     return AnalyticsService.get_platform_comparison(db)
+
+@staticmethod
+def get_top_content(db: Session, creator_id: int = 1, limit: int = 5):
+    return (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .order_by(Content.views.desc())
+        .limit(limit)
+        .all()
+    )
+
+@router.get("/top-content")
+def get_top_content_endpoint(db: Session = Depends(get_db), creator_id: int = 1, limit: int = 5):
+    return get_top_content(db, creator_id, limit)
