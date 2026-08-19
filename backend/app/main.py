@@ -10,6 +10,7 @@ from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
 from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
+from app.routers.social import router as social_router
 
 Base.metadata.create_all(bind=engine)
 
@@ -20,6 +21,7 @@ app.include_router(auth_router, tags=["Authentication"])
 app.include_router(content_router, tags=["Content Analytics"])
 app.include_router(analytics_router, tags=["Engagement Analytics"])
 app.include_router(audience_router, tags=["Audience Analytics"])
+app.include_router(social_router, tags=["Social Media Integration"])
 
 @app.get("/")
 def home():
