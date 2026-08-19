@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
-
 from app.models.content import Content
+from app.models.audience import Audience
+from app.models.growth import Growth
 
 
 def calculate_engagement(content: Content):
@@ -130,23 +131,56 @@ def get_platform_performance(db: Session):
 
     return results
 
+def get_platform_comparison(db: Session):
+    platform_results = get_platform_performance(db)
+
+    return {
+        item["platform"]: {
+            "views": item["total_views"],
+            "reach": item["total_reach"],
+            "engagement_rate": item["average_engagement_rate"],
+            "likes": item["total_likes"],
+            "comments": item["total_comments"],
+        }
+        for item in platform_results
+    }
+
 
 def get_dashboard_summary(db: Session):
     contents = db.query(Content).all()
-
-    if not contents:
-        return {
-            "total_content": 0,
-            "total_views": 0,
-            "total_reach": 0,
-            "average_engagement_rate": 0,
-            "best_platform": None,
-            "top_content": None,
-        }
+    audiences = db.query(Audience).all()
 
     total_content = len(contents)
-    total_views = sum(content.views for content in contents)
-    total_reach = sum(content.reach for content in contents)
+
+    total_views = sum(
+        content.views
+        for content in contents
+    )
+
+    total_likes = sum(
+        content.likes
+        for content in contents
+    )
+
+    total_comments = sum(
+        content.comments
+        for content in contents
+    )
+
+    total_shares = sum(
+        content.shares
+        for content in contents
+    )
+
+    total_reach = sum(
+        content.reach
+        for content in contents
+    )
+
+    total_followers = sum(
+        audience.followers
+        for audience in audiences
+    )
 
     engagement_rates = []
 
@@ -178,6 +212,7 @@ def get_dashboard_summary(db: Session):
         top_content = top_content_results[0]["content_title"]
 
     return {
+        # Sprint 2 fields
         "total_content": total_content,
         "total_views": total_views,
         "total_reach": total_reach,
@@ -187,4 +222,46 @@ def get_dashboard_summary(db: Session):
         ),
         "best_platform": best_platform,
         "top_content": top_content,
+
+        # Sprint 4 KPI fields
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "total_shares": total_shares,
+        "total_followers": total_followers,
+    }
+
+def get_engagement_chart(db: Session):
+    growth_records = (
+        db.query(Growth)
+        .order_by(Growth.date.asc())
+        .all()
+    )
+
+    return {
+        "labels": [
+            record.date.isoformat()
+            for record in growth_records
+        ],
+        "values": [
+            record.engagement_rate
+            for record in growth_records
+        ],
+    }
+
+def get_followers_chart(db: Session):
+    growth_records = (
+        db.query(Growth)
+        .order_by(Growth.date.asc())
+        .all()
+    )
+
+    return {
+        "labels": [
+            record.date.isoformat()
+            for record in growth_records
+        ],
+        "values": [
+            record.followers
+            for record in growth_records
+        ],
     }

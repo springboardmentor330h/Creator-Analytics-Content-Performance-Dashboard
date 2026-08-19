@@ -7,6 +7,9 @@ from app.services.analytics_service import (
     get_top_content,
     get_platform_performance,
     get_dashboard_summary,
+    get_engagement_chart,
+    get_followers_chart,
+    get_platform_comparison,
 )
 
 
@@ -46,8 +49,27 @@ def platform_performance(
 ):
     return get_platform_performance(db)
 
+@router.get("/platform-comparison")
+def platform_comparison(
+    db: Session = Depends(get_db),
+):
+    return get_platform_comparison(db)
+
+@router.get("/chart/engagement")
+def engagement_chart(
+    db: Session = Depends(get_db),
+):
+    return get_engagement_chart(db)
+
+@router.get("/chart/followers")
+def followers_chart(
+    db: Session = Depends(get_db),
+):
+    return get_followers_chart(db)
+
 @router.get("/summary")
 def dashboard_summary(
     db: Session = Depends(get_db),
 ):
     return get_dashboard_summary(db)
+
