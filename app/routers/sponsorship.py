@@ -3,34 +3,36 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
-from app.schemas.revenue import (
-    RevenueCreate,
-    RevenueUpdate,
-    RevenueResponse
+
+from app.schemas.sponsorship import (
+    SponsorshipCreate,
+    SponsorshipUpdate,
+    SponsorshipResponse
 )
-from app.services.revenue_service import (
+
+from app.services.sponsorship_service import (
     get_creator_by_email,
-    create_revenue,
-    get_all_revenue,
-    get_revenue_by_id,
-    update_revenue,
-    delete_revenue
+    create_sponsorship,
+    get_all_sponsorships,
+    get_sponsorship_by_id,
+    update_sponsorship,
+    delete_sponsorship
 )
 
 
 router = APIRouter(
-    prefix="/revenue",
-    tags=["Revenue"]
+    prefix="/sponsorship",
+    tags=["Sponsorship"]
 )
 
 
 @router.post(
     "",
-    response_model=RevenueResponse,
+    response_model=SponsorshipResponse,
     status_code=status.HTTP_201_CREATED
 )
-def create_revenue_api(
-    revenue_data: RevenueCreate,
+def create_sponsorship_api(
+    sponsorship_data: SponsorshipCreate,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
@@ -42,18 +44,18 @@ def create_revenue_api(
             detail="Creator not found"
         )
 
-    return create_revenue(
+    return create_sponsorship(
         db,
-        revenue_data,
+        sponsorship_data,
         user.id
     )
 
 
 @router.get(
     "",
-    response_model=list[RevenueResponse]
+    response_model=list[SponsorshipResponse]
 )
-def get_revenue_api(
+def get_sponsorship_api(
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
@@ -65,18 +67,18 @@ def get_revenue_api(
             detail="Creator not found"
         )
 
-    return get_all_revenue(
+    return get_all_sponsorships(
         db,
         user.id
     )
 
 
 @router.get(
-    "/{revenue_id}",
-    response_model=RevenueResponse
+    "/{sponsorship_id}",
+    response_model=SponsorshipResponse
 )
-def get_revenue_by_id_api(
-    revenue_id: int,
+def get_sponsorship_by_id_api(
+    sponsorship_id: int,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
@@ -88,28 +90,28 @@ def get_revenue_by_id_api(
             detail="Creator not found"
         )
 
-    revenue = get_revenue_by_id(
+    sponsorship = get_sponsorship_by_id(
         db,
-        revenue_id,
+        sponsorship_id,
         user.id
     )
 
-    if not revenue:
+    if not sponsorship:
         raise HTTPException(
             status_code=404,
-            detail="Revenue record not found"
+            detail="Sponsorship record not found"
         )
 
-    return revenue
+    return sponsorship
 
 
 @router.put(
-    "/{revenue_id}",
-    response_model=RevenueResponse
+    "/{sponsorship_id}",
+    response_model=SponsorshipResponse
 )
-def update_revenue_api(
-    revenue_id: int,
-    revenue_data: RevenueUpdate,
+def update_sponsorship_api(
+    sponsorship_id: int,
+    sponsorship_data: SponsorshipUpdate,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
@@ -121,31 +123,31 @@ def update_revenue_api(
             detail="Creator not found"
         )
 
-    revenue = get_revenue_by_id(
+    sponsorship = get_sponsorship_by_id(
         db,
-        revenue_id,
+        sponsorship_id,
         user.id
     )
 
-    if not revenue:
+    if not sponsorship:
         raise HTTPException(
             status_code=404,
-            detail="Revenue record not found"
+            detail="Sponsorship record not found"
         )
 
-    return update_revenue(
+    return update_sponsorship(
         db,
-        revenue,
-        revenue_data
+        sponsorship,
+        sponsorship_data
     )
 
 
 @router.delete(
-    "/{revenue_id}",
+    "/{sponsorship_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
-def delete_revenue_api(
-    revenue_id: int,
+def delete_sponsorship_api(
+    sponsorship_id: int,
     db: Session = Depends(get_db),
     current_user: str = Depends(get_current_user)
 ):
@@ -157,18 +159,18 @@ def delete_revenue_api(
             detail="Creator not found"
         )
 
-    revenue = get_revenue_by_id(
+    sponsorship = get_sponsorship_by_id(
         db,
-        revenue_id,
+        sponsorship_id,
         user.id
     )
 
-    if not revenue:
+    if not sponsorship:
         raise HTTPException(
             status_code=404,
-            detail="Revenue record not found"
+            detail="Sponsorship record not found"
         )
 
-    delete_revenue(db, revenue)
+    delete_sponsorship(db, sponsorship)
 
     return None
