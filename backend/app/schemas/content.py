@@ -5,6 +5,7 @@ from typing import Optional
 class ContentCreate(BaseModel):
     creator_id: int
     platform: str
+    external_content_id: Optional[str] = None
     content_title: str = Field(..., min_length=3)
     views: int = Field(0, ge=0)
     likes: int = Field(0, ge=0)
@@ -18,6 +19,7 @@ class ContentCreate(BaseModel):
 class ContentUpdate(BaseModel):
     creator_id: Optional[int] = None
     platform: Optional[str] = None
+    external_content_id: Optional[str] = None
     content_title: Optional[str] = Field(None, min_length=3)
     views: Optional[int] = Field(None, ge=0)
     likes: Optional[int] = Field(None, ge=0)
@@ -32,6 +34,7 @@ class ContentResponse(BaseModel):
     id: int
     creator_id: int
     platform: str
+    external_content_id: Optional[str] = None
     content_title: str
     views: int
     likes: int

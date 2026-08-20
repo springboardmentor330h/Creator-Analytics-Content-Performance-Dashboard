@@ -41,6 +41,10 @@ app.include_router(
     youtube_router
 )
 app.include_router(
+    youtube_router,
+    prefix="/api"
+)
+app.include_router(
     social_router
 )
 

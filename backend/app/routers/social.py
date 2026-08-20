@@ -45,3 +45,21 @@ def sync_social_data(payload: Optional[SocialSyncRequest] = None, platform: Opti
     target_platform = (payload.platform if payload and payload.platform else platform)
     res = SocialMediaService.sync_platform_data(db, platform=target_platform)
     return res
+
+@router.post("/youtube/sync")
+@router.post("/youtube/sync/")
+def sync_youtube_data(channel_id: Optional[str] = None, creator_id: int = 1, db: Session = Depends(get_db)):
+    """
+    Sprint 5 Task 5 - POST /social/youtube/sync
+    Fetches YouTube API data -> transforms -> checks duplicates -> stores/updates in PostgreSQL.
+    """
+    from backend.app.services.youtube_service import YouTubeService
+    try:
+        res = YouTubeService.sync_youtube_videos(db, creator_id=creator_id, channel_id=channel_id)
+        return res
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"YouTube Synchronization Error: {str(e)}"
+        )
+

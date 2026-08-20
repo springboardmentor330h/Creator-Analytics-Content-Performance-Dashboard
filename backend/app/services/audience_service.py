@@ -150,6 +150,7 @@ class AudienceService:
             "total_impressions": impressions,
             "gender_distribution": genders,
             "age_distribution": ages,
+            "device_distribution": devices,
             "top_country": top_c,
             "top_city": top_ci,
             "top_device": top_dev

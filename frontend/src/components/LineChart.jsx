@@ -19,6 +19,24 @@ function formatShortDate(dateStr) {
   }
 }
 
+// Generate smooth cubic bezier SVG path
+function getSmoothPath(points) {
+  if (!points || points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const curr = points[i];
+    const next = points[i + 1];
+    const cp1x = curr.x + (next.x - curr.x) * 0.4;
+    const cp1y = curr.y;
+    const cp2x = curr.x + (next.x - curr.x) * 0.6;
+    const cp2y = next.y;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${next.x} ${next.y}`;
+  }
+  return d;
+}
+
 export default function LineChart({ title = "Audience Growth & Reach Realtime Trends", data = [] }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
@@ -31,62 +49,95 @@ export default function LineChart({ title = "Audience Growth & Reach Realtime Tr
     );
   }
 
-  const width = 500;
-  const height = 180;
-  const padding = 30;
+  const width = 600;
+  const height = 230;
+  const paddingLeft = 55;
+  const paddingRight = 25;
+  const paddingTop = 25;
+  const paddingBottom = 40;
 
-  const maxFollowers = Math.max(...data.map(d => Number(d.followers || 0)), 10);
-  const maxReach = Math.max(...data.map(d => Number(d.reach || 0)), 10);
+  const chartWidth = width - paddingLeft - paddingRight;
+  const chartHeight = height - paddingTop - paddingBottom;
+
+  const followerValues = data.map(d => Number(d.followers || 0));
+  const reachValues = data.map(d => Number(d.reach || 0));
+
+  const maxFollowers = Math.max(...followerValues, 10);
+  const maxReach = Math.max(...reachValues, 10);
+  const maxScale = Math.max(maxFollowers, maxReach);
 
   const getX = (idx) => {
-    if (data.length === 1) return width / 2;
-    return padding + (idx / (data.length - 1)) * (width - 2 * padding);
+    if (data.length <= 1) return paddingLeft + chartWidth / 2;
+    return paddingLeft + (idx / (data.length - 1)) * chartWidth;
   };
 
-  const getFollowerY = (val) => {
-    return height - padding - (Number(val || 0) / maxFollowers) * (height - 2 * padding);
+  const getY = (val) => {
+    return paddingTop + chartHeight - (val / maxScale) * chartHeight;
   };
 
-  const getReachY = (val) => {
-    return height - padding - (Number(val || 0) / maxReach) * (height - 2 * padding);
-  };
+  const followerPoints = data.map((d, i) => ({ x: getX(i), y: getY(d.followers) }));
+  const reachPoints = data.map((d, i) => ({ x: getX(i), y: getY(d.reach) }));
 
-  const followerPoints = data.map((d, i) => `${getX(i)},${getFollowerY(d.followers)}`).join(' ');
-  const reachPoints = data.map((d, i) => `${getX(i)},${getReachY(d.reach)}`).join(' ');
+  const followerSmoothPath = getSmoothPath(followerPoints);
+  const reachSmoothPath = getSmoothPath(reachPoints);
 
-  // Gradient area fill paths
-  const followerAreaPoints = `${getX(0)},${height - padding} ${followerPoints} ${getX(data.length - 1)},${height - padding}`;
-  const reachAreaPoints = `${getX(0)},${height - padding} ${reachPoints} ${getX(data.length - 1)},${height - padding}`;
+  const followerAreaPath = followerPoints.length > 0
+    ? `${followerSmoothPath} L ${followerPoints[followerPoints.length - 1].x} ${paddingTop + chartHeight} L ${followerPoints[0].x} ${paddingTop + chartHeight} Z`
+    : '';
 
-  // Sample 5-6 date ticks on X axis to avoid text crowding
-  const getSampledLabels = () => {
+  const reachAreaPath = reachPoints.length > 0
+    ? `${reachSmoothPath} L ${reachPoints[reachPoints.length - 1].x} ${paddingTop + chartHeight} L ${reachPoints[0].x} ${paddingTop + chartHeight} Z`
+    : '';
+
+  // Calculate 4 Y-axis Ticks
+  const yTicks = [0, 0.33, 0.66, 1].map(ratio => {
+    const val = maxScale * ratio;
+    const y = paddingTop + chartHeight - ratio * chartHeight;
+    return { val, y, labelText: formatNumber(Math.round(val)) };
+  });
+
+  // Calculate Sampled X-axis Date Labels (5-6 Ticks)
+  const getSampledTicks = () => {
+    if (data.length === 0) return [];
     if (data.length <= 6) {
-      return data.map((d, i) => ({ text: formatShortDate(d.date), x: getX(i) }));
+      return data.map((d, i) => ({ text: formatShortDate(d.date), x: getX(i), index: i }));
     }
     const maxTicks = 5;
     const step = (data.length - 1) / maxTicks;
-    const labels = [];
+    const ticks = [];
     for (let i = 0; i <= maxTicks; i++) {
       const idx = Math.min(Math.round(i * step), data.length - 1);
-      labels.push({ text: formatShortDate(data[idx].date), x: getX(idx) });
+      ticks.push({ text: formatShortDate(data[idx].date), x: getX(idx), index: idx });
     }
-    return labels;
+    return ticks;
   };
 
-  const sampledLabels = getSampledLabels();
+  const sampledTicks = getSampledTicks();
+  const activeRecord = hoveredIndex !== null ? data[hoveredIndex] : null;
 
   return (
     <div className="section-card">
-      <div className="section-header">
-        <h3 className="section-title">{title}</h3>
-        <div style={{ fontSize: '13px', display: 'flex', gap: '16px' }}>
-          <span style={{ color: '#4f46e5', fontWeight: '800' }}>● Followers (Realtime)</span>
-          <span style={{ color: '#f43f5e', fontWeight: '800' }}>● Reach (Realtime)</span>
+      <div className="section-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h3 className="section-title">{title}</h3>
+          <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+            Dual-line vector tracking for cumulative audience size and daily reach
+          </p>
+        </div>
+        <div style={{ fontSize: '12px', display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <span style={{ color: '#4f46e5', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#4f46e5' }}></span>
+            Followers Stream
+          </span>
+          <span style={{ color: '#f43f5e', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f43f5e' }}></span>
+            Organic Reach Stream
+          </span>
         </div>
       </div>
 
       <div style={{ width: '100%', overflowX: 'hidden', position: 'relative' }}>
-        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '200px' }}>
+        <svg viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: '240px', overflow: 'visible' }}>
           <defs>
             <linearGradient id="blueGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.2" />
@@ -98,87 +149,156 @@ export default function LineChart({ title = "Audience Growth & Reach Realtime Tr
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
-          <line x1="0" y1="30" x2={width} y2="30" stroke="#f1f5f9" strokeWidth="1" />
-          <line x1="0" y1="90" x2={width} y2="90" stroke="#f1f5f9" strokeWidth="1" />
-          <line x1="0" y1="150" x2={width} y2="150" stroke="#f1f5f9" strokeWidth="1" />
+          {/* Horizontal Gridlines & Y-Axis Scale Labels */}
+          {yTicks.map((tick, idx) => (
+            <g key={idx}>
+              <line
+                x1={paddingLeft}
+                y1={tick.y}
+                x2={width - paddingRight}
+                y2={tick.y}
+                stroke="#e2e8f0"
+                strokeWidth="1"
+                strokeDasharray={idx === 0 ? "none" : "3 3"}
+              />
+              <text
+                x={paddingLeft - 8}
+                y={tick.y + 4}
+                fill="#64748b"
+                fontSize="11"
+                fontWeight="600"
+                textAnchor="end"
+              >
+                {tick.labelText}
+              </text>
+            </g>
+          ))}
 
-          {/* Gradient Area Fills */}
-          <polygon fill="url(#pinkGrad)" points={reachAreaPoints} />
-          <polygon fill="url(#blueGrad)" points={followerAreaPoints} />
+          {/* Gradient Fills */}
+          {reachAreaPath && <path d={reachAreaPath} fill="url(#pinkGrad)" />}
+          {followerAreaPath && <path d={followerAreaPath} fill="url(#blueGrad)" />}
 
-          {/* Stroke Lines */}
-          <polyline fill="none" stroke="#f43f5e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={reachPoints} />
-          <polyline fill="none" stroke="#4f46e5" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={followerPoints} />
+          {/* Smooth Stroke Lines */}
+          {reachSmoothPath && (
+            <path
+              d={reachSmoothPath}
+              fill="none"
+              stroke="#f43f5e"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
 
-          {/* Data Circles */}
+          {followerSmoothPath && (
+            <path
+              d={followerSmoothPath}
+              fill="none"
+              stroke="#4f46e5"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Vertical Guideline on Hover */}
+          {hoveredIndex !== null && (
+            <line
+              x1={getX(hoveredIndex)}
+              y1={paddingTop}
+              x2={getX(hoveredIndex)}
+              y2={paddingTop + chartHeight}
+              stroke="#64748b"
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+              opacity="0.75"
+            />
+          )}
+
+          {/* Data Circles for Followers & Reach */}
           {data.map((d, i) => {
             const x = getX(i);
-            const yF = getFollowerY(d.followers);
+            const yF = getY(d.followers);
+            const yR = getY(d.reach);
             const isHovered = hoveredIndex === i;
 
             return (
               <g key={i} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)}>
                 <circle
                   cx={x}
+                  cy={yR}
+                  r={isHovered ? "5.5" : "3"}
+                  fill={isHovered ? "#ffffff" : "#f43f5e"}
+                  stroke="#f43f5e"
+                  strokeWidth={isHovered ? "2.5" : "1.5"}
+                  style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
+                />
+                <circle
+                  cx={x}
                   cy={yF}
                   r={isHovered ? "6" : "3.5"}
-                  fill="#4f46e5"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  style={{ cursor: 'pointer' }}
+                  fill={isHovered ? "#ffffff" : "#4f46e5"}
+                  stroke="#4f46e5"
+                  strokeWidth={isHovered ? "3" : "2"}
+                  style={{ cursor: 'pointer', transition: 'r 0.15s ease' }}
                 />
               </g>
             );
           })}
+
+          {/* Vector-Aligned X-Axis Date Labels & Ticks */}
+          {sampledTicks.map((tick, idx) => (
+            <g key={idx}>
+              <line
+                x1={tick.x}
+                y1={paddingTop + chartHeight}
+                x2={tick.x}
+                y2={paddingTop + chartHeight + 5}
+                stroke="#cbd5e1"
+                strokeWidth="1.5"
+              />
+              <text
+                x={tick.x}
+                y={paddingTop + chartHeight + 20}
+                fill="#475569"
+                fontSize="11"
+                fontWeight="700"
+                textAnchor="middle"
+              >
+                {tick.text}
+              </text>
+            </g>
+          ))}
         </svg>
 
-        {hoveredIndex !== null && data[hoveredIndex] && (
+        {/* Hover Tooltip Card */}
+        {activeRecord && (
           <div style={{
             position: 'absolute',
             top: '12px',
             right: '12px',
             backgroundColor: '#0f172a',
-            color: 'white',
-            padding: '8px 14px',
+            color: '#ffffff',
+            padding: '10px 14px',
             borderRadius: '8px',
             fontSize: '12px',
-            boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
-            zIndex: 10
+            boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
+            pointerEvents: 'none',
+            zIndex: 20
           }}>
-            <div><strong>Date:</strong> {data[hoveredIndex].date} ({formatShortDate(data[hoveredIndex].date)})</div>
-            <div style={{ color: '#818cf8', marginTop: '2px' }}>
-              <strong>Followers:</strong> {formatNumber(data[hoveredIndex].followers)} (Exact: {rawNumber(data[hoveredIndex].followers)})
+            <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>
+              Date: {activeRecord.date} ({formatShortDate(activeRecord.date)})
             </div>
-            <div style={{ color: '#fda4af', marginTop: '2px' }}>
-              <strong>Reach:</strong> {formatNumber(data[hoveredIndex].reach)} (Exact: {rawNumber(data[hoveredIndex].reach)})
+            <div style={{ color: '#818cf8', fontWeight: 800, marginTop: '2px' }}>
+              Followers: {formatNumber(activeRecord.followers)} (Exact: {rawNumber(activeRecord.followers)})
+            </div>
+            <div style={{ color: '#fda4af', fontWeight: 800, marginTop: '2px' }}>
+              Organic Reach: {formatNumber(activeRecord.reach)} (Exact: {rawNumber(activeRecord.reach)})
             </div>
           </div>
         )}
       </div>
-
-      {/* Clean 5 sampled date ticks */}
-      <div style={{ position: 'relative', height: '24px', marginTop: '8px' }}>
-        {sampledLabels.map((lbl, idx) => {
-          const leftPct = (lbl.x / width) * 100;
-          return (
-            <span
-              key={idx}
-              style={{
-                position: 'absolute',
-                left: `${leftPct}%`,
-                transform: 'translateX(-50%)',
-                fontSize: '11px',
-                color: '#64748b',
-                fontWeight: '700',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {lbl.text}
-            </span>
-          );
-        })}
-      </div>
     </div>
   );
 }
+

@@ -221,6 +221,48 @@ export default function App() {
   const bestPlatform = summary?.best_platform || 'YouTube';
   const topContentTitle = summary?.top_content || 'N/A';
 
+  const deviceDistribution = (audienceReport && audienceReport.device_distribution && Object.keys(audienceReport.device_distribution).length > 0)
+    ? audienceReport.device_distribution
+    : (() => {
+        if (!audienceRecords || audienceRecords.length === 0) return {};
+        const map = {};
+        let total = 0;
+        audienceRecords.forEach(r => {
+          if (r.device_type) {
+            const val = Number(r.followers || 1);
+            map[r.device_type] = (map[r.device_type] || 0) + val;
+            total += val;
+          }
+        });
+        if (total === 0) return {};
+        const res = {};
+        Object.keys(map).forEach(k => {
+          res[k] = Math.round((map[k] / total) * 100);
+        });
+        return res;
+      })();
+
+  const ageDistribution = (audienceReport && audienceReport.age_distribution && Object.keys(audienceReport.age_distribution).length > 0)
+    ? audienceReport.age_distribution
+    : (() => {
+        if (!audienceRecords || audienceRecords.length === 0) return {};
+        const map = {};
+        let total = 0;
+        audienceRecords.forEach(r => {
+          if (r.age_group) {
+            const val = Number(r.followers || 1);
+            map[r.age_group] = (map[r.age_group] || 0) + val;
+            total += val;
+          }
+        });
+        if (total === 0) return {};
+        const res = {};
+        Object.keys(map).forEach(k => {
+          res[k] = Math.round((map[k] / total) * 100);
+        });
+        return res;
+      })();
+
   return (
     <div className="page-container">
       {/* Top Navbar */}
@@ -240,6 +282,7 @@ export default function App() {
           <a href="#summary" className="nav-btn">Executive Summary</a>
           <a href="#comparison" className="nav-btn">Comparison</a>
           <a href="#trends" className="nav-btn">Trends</a>
+          <a href="#demographics" className="nav-btn">Demographics</a>
           <a href="#content" className="nav-btn">Content</a>
           <a href="#growth" className="nav-btn">Growth</a>
         </nav>
@@ -458,22 +501,22 @@ export default function App() {
         </div>
       </section>
 
-      {/* SECTION 2: SPRINT 4 PLATFORM COMPARISON ANALYTICS */}
+      {/* SECTION 2: PLATFORM COMPARISON ANALYTICS */}
       <section id="comparison">
         <PlatformComparison platformComparison={platformComparison} />
       </section>
 
-      {/* SECTION 3: REALTIME TRENDS CHART & SPRINT 4 CHARTS */}
+      {/* SECTION 3: REALTIME TRENDS CHART */}
       <section id="trends" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <AnalyticsChart engagementData={engagementChartData} followerGrowthData={followerGrowthChartData} />
         <LineChart title="Audience Growth & Reach Realtime Trends" data={audienceTrends} />
       </section>
 
-      {/* SECTION 3: DEMOGRAPHICS GRID */}
-      <div className="dashboard-layout">
-        <DeviceChart title="Device Breakdown" distribution={audienceReport?.device_distribution} />
-        <AgeChart title="Age Group Breakdown" distribution={audienceReport?.age_distribution} />
-      </div>
+      {/* SECTION 3.5: DEMOGRAPHICS GRID */}
+      <section id="demographics" className="dashboard-layout">
+        <DeviceChart title="Device Usage Breakdown" distribution={deviceDistribution} />
+        <AgeChart title="Age Group Breakdown" distribution={ageDistribution} />
+      </section>
 
       {/* SECTION 4: AUDIENCE DEMOGRAPHIC RECORDS TABLE */}
       <section id="audience" className="section-card">

@@ -107,9 +107,17 @@ export const api = {
     });
   },
 
-  // YouTube Integration
+  // YouTube Integration (Sprint 5)
   syncYouTube: async (channelId) => {
-    return await request(`/youtube/sync/${encodeURIComponent(channelId)}`, {
+    const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
+    return await request(`/social/youtube/sync${query}`, {
+      method: 'POST'
+    });
+  },
+
+  syncYouTubeSocial: async (channelId) => {
+    const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
+    return await request(`/social/youtube/sync${query}`, {
       method: 'POST'
     });
   },

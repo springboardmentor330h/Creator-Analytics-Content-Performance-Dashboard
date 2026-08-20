@@ -1032,45 +1032,84 @@
 
   ---
 
-  # 25. YouTube Integration — Planned/Optional
+  # 25. Sprint 5: YouTube API Integration & Multi-Platform Synchronization Engine
 
-  The planned real-data integration can use a YouTube Channel ID rather than requiring individual video IDs.
+Sprint 5 implements real YouTube API integration, common data transformation, credential management, duplicate handling, and multi-platform synchronization into PostgreSQL.
 
-  Proposed flow:
+## 25.1 Data Flow Architecture
 
-  ```text
-  YouTube Channel ID
-          ↓
-  YouTube Data API
-          ↓
-  Get channel information
-          ↓
-  Get uploaded videos
-          ↓
-  Get video statistics
-          ↓
-  FastAPI
-          ↓
-  PostgreSQL
-          ↓
-  Analytics APIs
-          ↓
-  Dashboard
-  ```
+```text
+YouTube API v3
+     ↓
+YouTube Service (youtube_service.py)
+     ↓
+Data Transformation (CreatorIQ Common Data Format)
+     ↓
+Duplicate Check (platform + external_content_id)
+     ↓
+PostgreSQL (contents table)
+     ↓
+Analytics Service (analytics_service.py)
+     ↓
+FastAPI APIs (/analytics/summary, /analytics/top-content)
+     ↓
+Dashboard UI
+```
 
-  A future endpoint could be:
+## 25.2 API Credential Management
 
-  ```http
-  POST /youtube/sync/{channel_id}
-  ```
+API credentials are securely managed via environment variables and NEVER hard-coded:
+- File: `.env` (Ignored in `.gitignore`)
+- Variable: `YOUTUBE_API_KEY=your_key_here`
 
-  Example:
+## 25.3 Common CreatorIQ Data Format
 
-  ```text
-  POST /youtube/sync/UCxxxxxxxxxxxxxxxx
-  ```
+To support multi-platform analytics across YouTube, Instagram, TikTok, LinkedIn, Twitter/X, and Facebook, all platform payloads are transformed into a standard internal format:
 
-  The endpoint can retrieve the latest 10–15 videos and create/update the corresponding records in the `contents` table.
+```json
+{
+  "creator_id": 1,
+  "platform": "YouTube",
+  "external_content_id": "yt_video_008",
+  "content_title": "Pawan Kalyan Powerful Speech",
+  "views": 850000,
+  "likes": 42000,
+  "comments": 3800,
+  "shares": 38250,
+  "reach": 1377000,
+  "published_date": "2026-07-15"
+}
+```
+
+## 25.4 YouTube Synchronization API
+
+### Endpoint
+
+```http
+POST /social/youtube/sync
+```
+
+### Request Parameters
+
+- `channel_id` (optional, string): YouTube Channel ID or handle.
+- `creator_id` (optional, int): Creator ID (default: `1`).
+
+### Example Response
+
+```json
+{
+  "platform": "YouTube",
+  "status": "success",
+  "records_synced": 8,
+  "message": "Successfully synchronized 8 YouTube videos into PostgreSQL database."
+}
+```
+
+## 25.5 Duplicate Synchronization Handling
+
+- When synchronization runs multiple times, the engine checks for existing records by matching `(platform + external_content_id)` or `(platform + content_title)`.
+- **If existing**: Updates views, likes, comments, shares, reach, and published date in PostgreSQL.
+- **If new**: Inserts a new content record into PostgreSQL.
 
   ---
 
