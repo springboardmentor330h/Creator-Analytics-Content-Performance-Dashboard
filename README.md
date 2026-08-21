@@ -70,6 +70,20 @@
   | 17 | GET    | `/analytics/audience`                | Audience analytics report  |
   | 18 | GET    | `/analytics/growth`                  | Growth analytics report    |
   | 19 | GET    | `/analytics/audience-trends`         | Audience trends chart data |
+  | 20 | POST   | `/revenue`                           | Create revenue entry       |
+  | 21 | GET    | `/revenue`                           | Get creator revenue list   |
+  | 22 | GET    | `/revenue/{id}`                      | Get revenue entry by ID    |
+  | 23 | PUT    | `/revenue/{id}`                      | Update revenue entry       |
+  | 24 | DELETE | `/revenue/{id}`                      | Delete revenue entry       |
+  | 25 | GET    | `/revenue/analytics/summary`         | Revenue summary overview   |
+  | 26 | GET    | `/revenue/analytics/by-source`       | Earnings breakdown by stream|
+  | 27 | GET    | `/revenue/analytics/monthly`         | Monthly revenue analytics  |
+  | 28 | GET    | `/revenue/analytics/trends`          | Revenue trend data points  |
+  | 29 | POST   | `/sponsorships`                      | Create sponsorship deal    |
+  | 30 | GET    | `/sponsorships`                      | List sponsorship deals     |
+  | 31 | GET    | `/sponsorships/{id}`                 | Get sponsorship by ID      |
+  | 32 | PUT    | `/sponsorships/{id}`                 | Update sponsorship deal    |
+  | 33 | DELETE | `/sponsorships/{id}`                 | Delete sponsorship deal    |
 
 
   # 4. Authentication APIs
@@ -1012,17 +1026,23 @@
 
   ```bash
   # Run all tests
-  py -m unittest discover backend/tests
+  $env:PYTHONPATH="."; py -m unittest discover backend/tests
+
+  # Run revenue & sponsorship tests specifically
+  $env:PYTHONPATH="."; py -m unittest backend/tests/test_revenue.py
 
   # Run audience & growth tests specifically
-  py -m unittest backend/tests/test_audience.py
+  $env:PYTHONPATH="."; py -m unittest backend/tests/test_audience.py
 
   # Run content analytics tests specifically
-  py -m unittest backend/tests/test_analytics.py
+  $env:PYTHONPATH="."; py -m unittest backend/tests/test_analytics.py
   ```
 
   The test suite verifies:
 
+  * Revenue & Sponsorship CRUD operations
+  * Total revenue, source-wise, monthly, and trend calculations
+  * Multi-tenancy access control (creator-level data isolation)
   * Audience CRUD endpoints
   * Growth & Audience Analytics reports
   * Pydantic validation (negative values, active_hour bounds 0-23)
@@ -1119,17 +1139,52 @@ POST /social/youtube/sync
   Creator-Analytics-Content-Performance-Dashboard
   │
   ├── backend/
+  │   ├── alembic/
+  │   │   ├── versions/
+  │   │   │   └── 95b43d6077c7_create_revenue_and_sponsorship_tables.py
+  │   │   └── env.py
+  │   ├── alembic.ini
   │   ├── app/
   │   │   ├── main.py
+  │   │   ├── core/
+  │   │   │   ├── auth.py
+  │   │   │   ├── deps.py
+  │   │   │   ├── jwt.py
+  │   │   │   └── security.py
   │   │   ├── db/
   │   │   │   └── database.py
   │   │   ├── models/
+  │   │   │   ├── user.py
+  │   │   │   ├── content.py
+  │   │   │   ├── audience.py
+  │   │   │   ├── growth.py
+  │   │   │   ├── revenue.py
+  │   │   │   └── sponsorship.py
   │   │   ├── schemas/
-  │   │   ├── routes/
+  │   │   │   ├── revenue.py
+  │   │   │   └── sponsorship.py
+  │   │   ├── routers/
+  │   │   │   ├── revenue.py
+  │   │   │   └── sponsorships.py
   │   │   └── services/
+  │   │       ├── revenue_service.py
+  │   │       └── sponsorship_service.py
   │   │
   │   └── tests/
-  │       └── test_analytics.py
+  │       ├── test_analytics.py
+  │       ├── test_audience.py
+  │       ├── test_users.py
+  │       └── test_revenue.py
+  │
+  ├── frontend/
+  │   ├── src/
+  │   │   ├── api.js
+  │   │   ├── App.jsx
+  │   │   ├── components/
+  │   │   │   ├── RevenueModal.jsx
+  │   │   │   └── SponsorshipModal.jsx
+  │   │   └── pages/
+  │   │       └── RevenueView.jsx
   │
   ├── .env
   ├── .gitignore
@@ -1142,33 +1197,85 @@ POST /social/youtube/sync
   # 27. End-to-End Data Flow
 
   ```text
-  User
-  │
-  ▼
-  Swagger / Frontend
-  │
-  ▼
-  FastAPI
-  │
-  ├── Authentication
-  │
-  ├── Content APIs
-  │
-  └── Analytics APIs
-  │
-  ▼
-  SQLAlchemy
-  │
-  ▼
-  PostgreSQL
-  │
-  ▼
-  Analytics Calculations
-  │
-  ▼
-  Dashboard
+  Creator Login
+       ↓
+  Revenue / Sponsorship Entry
+       ↓
+  PostgreSQL (revenues & sponsorships tables)
+       ↓
+  Revenue Analytics Service
+       ↓
+  FastAPI Endpoints (/revenue/analytics/summary, /by-source, /monthly, /trends)
+       ↓
+  Dashboard-Ready UI (Revenue & Sponsorship Hub)
   ```
 
+  ---
+
+  # 28. Sprint 6: Revenue Analytics & Sponsorship Tracking (Milestone 3)
+
+  Sprint 6 introduces financial management, brand sponsorship tracking, source-wise revenue analytics, and monthly earnings visualization for CreatorIQ.
+
+  ## 28.1 Revenue Management
+
+  Creators can log and manage revenue streams across:
+  - **Sponsorships**: Brand integrations and paid campaign contracts
+  - **Ad Revenue**: Platform ad monetization (YouTube AdSense, Meta Bonus, etc.)
+  - **Affiliate Marketing**: Commission earnings and referral links
+  - **Brand Collaborations**: Joint product launches and promo deals
+  - **Subscription Revenue**: Channel memberships, Patreon, and monthly fans
+
+  ### Revenue APIs
+  - `POST /revenue`: Create a new revenue entry
+  - `GET /revenue`: List all revenue records for authenticated creator (supports `?source=...` filter)
+  - `GET /revenue/{id}`: Get single revenue record
+  - `PUT /revenue/{id}`: Update revenue record
+  - `DELETE /revenue/{id}`: Delete revenue record
+
+  ## 28.2 Sponsorship Management
+
+  Tracks detailed brand partnership contracts:
+  - Brand name, campaign title, agreed contract value ($)
+  - Start date & end date
+  - Deal status: `Active`, `Pending`, `Completed`, `Cancelled`
+  - Payment status: `Unpaid`, `Paid`, `Pending`, `Processing`
+
+  ### Sponsorship APIs
+  - `POST /sponsorships`: Create a sponsorship contract
+  - `GET /sponsorships`: List creator's sponsorships (supports `?status=...` and `?payment_status=...` filters)
+  - `GET /sponsorships/{id}`: Get sponsorship details
+  - `PUT /sponsorships/{id}`: Update sponsorship contract
+  - `DELETE /sponsorships/{id}`: Delete sponsorship contract
+
+  > [!TIP]
+  > When a sponsorship payment status is marked as `Paid`, the system automatically syncs a corresponding revenue entry under source `Sponsorships`.
+
+  ## 28.3 Revenue Analytics APIs
+
+  - `GET /revenue/analytics/summary`: Aggregate total revenue, stream totals, source distribution, and monthly breakdown.
+  - `GET /revenue/analytics/by-source`: Stream breakdown with amounts and exact percentage shares.
+  - `GET /revenue/analytics/monthly`: Monthly revenue aggregation (month, year, amount, by-source map).
+  - `GET /revenue/analytics/trends`: Chronological trend items over specified period (`?days=30`).
+
+  ## 28.4 Database Integration & Alembic Migrations
+
+  All revenue and sponsorship records are connected to `users.id` via foreign key `creator_id`.
+
+  Schema migrations are handled by Alembic:
+  ```bash
+  # Generate migration
+  $env:PYTHONPATH="."; python -m alembic revision --autogenerate -m "create_revenue_and_sponsorship_tables"
+
+  # Apply migration or stamp head
+  $env:PYTHONPATH="."; python -m alembic stamp head
+  ```
+
+  ## 28.5 Multi-Tenancy Security & Testing
+
+  - **Security**: Access control is enforced via `get_current_user` dependency. Creators can view, modify, or delete only their own financial data. Requests attempting to access another creator's revenue/sponsorship IDs are rejected with `404 Not Found`.
+  - **Test Suite**: Run unit tests via `$env:PYTHONPATH="."; py -m unittest discover backend/tests`. All 23 tests pass cleanly.
+
+  ---
 
   ## API Base URL
 

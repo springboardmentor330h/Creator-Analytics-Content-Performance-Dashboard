@@ -13,13 +13,18 @@ import PlatformPieChart from './components/PlatformPieChart';
 import PlatformBarChart from './components/PlatformBarChart';
 import SocialConnectModal from './components/SocialConnectModal';
 import AnalyticsChart from './components/AnalyticsChart';
+import RevenueModal from './components/RevenueModal';
+import SponsorshipModal from './components/SponsorshipModal';
+
 import AuthView from './pages/AuthView';
 import ContentView from './pages/ContentView';
 import GrowthView from './pages/GrowthView';
+import RevenueView from './pages/RevenueView';
+
 import { YoutubeIcon } from './components/PlatformIcons';
 import { api } from './api';
 import { formatNumber, rawNumber } from './utils/format';
-import { Plus, Edit2, Trash2, RefreshCw, LogOut, User as UserIcon, Filter, Link2, BarChart2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, RefreshCw, LogOut, User as UserIcon, Filter, Link2, BarChart2, DollarSign } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -40,6 +45,11 @@ export default function App() {
   const [platformComparison, setPlatformComparison] = useState(null);
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
 
+  // Sprint 6 Revenue & Sponsorship States
+  const [revenueSummary, setRevenueSummary] = useState(null);
+  const [revenueRecords, setRevenueRecords] = useState([]);
+  const [sponsorshipRecords, setSponsorshipRecords] = useState([]);
+
   // Platform Filter State
   const [selectedPlatform, setSelectedPlatform] = useState('All');
 
@@ -55,6 +65,13 @@ export default function App() {
 
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+
+  // Sprint 6 Modals
+  const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
+  const [editingRevenue, setEditingRevenue] = useState(null);
+
+  const [isSponsorshipModalOpen, setIsSponsorshipModalOpen] = useState(false);
+  const [editingSponsorship, setEditingSponsorship] = useState(null);
 
   // Check login session on mount
   useEffect(() => {
@@ -85,7 +102,10 @@ export default function App() {
         engChartRes,
         folChartRes,
         platCompRes,
-        connPlatRes
+        connPlatRes,
+        revSumRes,
+        revListRes,
+        spListRes
       ] = await Promise.all([
         api.getDashboardSummary().catch(() => null),
         api.getAudienceReport().catch(() => null),
@@ -97,7 +117,10 @@ export default function App() {
         api.getEngagementChart().catch(() => null),
         api.getFollowerGrowthChart().catch(() => null),
         api.getPlatformComparison().catch(() => null),
-        api.getConnectedSocialPlatforms().catch(() => null)
+        api.getConnectedSocialPlatforms().catch(() => null),
+        api.getRevenueSummary().catch(() => null),
+        api.getRevenue().catch(() => []),
+        api.getSponsorships().catch(() => [])
       ]);
 
       setSummary(sumRes);
@@ -110,6 +133,11 @@ export default function App() {
       setEngagementChartData(engChartRes);
       setFollowerGrowthChartData(folChartRes);
       setPlatformComparison(platCompRes);
+
+      setRevenueSummary(revSumRes);
+      setRevenueRecords(Array.isArray(revListRes) ? revListRes : []);
+      setSponsorshipRecords(Array.isArray(spListRes) ? spListRes : []);
+
       if (connPlatRes && connPlatRes.platforms) {
         setConnectedPlatforms(connPlatRes.platforms);
       }
@@ -210,6 +238,62 @@ export default function App() {
     }
   };
 
+  // Sprint 6 Revenue Handlers
+  const handleSaveRevenue = async (data, targetId = null) => {
+    try {
+      const recordId = targetId || data?.id || editingRevenue?.id;
+      if (recordId) {
+        const { id, ...payload } = data;
+        await api.updateRevenue(recordId, payload);
+      } else {
+        await api.createRevenue(data);
+      }
+      setEditingRevenue(null);
+      setIsRevenueModalOpen(false);
+      await fetchAllBackendData();
+    } catch (err) {
+      alert(`Backend Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteRevenue = async (id) => {
+    if (!window.confirm('Delete this revenue record?')) return;
+    try {
+      await api.deleteRevenue(id);
+      await fetchAllBackendData();
+    } catch (err) {
+      alert(`Backend Error: ${err.message}`);
+    }
+  };
+
+  // Sprint 6 Sponsorship Handlers
+  const handleSaveSponsorship = async (data, targetId = null) => {
+    try {
+      const recordId = targetId || data?.id || editingSponsorship?.id;
+      if (recordId) {
+        const { id, ...payload } = data;
+        await api.updateSponsorship(recordId, payload);
+      } else {
+        await api.createSponsorship(data);
+      }
+      setEditingSponsorship(null);
+      setIsSponsorshipModalOpen(false);
+      await fetchAllBackendData();
+    } catch (err) {
+      alert(`Backend Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteSponsorship = async (id) => {
+    if (!window.confirm('Delete this sponsorship deal record?')) return;
+    try {
+      await api.deleteSponsorship(id);
+      await fetchAllBackendData();
+    } catch (err) {
+      alert(`Backend Error: ${err.message}`);
+    }
+  };
+
   const totalViews = summary?.total_views ?? 0;
   const totalLikes = summary?.total_likes ?? 0;
   const totalComments = summary?.total_comments ?? 0;
@@ -272,12 +356,16 @@ export default function App() {
           <div>
             <span className="brand-title">Creator Analytics Pro</span>
             <span style={{ display: 'block', fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
-              ● Live Analytics Engine
+              ● Live Revenue & Analytics Engine
             </span>
           </div>
         </div>
 
         <nav className="nav-links">
+          <a href="#revenue" className="nav-btn" style={{ color: '#10b981', fontWeight: 800, backgroundColor: '#ecfdf5' }}>
+            <DollarSign size={14} style={{ display: 'inline', marginRight: '3px' }} />
+            Revenue & Sponsorships
+          </a>
           <a href="#visualizations" className="nav-btn">Charts</a>
           <a href="#summary" className="nav-btn">Executive Summary</a>
           <a href="#comparison" className="nav-btn">Comparison</a>
@@ -342,6 +430,21 @@ export default function App() {
           <button className="btn-add" onClick={fetchAllBackendData}>Retry Backend</button>
         </div>
       )}
+
+      {/* SPRINT 6: REVENUE ANALYTICS & SPONSORSHIP TRACKING SECTION */}
+      <section id="revenue">
+        <RevenueView
+          revenueSummary={revenueSummary}
+          revenueRecords={revenueRecords}
+          sponsorshipRecords={sponsorshipRecords}
+          onAddRevenue={() => { setEditingRevenue(null); setIsRevenueModalOpen(true); }}
+          onUpdateRevenue={(rev) => { setEditingRevenue(rev); setIsRevenueModalOpen(true); }}
+          onDeleteRevenue={handleDeleteRevenue}
+          onAddSponsorship={() => { setEditingSponsorship(null); setIsSponsorshipModalOpen(true); }}
+          onUpdateSponsorship={(sp) => { setEditingSponsorship(sp); setIsSponsorshipModalOpen(true); }}
+          onDeleteSponsorship={handleDeleteSponsorship}
+        />
+      </section>
 
       {/* SECTION 0: INDIVIDUAL PLATFORM REACH VS COMBINED REACH BREAKDOWN */}
       <section id="reach-breakdown" className="section-card">
@@ -632,6 +735,20 @@ export default function App() {
         onConnect={handleConnectSocial}
         onSync={handleSyncSocial}
         connectedPlatforms={connectedPlatforms}
+      />
+
+      <RevenueModal
+        isOpen={isRevenueModalOpen}
+        onClose={() => setIsRevenueModalOpen(false)}
+        onSave={handleSaveRevenue}
+        initialData={editingRevenue}
+      />
+
+      <SponsorshipModal
+        isOpen={isSponsorshipModalOpen}
+        onClose={() => setIsSponsorshipModalOpen(false)}
+        onSave={handleSaveSponsorship}
+        initialData={editingSponsorship}
       />
     </div>
   );

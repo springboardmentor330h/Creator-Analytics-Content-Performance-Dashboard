@@ -8,11 +8,15 @@ from backend.app.routers.analytics import router as analytics_router
 from backend.app.routers.audience import router as audience_router
 from backend.app.routers.youtube import router as youtube_router
 from backend.app.routers.social import router as social_router
+from backend.app.routers.revenue import router as revenue_router
+from backend.app.routers.sponsorships import router as sponsorships_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="CreatorIQ API"
+    title="CreatorIQ API - Revenue & Performance Platform",
+    description="Sprint 6: Revenue Analytics, Sponsorship Tracking & Content Performance APIs",
+    version="3.0.0"
 )
 
 app.add_middleware(
@@ -22,34 +26,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(
-    users_router
-)
-app.include_router(
-    auth_router
-)
-app.include_router(
-    content_router
-)
-app.include_router(
-    analytics_router
-)
-app.include_router(
-    audience_router
-)
-app.include_router(
-    youtube_router
-)
-app.include_router(
-    youtube_router,
-    prefix="/api"
-)
-app.include_router(
-    social_router
-)
+
+app.include_router(users_router)
+app.include_router(auth_router)
+app.include_router(content_router)
+app.include_router(analytics_router)
+app.include_router(audience_router)
+app.include_router(youtube_router)
+app.include_router(youtube_router, prefix="/api")
+app.include_router(social_router)
+app.include_router(revenue_router)
+app.include_router(revenue_router, prefix="/api")
+app.include_router(sponsorships_router)
+app.include_router(sponsorships_router, prefix="/api")
+
 
 @app.get("/")
 def home():
     return {
-        "message": "CreatorIQ API running"
+        "message": "CreatorIQ API running - Revenue Analytics & Sponsorship Tracking active"
     }

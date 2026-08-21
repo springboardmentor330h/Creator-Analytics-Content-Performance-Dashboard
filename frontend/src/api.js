@@ -107,7 +107,7 @@ export const api = {
     });
   },
 
-  // YouTube Integration (Sprint 5)
+  // YouTube Integration
   syncYouTube: async (channelId) => {
     const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
     return await request(`/social/youtube/sync${query}`, {
@@ -171,6 +171,76 @@ export const api = {
     return await request(`/content/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // Sprint 6: Revenue Management & Analytics APIs
+  getRevenue: async (source) => {
+    const query = source && source !== 'All' ? `?source=${encodeURIComponent(source)}` : '';
+    return await request(`/revenue${query}`);
+  },
+
+  createRevenue: async (payload) => {
+    return await request('/revenue', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  updateRevenue: async (id, payload) => {
+    return await request(`/revenue/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  deleteRevenue: async (id) => {
+    return await request(`/revenue/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  getRevenueSummary: async () => {
+    return await request('/revenue/analytics/summary');
+  },
+
+  getRevenueBySource: async () => {
+    return await request('/revenue/analytics/by-source');
+  },
+
+  getMonthlyRevenue: async () => {
+    return await request('/revenue/analytics/monthly');
+  },
+
+  getRevenueTrends: async (days = 30) => {
+    return await request(`/revenue/analytics/trends?days=${days}`);
+  },
+
+  // Sprint 6: Sponsorship Management APIs
+  getSponsorships: async (status, paymentStatus) => {
+    const params = new URLSearchParams();
+    if (status && status !== 'All') params.append('status', status);
+    if (paymentStatus && paymentStatus !== 'All') params.append('payment_status', paymentStatus);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return await request(`/sponsorships${queryString}`);
+  },
+
+  createSponsorship: async (payload) => {
+    return await request('/sponsorships', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  updateSponsorship: async (id, payload) => {
+    return await request(`/sponsorships/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  },
+
+  deleteSponsorship: async (id) => {
+    return await request(`/sponsorships/${id}`, {
+      method: 'DELETE'
+    });
   }
 };
-
