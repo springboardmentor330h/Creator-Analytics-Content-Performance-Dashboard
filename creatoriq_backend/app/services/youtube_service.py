@@ -27,14 +27,20 @@ YOUTUBE_API_VERSION = "v3"
 
 def get_youtube_api_key() -> str:
     """Retrieve the YouTube API key from configuration or environment variables."""
-    settings = get_settings()
-    api_key = getattr(settings, "YOUTUBE_API_KEY", None) or os.getenv("YOUTUBE_API_KEY")
-    if not api_key or not api_key.strip() or api_key.strip() in {"your_key_here", "your_api_key_here"}:
+    api_key = os.environ.get("YOUTUBE_API_KEY")
+    if api_key is None:
+        settings = get_settings()
+        api_key = getattr(settings, "YOUTUBE_API_KEY", None)
+    if not api_key or not str(api_key).strip() or str(api_key).strip() in {
+        "your_key_here",
+        "your_api_key_here",
+        "your_actual_youtube_api_key",
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="YouTube API key is missing or not configured in environment variables.",
         )
-    return api_key.strip()
+    return str(api_key).strip()
 
 
 def get_youtube_client(api_key: Optional[str] = None):
