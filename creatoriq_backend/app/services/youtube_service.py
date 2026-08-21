@@ -51,8 +51,7 @@ def get_youtube_client(api_key: Optional[str] = None):
             YOUTUBE_API_SERVICE_NAME,
             YOUTUBE_API_VERSION,
             developerKey=key,
-            static_discovery=False,
-            cache_discovery=False,
+            static_discovery=True,
         )
     except Exception as exc:
         logger.error(f"Failed to initialize YouTube API client: {exc}")
