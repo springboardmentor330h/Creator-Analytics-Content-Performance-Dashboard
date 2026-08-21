@@ -6,6 +6,8 @@ from datetime import date
 from app.db.database import get_db
 from app.models.content import Content
 from app.services.social_media import sync_platform_data
+from app.services.youtube_service import save_youtube_video
+
 
 router = APIRouter(
     prefix="/social",
@@ -21,6 +23,7 @@ class PlatformConnection(BaseModel):
 connected_platforms = []
 
 
+# Connect a social media platform
 @router.post("/connect")
 def connect_platform(data: PlatformConnection):
     connected_platforms.append({
@@ -33,6 +36,7 @@ def connect_platform(data: PlatformConnection):
     }
 
 
+# Get connected platforms
 @router.get("/platforms")
 def get_connected_platforms():
     return {
@@ -41,6 +45,9 @@ def get_connected_platforms():
             for item in connected_platforms
         ]
     }
+
+
+# Existing generic platform synchronization
 @router.post("/sync")
 def sync_platform(
     platform: str,
@@ -81,3 +88,42 @@ def sync_platform(
         "records_synced": len(synced_records),
         "content": synced_records
     }
+
+
+# YouTube synchronization
+@router.post("/youtube/sync")
+def sync_youtube(
+    video_id: str,
+    db: Session = Depends(get_db)
+):
+    try:
+        content = save_youtube_video(
+            db=db,
+            creator_id=1,
+            video_id=video_id
+        )
+
+        if not content:
+            raise HTTPException(
+                status_code=404,
+                detail="YouTube video not found"
+            )
+
+        return {
+            "platform": "YouTube",
+            "status": "success",
+            "records_synced": 1,
+            "content_id": content.id,
+            "content_title": content.content_title
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"YouTube synchronization failed: {str(e)}"
+        )
