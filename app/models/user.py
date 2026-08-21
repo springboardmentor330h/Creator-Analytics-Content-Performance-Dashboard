@@ -26,5 +26,7 @@ class User(Base):
     is_deleted = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
+    revenues = relationship("Revenue", back_populates="user", cascade="all, delete-orphan")
+    sponsorships = relationship("Sponsorship", back_populates="user", cascade="all, delete-orphan")
+    
     contents = relationship("Content", back_populates="creator")

@@ -10,7 +10,7 @@ class ContentGrowth(Base):
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(Date, nullable=False)
-    followers_count = Column(Integer, default=0)
+    followers = Column(Integer, default=0)
     engagement_rate = Column(Float, default=0.0)
 
     creator = relationship("User")

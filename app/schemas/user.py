@@ -58,3 +58,21 @@ class TokenData(BaseModel):
     """Schema for data stored within JWT token."""
     user_id: Optional[int] = None
     email: Optional[str] = None
+
+class UserListResponse(BaseModel):
+    items: list[UserResponse]
+    total: int
+    skip: int
+    limit: int
+
+
+# Update __all__ if present at the bottom of the file
+__all__ = [
+    "UserBase",
+    "UserCreate",
+    "UserUpdate",
+    "UserResponse",
+    "UserListResponse",
+    "Token",
+    "TokenData",
+]

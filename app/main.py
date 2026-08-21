@@ -13,11 +13,14 @@ from app.routers import (
     analytics,
     audience as audience_router,
     content as content_router,
+    revenue,
     social,
+    sponsorship,
+    users,  # Added users router
 )
 
 app = FastAPI(
-    title="Creator Analytics & Content Performance Dashboard",
+    title="CreatorIQ: Creator Analytics & Content Performance Dashboard",
     description="Backend API for tracking multi-platform creator metrics, audience analytics, and performance growth.",
     version="5.0.0",
 )
@@ -26,10 +29,13 @@ app = FastAPI(
 Base.metadata.create_all(bind=engine)
 
 # Register Application Routers
+app.include_router(users.router)  # Registered users router
 app.include_router(content_router.router)
 app.include_router(analytics.router)
 app.include_router(audience_router.router)
 app.include_router(social.router)
+app.include_router(sponsorship.router)  # Registered sponsorship router
+app.include_router(revenue.router)  # Registered revenue router
 
 
 @app.get("/")

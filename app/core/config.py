@@ -1,11 +1,16 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    YOUTUBE_API_KEY: str = ""
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/creatoriq"
+    PROJECT_NAME: str = "CreatorIQ API"
+    API_V1_STR: str = "/api/v1"  # Add this line
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    DATABASE_URL: str
+    YOUTUBE_API_KEY: str
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-
+    class Config:
+        env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

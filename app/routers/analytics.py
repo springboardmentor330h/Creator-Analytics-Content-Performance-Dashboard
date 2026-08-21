@@ -1,45 +1,71 @@
-from fastapi import APIRouter, Depends
+from typing import Dict, Any
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
+
 from app.db.database import get_db
-from app.models.content import Content
 from app.services.analytics_service import AnalyticsService
+from app.models.user import User
 
 router = APIRouter(prefix="/analytics", tags=["Dashboard Analytics"])
 
 
-@router.get("/summary")
-def get_kpi_summary(db: Session = Depends(get_db)):
-    """Task 1: Return key performance indicator summary."""
-    return AnalyticsService.get_kpi_summary(db)
+def _verify_creator_exists(db: Session, creator_id: int) -> None:
+    """Helper function to check if a creator exists before running queries."""
+    creator = db.query(User).filter(User.id == creator_id).first()
+    if not creator:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Creator with id {creator_id} not found",
+        )
 
 
-@router.get("/chart/engagement")
-def get_engagement_chart(db: Session = Depends(get_db)):
-    """Task 2: Return engagement rate time-series chart data."""
-    return AnalyticsService.get_engagement_chart_data(db)
+@router.get(
+    "/summary",
+    summary="Get KPI Summary",
+    description="Retrieves total views, likes, reach, and average engagement rate for a creator.",
+)
+def get_kpi_summary(
+    creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    _verify_creator_exists(db, creator_id)
+    return AnalyticsService.get_kpi_summary(db, creator_id=creator_id)
 
 
-@router.get("/chart/followers")
-def get_follower_chart(db: Session = Depends(get_db)):
-    """Task 3: Return follower growth time-series chart data."""
-    return AnalyticsService.get_follower_growth_chart_data(db)
+@router.get(
+    "/engagement-chart",
+    summary="Get Engagement Rate Over Time",
+    description="Returns dates and corresponding engagement rates for line chart display.",
+)
+def get_engagement_chart_data(
+    creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    _verify_creator_exists(db, creator_id)
+    return AnalyticsService.get_engagement_chart_data(db, creator_id=creator_id)
 
 
-@router.get("/platform-comparison")
-def get_platform_comparison(db: Session = Depends(get_db)):
-    """Task 4: Return platform performance comparison metrics."""
-    return AnalyticsService.get_platform_comparison(db)
+@router.get(
+    "/follower-growth-chart",
+    summary="Get Follower Growth Over Time",
+    description="Returns dates and follower count trends for visual tracking.",
+)
+def get_follower_growth_chart_data(
+    creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    _verify_creator_exists(db, creator_id)
+    return AnalyticsService.get_follower_growth_chart_data(db, creator_id=creator_id)
 
-@staticmethod
-def get_top_content(db: Session, creator_id: int = 1, limit: int = 5):
-    return (
-        db.query(Content)
-        .filter(Content.creator_id == creator_id)
-        .order_by(Content.views.desc())
-        .limit(limit)
-        .all()
-    )
 
-@router.get("/top-content")
-def get_top_content_endpoint(db: Session = Depends(get_db), creator_id: int = 1, limit: int = 5):
-    return get_top_content(db, creator_id, limit)
+@router.get(
+    "/platform-comparison",
+    summary="Get Multi-Platform Breakdown",
+    description="Returns comparative engagement and view counts aggregated by social platform.",
+)
+def get_platform_comparison(
+    creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    _verify_creator_exists(db, creator_id)
+    return AnalyticsService.get_platform_comparison(db, creator_id=creator_id)
