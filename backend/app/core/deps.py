@@ -35,6 +35,16 @@ def get_current_user(
 def get_current_role(current_user: User = Depends(get_current_user)) -> str:
     return current_user.role
 
+
+def get_authorized_creator_id(requested_creator_id: int, current_user=Depends(get_current_user)) -> int:
+    
+    if current_user.role == "admin":
+        return requested_creator_id
+    if current_user.creator_id != requested_creator_id:
+        raise HTTPException(status_code=403, detail="You can only access your own revenue/sponsorship data")
+    return requested_creator_id
+
+
 def require_role(*roles):
     def role_checker(current_user: User = Depends(get_current_user)):
         if current_user.role not in roles:

@@ -19,6 +19,8 @@ from app.routers.notifications import router as notifications_router
 from app.routers.reports import router as reports_router
 from app.routers.social import router as social_router
 from app.models import social_connection as social_connection_model
+from app.routers.sponsorship import router as sponsorship_router
+from app.models import sponsorship as sponsorship_model
 
 
 Base.metadata.create_all(bind=engine)
@@ -46,6 +48,7 @@ app.include_router(growth_trends_router)
 app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(social_router)
+app.include_router(sponsorship_router)
 
 
 @app.get("/")

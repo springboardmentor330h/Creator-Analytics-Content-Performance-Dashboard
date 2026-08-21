@@ -11,6 +11,7 @@ export default function ContentAnalytics() {
   const [topContent, setTopContent] = useState([]);
   const [platformPerf, setPlatformPerf] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     platform: "YouTube", content_title: "", views: 0, likes: 0,
     comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0,
@@ -19,28 +20,31 @@ export default function ContentAnalytics() {
 
   const loadData = async () => {
     setError("");
+    setLoading(true);
     try {
-      const [contentRes, summaryRes, topRes, platRes] = await Promise.all([
-        api.get("/content"),
-        api.get("/analytics/summary"),
-        api.get("/analytics/top-content"),
-        api.get("/analytics/platform-performance"),
-      ]);
-      setContent(contentRes.data);
+      const contentRes = await api.get("/content");
+      console.log("content response:", contentRes.data); // TEMP debug line
+      setContent(Array.isArray(contentRes.data) ? contentRes.data : []);
+
+      const summaryRes = await api.get("/analytics/summary");
       setSummary(summaryRes.data);
+
+      const topRes = await api.get("/analytics/top-content");
       setTopContent(topRes.data);
-      setPlatformPerf(platRes.data);
+
+      const platRes = await api.get("/analytics/platform-comparison");
+      setPlatformPerf(Object.entries(platRes.data).map(([platform, stats]) => ({ platform, ...stats })));
     } catch (err) {
+      console.error("ContentAnalytics load error:", err);
       setError("Could not load content analytics");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => { loadData(); }, [creatorId]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-  };
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,16 +71,19 @@ export default function ContentAnalytics() {
         <main className="p-4 sm:p-6">
           <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Content Analytics</h1>
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+          {loading && <p className="mb-4 text-sm text-gray-500">Loading...</p>}
 
-          {summary && (
-            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <Stat label="Total Content" value={summary.total_content} />
-              <Stat label="Total Views" value={summary.total_views?.toLocaleString()} />
-              <Stat label="Total Reach" value={summary.total_reach?.toLocaleString()} />
-              <Stat label="Avg Engagement" value={`${summary.average_engagement_rate}%`} />
-              <Stat label="Best Platform" value={summary.best_platform || "—"} />
-            </div>
-          )}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <Stat label="Total Content" value={content.length} />
+            {summary && (
+              <>
+                <Stat label="Total Views" value={summary.total_views?.toLocaleString() ?? 0} />
+                <Stat label="Total Likes" value={summary.total_likes?.toLocaleString() ?? 0} />
+                <Stat label="Total Reach" value={summary.total_reach?.toLocaleString() ?? 0} />
+                <Stat label="Avg Engagement" value={`${summary.average_engagement_rate ?? 0}%`} />
+              </>
+            )}
+          </div>
 
           <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-8">
             <input name="content_title" placeholder="Title" value={form.content_title} onChange={handleChange} className="col-span-2 rounded border px-2 py-1 text-sm" required minLength={3} />
@@ -106,7 +113,7 @@ export default function ContentAnalytics() {
               {platformPerf.map((p) => (
                 <div key={p.platform} className="flex justify-between border-b py-1 text-sm">
                   <span>{p.platform}</span>
-                  <span>{p.total_views.toLocaleString()} views · {p.average_engagement_rate}%</span>
+                  <span>{p.views?.toLocaleString()} views · {p.engagement_rate}%</span>
                 </div>
               ))}
               {platformPerf.length === 0 && <p className="text-sm text-gray-500">No data yet.</p>}
