@@ -6,6 +6,7 @@ content data into PostgreSQL while enforcing duplicate detection and normalized 
 import os
 import json
 import logging
+import socket
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 from googleapiclient.discovery import build
@@ -13,6 +14,16 @@ from googleapiclient.errors import HttpError
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
+
+# Ensure IPv4 addresses are prioritized over IPv6 to prevent Windows network timeout errors (WinError 10060)
+_orig_getaddrinfo = socket.getaddrinfo
+
+def _ipv4_first_getaddrinfo(*args, **kwargs):
+    res = _orig_getaddrinfo(*args, **kwargs)
+    return sorted(res, key=lambda x: 0 if x[0] == socket.AF_INET else 1)
+
+if getattr(socket.getaddrinfo, "__name__", "") != "_ipv4_first_getaddrinfo":
+    socket.getaddrinfo = _ipv4_first_getaddrinfo
 
 from app.core.config import get_settings
 from app.models.content import Content
@@ -251,19 +262,20 @@ def fetch_youtube_data(
 
         if channel_id and channel_id.strip():
             cid = channel_id.strip()
-            # Try fetching channel's uploads playlist
             channel_resp = None
             if cid.startswith("UC"):
-                channel_resp = youtube.channels().list(part="contentDetails", id=cid).execute()
+                channel_resp = youtube.channels().list(part="contentDetails,snippet", id=cid).execute()
             if not channel_resp or not channel_resp.get("items"):
-                # Try forHandle or forUsername
                 handle_name = cid.lstrip("@")
                 try:
-                    channel_resp = youtube.channels().list(part="contentDetails", forHandle=handle_name).execute()
+                    channel_resp = youtube.channels().list(part="contentDetails,snippet", forHandle=handle_name).execute()
                 except HttpError:
                     channel_resp = None
                 if not channel_resp or not channel_resp.get("items"):
-                    channel_resp = youtube.channels().list(part="contentDetails", forUsername=cid).execute()
+                    try:
+                        channel_resp = youtube.channels().list(part="contentDetails,snippet", forUsername=cid).execute()
+                    except HttpError:
+                        channel_resp = None
 
             channel_items = channel_resp.get("items", []) if channel_resp else []
             if not channel_items:
@@ -272,17 +284,39 @@ def fetch_youtube_data(
                     detail=f"YouTube channel '{channel_id}' not found.",
                 )
 
-            uploads_playlist_id = channel_items[0]["contentDetails"]["relatedPlaylists"]["uploads"]
-            playlist_resp = youtube.playlistItems().list(
-                part="contentDetails",
-                playlistId=uploads_playlist_id,
-                maxResults=max_results,
-            ).execute()
+            channel_obj = channel_items[0]
+            channel_actual_id = channel_obj.get("id")
 
-            for item in playlist_resp.get("items", []):
-                vid = item.get("contentDetails", {}).get("videoId")
-                if vid:
-                    video_ids.append(vid)
+            # If a search query is also specified, search videos within this channel
+            if query and query.strip() and channel_actual_id:
+                try:
+                    search_resp = youtube.search().list(
+                        part="id",
+                        q=query.strip(),
+                        channelId=channel_actual_id,
+                        type="video",
+                        maxResults=max_results,
+                    ).execute()
+                    for item in search_resp.get("items", []):
+                        vid = item.get("id", {}).get("videoId")
+                        if vid:
+                            video_ids.append(vid)
+                except HttpError:
+                    pass
+
+            # Fallback to uploads playlist if query returned no specific video IDs
+            if not video_ids and "relatedPlaylists" in channel_obj.get("contentDetails", {}):
+                uploads_playlist_id = channel_obj["contentDetails"]["relatedPlaylists"]["uploads"]
+                playlist_resp = youtube.playlistItems().list(
+                    part="contentDetails",
+                    playlistId=uploads_playlist_id,
+                    maxResults=max_results,
+                ).execute()
+
+                for item in playlist_resp.get("items", []):
+                    vid = item.get("contentDetails", {}).get("videoId")
+                    if vid:
+                        video_ids.append(vid)
 
         elif query and query.strip():
             search_resp = youtube.search().list(
