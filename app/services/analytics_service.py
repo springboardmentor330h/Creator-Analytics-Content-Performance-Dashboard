@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 from app.models.content import Content
+from app.models.audience import Audience
+from app.models.growth import Growth
 
 
 def calculate_engagement_rate(content):
@@ -48,7 +49,7 @@ def get_top_content(db: Session):
     analytics = []
 
     for content in contents:
-        total_engagement, engagement_rate = calculate_engagement_rate(content)
+        _, engagement_rate = calculate_engagement_rate(content)
 
         analytics.append({
             "content_id": content.id,
@@ -74,7 +75,7 @@ def get_platform_performance(db: Session):
     platform_data = {}
 
     for content in contents:
-        total_engagement, engagement_rate = calculate_engagement_rate(content)
+        _, engagement_rate = calculate_engagement_rate(content)
 
         platform = content.platform
 
@@ -125,11 +126,20 @@ def get_platform_performance(db: Session):
 
 def get_summary(db: Session):
     contents = db.query(Content).all()
+    audiences = db.query(Audience).all()
+    growth_records = db.query(Growth).all()
 
     total_content = len(contents)
 
     total_views = sum(content.views for content in contents)
+    total_likes = sum(content.likes for content in contents)
+    total_comments = sum(content.comments for content in contents)
+    total_shares = sum(content.shares for content in contents)
     total_reach = sum(content.reach for content in contents)
+
+    total_followers = sum(
+        audience.followers for audience in audiences
+    )
 
     engagement_rates = []
 
@@ -141,6 +151,14 @@ def get_summary(db: Session):
         average_engagement_rate = (
             sum(engagement_rates)
             / len(engagement_rates)
+        )
+    elif growth_records:
+        average_engagement_rate = (
+            sum(
+                record.engagement_rate
+                for record in growth_records
+            )
+            / len(growth_records)
         )
     else:
         average_engagement_rate = 0
@@ -162,10 +180,105 @@ def get_summary(db: Session):
     return {
         "total_content": total_content,
         "total_views": total_views,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "total_shares": total_shares,
         "total_reach": total_reach,
+        "total_followers": total_followers,
         "average_engagement_rate": round(
             average_engagement_rate, 2
         ),
         "best_platform": best_platform,
         "top_content": top_content_title
     }
+
+
+def get_engagement_chart(db: Session):
+    growth_records = (
+        db.query(Growth)
+        .order_by(Growth.date.asc())
+        .all()
+    )
+
+    return {
+        "labels": [
+            record.date.isoformat()
+            for record in growth_records
+        ],
+        "values": [
+            round(record.engagement_rate, 2)
+            for record in growth_records
+        ]
+    }
+
+
+def get_follower_chart(db: Session):
+    growth_records = (
+        db.query(Growth)
+        .order_by(Growth.date.asc())
+        .all()
+    )
+
+    return {
+        "labels": [
+            record.date.isoformat()
+            for record in growth_records
+        ],
+        "values": [
+            record.followers
+            for record in growth_records
+        ]
+    }
+
+
+def get_platform_comparison(db: Session):
+    contents = db.query(Content).all()
+
+    platform_data = {}
+
+    for content in contents:
+        _, engagement_rate = calculate_engagement_rate(content)
+
+        platform = content.platform
+
+        if platform not in platform_data:
+            platform_data[platform] = {
+                "views": 0,
+                "reach": 0,
+                "likes": 0,
+                "comments": 0,
+                "engagement_rates": []
+            }
+
+        platform_data[platform]["views"] += content.views
+        platform_data[platform]["reach"] += content.reach
+        platform_data[platform]["likes"] += content.likes
+        platform_data[platform]["comments"] += content.comments
+
+        platform_data[platform]["engagement_rates"].append(
+            engagement_rate
+        )
+
+    result = {}
+
+    for platform, data in platform_data.items():
+
+        if data["engagement_rates"]:
+            average_engagement_rate = (
+                sum(data["engagement_rates"])
+                / len(data["engagement_rates"])
+            )
+        else:
+            average_engagement_rate = 0
+
+        result[platform] = {
+            "views": data["views"],
+            "reach": data["reach"],
+            "engagement_rate": round(
+                average_engagement_rate, 2
+            ),
+            "likes": data["likes"],
+            "comments": data["comments"]
+        }
+
+    return result

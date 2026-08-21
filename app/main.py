@@ -1,19 +1,22 @@
 from fastapi import FastAPI
-from app.routers import auth
+
+from app.routers.users import router as user_router
+from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
 from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
-from app.routers.audience import analytics_router as audience_analytics_router
+from app.routers.social import router as social_router
 
 
 app = FastAPI(title="Creator Analytics Content Performance Dashboard")
 
 
-app.include_router(auth.router)
+app.include_router(user_router)
+app.include_router(auth_router)
 app.include_router(content_router)
 app.include_router(analytics_router)
 app.include_router(audience_router)
-app.include_router(audience_analytics_router)
+app.include_router(social_router)
 
 
 @app.get("/")

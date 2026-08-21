@@ -2,11 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+
 from app.services.analytics_service import (
     get_content_engagement,
     get_top_content,
     get_platform_performance,
-    get_summary
+    get_summary,
+    get_engagement_chart,
+    get_follower_chart,
+    get_platform_comparison
 )
 
 
@@ -67,5 +71,41 @@ def analytics_summary(
 
     return {
         "message": "Analytics summary fetched successfully",
+        "data": result
+    }
+
+
+@router.get("/chart/engagement")
+def engagement_chart(
+    db: Session = Depends(get_db)
+):
+    result = get_engagement_chart(db)
+
+    return {
+        "message": "Engagement chart data fetched successfully",
+        "data": result
+    }
+
+
+@router.get("/chart/followers")
+def follower_chart(
+    db: Session = Depends(get_db)
+):
+    result = get_follower_chart(db)
+
+    return {
+        "message": "Follower growth chart data fetched successfully",
+        "data": result
+    }
+
+
+@router.get("/platform-comparison")
+def platform_comparison(
+    db: Session = Depends(get_db)
+):
+    result = get_platform_comparison(db)
+
+    return {
+        "message": "Platform comparison fetched successfully",
         "data": result
     }
