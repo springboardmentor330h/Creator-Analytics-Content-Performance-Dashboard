@@ -9,8 +9,10 @@ from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
+from app.routers.revenue import router as revenue_router
 from app.routers.social import router as social_router
 from app.routers.social_connections import router as social_connections_router
+from app.routers.sponsorship import router as sponsorship_router
 from app.routers.users import router as user_router
 
 # Ensure tables exist
@@ -30,6 +32,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(content_router)
+app.include_router(revenue_router)
+app.include_router(sponsorship_router)
 app.include_router(agency_router)
 app.include_router(social_connections_router)
 app.include_router(social_router)

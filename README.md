@@ -105,7 +105,27 @@ CreatorIQ provides multi-tenant and role-based performance analytics for digital
 - `GET /social/platforms` – List connected social platforms.
 - `POST /social/sync` – Synchronize simulated social platform data.
 
-### Analytics Endpoints
+### Revenue Management & Analytics (Sprint 6)
+- `POST /revenue` – Add a new revenue record (`Sponsorship`, `Ad Revenue`, `Affiliate Marketing`, `Brand Collaboration`, `Subscription Revenue`).
+- `GET /revenue` – List all revenue records for authenticated creator.
+- `GET /revenue/{id}` – Retrieve single revenue record.
+- `PUT /revenue/{id}` – Update single revenue record.
+- `DELETE /revenue/{id}` – Delete single revenue record.
+- `GET /analytics/revenue/summary` – Retrieve total accumulated revenue and currency.
+- `GET /analytics/revenue/by-source` – Retrieve revenue breakdown grouped by category.
+- `GET /analytics/revenue/monthly` – Retrieve chronological monthly revenue totals.
+- `GET /analytics/revenue/trend` – Retrieve chart-ready monthly revenue time-series labels and values.
+
+### Sponsorship Management & Tracking (Sprint 6)
+- `POST /sponsorships` – Create a new brand sponsorship campaign (`Draft`, `Active`, `Completed`, `Cancelled`).
+- `GET /sponsorships` – List all sponsorship campaigns for authenticated creator.
+- `GET /sponsorships/{id}` – Retrieve single sponsorship campaign details.
+- `PUT /sponsorships/{id}` – Update sponsorship campaign details.
+- `DELETE /sponsorships/{id}` – Delete sponsorship campaign.
+- `GET /analytics/sponsorships/summary` – Summary of total deals, contract value, active deals, and pending payments.
+- `GET /analytics/sponsorships/status` – Breakdown of sponsorship deals grouped by status.
+
+### Performance Analytics Endpoints
 - `GET /analytics/summary` – Aggregate KPI totals (views, likes, comments, shares, reach, followers, avg engagement rate).
 - `GET /analytics/top-content` – Top performing content ranked by engagement rate.
 - `GET /analytics/platform-comparison` – Cross-platform performance comparison (YouTube, Instagram, TikTok, LinkedIn, etc.).
@@ -138,6 +158,40 @@ Stores normalized content across all social media platforms:
 | `watch_time` | Integer | Watch time in minutes (default: 0) |
 | `reach` | Integer | Total reach / impressions (default: 0) |
 | `engagement_rate` | Float | Calculated percentage `((likes+comments+shares+saves)/reach)*100` |
+| `created_at` | DateTime | Creation timestamp (UTC) |
+| `updated_at` | DateTime | Last updated timestamp (UTC) |
+
+### `public.revenue`
+Stores creator revenue records across diversified monetization channels:
+
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | Integer | Primary key, Auto-increment |
+| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
+| `source` | String(100) | 'Sponsorship', 'Ad Revenue', 'Affiliate Marketing', 'Brand Collaboration', 'Subscription Revenue' |
+| `amount` | Float | Revenue amount (>= 0.0) |
+| `currency` | String(10) | Currency code (default: 'INR') |
+| `description` | Text | Optional campaign / invoice notes |
+| `revenue_date` | Date | Transaction / earnings date |
+| `created_at` | DateTime | Creation timestamp (UTC) |
+| `updated_at` | DateTime | Last updated timestamp (UTC) |
+
+### `public.sponsorship`
+Tracks creator brand partnerships, campaigns, and contract payment status:
+
+| Column | Type | Constraints / Description |
+| :--- | :--- | :--- |
+| `id` | Integer | Primary key, Auto-increment |
+| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
+| `brand_name` | String(150) | Brand / sponsor company name |
+| `campaign_name` | String(150) | Campaign title / deliverables |
+| `contract_value` | Float | Agreed contract value (>= 0.0) |
+| `currency` | String(10) | Currency code (default: 'INR') |
+| `start_date` | Date | Campaign start date |
+| `end_date` | Date | Campaign end date (>= start_date) |
+| `status` | String(50) | 'Draft', 'Active', 'Completed', 'Cancelled' |
+| `payment_status` | String(50) | 'Pending', 'Partially Paid', 'Paid', 'Overdue' |
+| `description` | Text | Campaign terms and scope |
 | `created_at` | DateTime | Creation timestamp (UTC) |
 | `updated_at` | DateTime | Last updated timestamp (UTC) |
 
@@ -289,6 +343,16 @@ FROM public.content
 GROUP BY platform, external_content_id
 HAVING COUNT(*) > 1;
 -- (Should return 0 rows)
+
+-- 4. Verify Revenue records (Sprint 6)
+SELECT id, creator_id, source, amount, currency, revenue_date, created_at
+FROM public.revenue
+ORDER BY id DESC;
+
+-- 5. Verify Sponsorship campaigns (Sprint 6)
+SELECT id, creator_id, brand_name, campaign_name, contract_value, currency, status, payment_status, start_date, end_date
+FROM public.sponsorship
+ORDER BY id DESC;
 ```
 
 ---
@@ -301,7 +365,13 @@ To execute the automated test suite:
 pytest -v
 ```
 
-To run Sprint 5 YouTube integration tests specifically:
+To run Sprint 6 Revenue & Sponsorship tests specifically:
+
+```bash
+pytest tests/test_sprint6.py -v
+```
+
+To run Sprint 5 YouTube integration tests:
 
 ```bash
 pytest tests/test_youtube_sprint5.py -v

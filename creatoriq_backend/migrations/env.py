@@ -10,6 +10,8 @@ from app.models.user import User  # noqa: F401 - registers model metadata
 from app.models.content import Content  # noqa: F401 - registers model metadata
 from app.models.audience import Audience  # noqa: F401 - registers model metadata
 from app.models.growth import Growth  # noqa: F401 - registers model metadata
+from app.models.revenue import Revenue  # noqa: F401 - registers model metadata
+from app.models.sponsorship import Sponsorship  # noqa: F401 - registers model metadata
 
 load_dotenv()
 

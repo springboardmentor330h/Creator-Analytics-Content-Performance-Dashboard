@@ -33,6 +33,8 @@ class User(Base):
 
     content = relationship('Content', back_populates='creator', cascade='all, delete-orphan')
     social_connections = relationship('SocialConnection', back_populates='user', cascade='all, delete-orphan')
+    revenues = relationship('Revenue', back_populates='creator', cascade='all, delete-orphan')
+    sponsorships = relationship('Sponsorship', back_populates='creator', cascade='all, delete-orphan')
     agency = relationship(
         'User',
         remote_side=[id],
