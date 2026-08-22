@@ -6,8 +6,10 @@ from datetime import date
 from app.db.database import get_db
 from app.models.content import Content
 from app.services.social_media import get_platform_mock_data, MOCK_PLATFORM_DATA
+from app.services import youtube_service
+from app.services.youtube_service import YouTubeAPIError
 
-router = APIRouter()
+router = APIRouter()  # <-- THIS MUST COME BEFORE ANY @router.xxx DECORATOR
 
 # Simulated in-memory list of connected platforms (resets when server restarts)
 connected_platforms: list[str] = []
@@ -21,6 +23,12 @@ class ConnectRequest(BaseModel):
 class SyncRequest(BaseModel):
     platform: str
     creator_id: int
+
+
+class YouTubeSyncRequest(BaseModel):
+    channel_id: str
+    creator_id: int
+    max_results: int = 10
 
 
 @router.post("/social/connect")
@@ -84,4 +92,54 @@ def sync_platform_data(request: SyncRequest, db: Session = Depends(get_db)):
             "reach": new_content.reach,
             "published_date": new_content.published_date
         }
+    }
+
+
+@router.post("/social/youtube/sync")
+def sync_youtube_data(request: YouTubeSyncRequest, db: Session = Depends(get_db)):
+    try:
+        transformed_records = youtube_service.get_channel_content_in_common_format(
+            channel_id=request.channel_id,
+            creator_id=request.creator_id,
+            max_results=request.max_results
+        )
+    except YouTubeAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error during YouTube sync: {str(e)}")
+
+    records_synced = 0
+
+    for record in transformed_records:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == record["platform"],
+                Content.external_content_id == record["external_content_id"]
+            )
+            .first()
+        )
+
+        if existing:
+            existing.content_title = record["content_title"]
+            existing.views = record["views"]
+            existing.likes = record["likes"]
+            existing.comments = record["comments"]
+            existing.shares = record["shares"]
+            existing.saves = record["saves"]
+            existing.watch_time = record["watch_time"]
+            existing.reach = record["reach"]
+            existing.published_date = record["published_date"]
+        else:
+            new_content = Content(**record)
+            db.add(new_content)
+
+        records_synced += 1
+
+    db.commit()
+
+    return {
+        "platform": "YouTube",
+        "status": "success",
+        "records_synced": records_synced
     }
