@@ -8,6 +8,9 @@ from app.services.social_media import (
     get_connected_platforms,
     synchronize_platform,
 )
+from app.services.youtube_service import (
+    synchronize_youtube_videos,
+)
 
 
 router = APIRouter(
@@ -20,9 +23,11 @@ class SocialConnectRequest(BaseModel):
     platform: str
     account_name: str
 
-
 class SocialSyncRequest(BaseModel):
     platform: str
+
+class YouTubeSyncRequest(BaseModel):
+    video_ids: list[str]
 
 
 @router.post("/connect")
@@ -73,3 +78,34 @@ def sync_platform(
         )
 
     return result
+
+@router.post("/youtube/sync")
+def sync_youtube(
+    request: YouTubeSyncRequest,
+    db: Session = Depends(get_db),
+):
+    if not request.video_ids:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one YouTube video ID is required",
+        )
+
+    try:
+        result = synchronize_youtube_videos(
+            db,
+            request.video_ids,
+        )
+
+        return result
+
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to synchronize YouTube data",
+        ) from exc

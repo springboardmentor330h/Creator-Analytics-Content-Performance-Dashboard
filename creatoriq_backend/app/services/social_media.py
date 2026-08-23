@@ -1,5 +1,7 @@
 from datetime import date
+
 from sqlalchemy.orm import Session
+
 from app.models.content import Content
 
 
@@ -16,6 +18,7 @@ SUPPORTED_PLATFORMS = {
 MOCK_PLATFORM_DATA = {
     "YouTube": [
         {
+            "external_content_id": "mock-youtube-001",
             "platform": "YouTube",
             "content_title": "Python Tutorial",
             "views": 15000,
@@ -28,6 +31,7 @@ MOCK_PLATFORM_DATA = {
             "published_date": date(2026, 8, 1),
         },
         {
+            "external_content_id": "mock-youtube-002",
             "platform": "YouTube",
             "content_title": "FastAPI Tutorial",
             "views": 22000,
@@ -43,6 +47,7 @@ MOCK_PLATFORM_DATA = {
 
     "Instagram": [
         {
+            "external_content_id": "mock-instagram-001",
             "platform": "Instagram",
             "content_title": "Python Tips",
             "views": 18000,
@@ -55,6 +60,7 @@ MOCK_PLATFORM_DATA = {
             "published_date": date(2026, 8, 2),
         },
         {
+            "external_content_id": "mock-instagram-002",
             "platform": "Instagram",
             "content_title": "Django Tips",
             "views": 21000,
@@ -70,6 +76,7 @@ MOCK_PLATFORM_DATA = {
 
     "Facebook": [
         {
+            "external_content_id": "mock-facebook-001",
             "platform": "Facebook",
             "content_title": "Web Development Basics",
             "views": 14000,
@@ -85,6 +92,7 @@ MOCK_PLATFORM_DATA = {
 
     "LinkedIn": [
         {
+            "external_content_id": "mock-linkedin-001",
             "platform": "LinkedIn",
             "content_title": "Backend Development Career Tips",
             "views": 9000,
@@ -100,6 +108,7 @@ MOCK_PLATFORM_DATA = {
 
     "TikTok": [
         {
+            "external_content_id": "mock-tiktok-001",
             "platform": "TikTok",
             "content_title": "Python in 60 Seconds",
             "views": 35000,
@@ -112,6 +121,7 @@ MOCK_PLATFORM_DATA = {
             "published_date": date(2026, 8, 7),
         },
         {
+            "external_content_id": "mock-tiktok-002",
             "platform": "TikTok",
             "content_title": "FastAPI in One Minute",
             "views": 28000,
@@ -127,6 +137,7 @@ MOCK_PLATFORM_DATA = {
 
     "X": [
         {
+            "external_content_id": "mock-x-001",
             "platform": "X",
             "content_title": "FastAPI Development Tip",
             "views": 11000,
@@ -181,47 +192,74 @@ def synchronize_platform(
     if not platform_data:
         return None
 
-    records_added = 0
-    records_skipped = 0
+    records_created = 0
+    records_updated = 0
 
-    for data in platform_data:
-        existing_content = (
-            db.query(Content)
-            .filter(
-                Content.platform == data["platform"],
-                Content.content_title == data["content_title"],
-                Content.published_date == data["published_date"],
+    try:
+        for data in platform_data:
+            existing_content = (
+                db.query(Content)
+                .filter(
+                    Content.platform == data["platform"],
+                    Content.external_content_id
+                    == data["external_content_id"],
+                )
+                .first()
             )
-            .first()
-        )
 
-        if existing_content:
-            records_skipped += 1
-            continue
+            if existing_content:
+                existing_content.creator_id = 1
+                existing_content.content_title = (
+                    data["content_title"]
+                )
+                existing_content.views = data["views"]
+                existing_content.likes = data["likes"]
+                existing_content.comments = data["comments"]
+                existing_content.shares = data["shares"]
+                existing_content.saves = data["saves"]
+                existing_content.watch_time = data["watch_time"]
+                existing_content.reach = data["reach"]
+                existing_content.published_date = (
+                    data["published_date"]
+                )
 
-        content = Content(
-            creator_id=1,
-            platform=data["platform"],
-            content_title=data["content_title"],
-            views=data["views"],
-            likes=data["likes"],
-            comments=data["comments"],
-            shares=data["shares"],
-            saves=data["saves"],
-            watch_time=data["watch_time"],
-            reach=data["reach"],
-            published_date=data["published_date"],
-        )
+                records_updated += 1
 
-        db.add(content)
-        records_added += 1
+            else:
+                content = Content(
+                    creator_id=1,
+                    platform=data["platform"],
+                    external_content_id=(
+                        data["external_content_id"]
+                    ),
+                    content_title=data["content_title"],
+                    views=data["views"],
+                    likes=data["likes"],
+                    comments=data["comments"],
+                    shares=data["shares"],
+                    saves=data["saves"],
+                    watch_time=data["watch_time"],
+                    reach=data["reach"],
+                    published_date=data["published_date"],
+                )
 
-    db.commit()
+                db.add(content)
+                records_created += 1
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "platform": platform,
-        "records_added": records_added,
-        "records_skipped": records_skipped,
+        "status": "success",
+        "records_synced": (
+            records_created + records_updated
+        ),
+        "records_created": records_created,
+        "records_updated": records_updated,
         "message": (
             f"{platform} data synchronized successfully"
         ),

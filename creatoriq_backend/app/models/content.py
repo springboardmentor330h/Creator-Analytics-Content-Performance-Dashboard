@@ -21,6 +21,12 @@ class Content(Base):
         nullable=False,
     )
 
+    external_content_id: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
+        index=True,
+    )
+
     content_title: Mapped[str] = mapped_column(
         String,
         nullable=False,
