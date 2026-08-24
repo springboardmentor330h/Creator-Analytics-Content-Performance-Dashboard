@@ -1,47 +1,43 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserBase(BaseModel):
-    """Base schema containing shared user attributes."""
-    username: str
+    full_name: str = Field(..., min_length=3)
     email: EmailStr
+    role: str
 
 
 class UserCreate(UserBase):
-    """Schema for creating/registering a new user."""
-    password: str
+    password: str = Field(..., min_length=6)
 
 
-# Alias for backward compatibility if code uses UserRegister
+# Backward compatibility
 UserRegister = UserCreate
 
 
 class UserUpdate(BaseModel):
-    """Schema for updating user details (all fields optional)."""
-    username: Optional[str] = None
+    full_name: Optional[str] = Field(None, min_length=3)
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=6)
+    role: Optional[str] = None
 
 
 class UserResponse(UserBase):
-    """Schema for returning user data (excludes sensitive info)."""
-    
+    id: int
+
     class Config:
-        from_attributes = True  # Supports ORM models (FastAPI v2 / Pydantic v2)
+        from_attributes = True
 
 
-class UserInDB(UserBase):
-    """Internal schema representing user in database with hashed password."""
+class UserInDB(UserResponse):
     hashed_password: str
 
 
 class Token(BaseModel):
-    """Schema for JWT token response."""
     access_token: str
     token_type: str
 
 
 class TokenData(BaseModel):
-    """Schema for data stored within JWT token."""
-    username: Optional[str] = None
+    email: Optional[str] = None

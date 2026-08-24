@@ -1,111 +1,88 @@
-from typing import List, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
+from app.core.security import hash_password
 
 
 class UserService:
 
     @staticmethod
-    def get_by_id(db: Session, user_id: int) -> Optional[User]:
-        return db.query(User).filter(User.id == user_id, User.is_deleted == False).first()
+    def create(db: Session, user_in: UserCreate):
 
-    @staticmethod
-    def get_by_email(db: Session, email: str) -> Optional[User]:
-        return db.query(User).filter(User.email == email, User.is_deleted == False).first()
+        existing_user = db.query(User).filter(
+            User.email == user_in.email
+        ).first()
 
-    @staticmethod
-    def get_all(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-        return db.query(User).filter(User.is_deleted == False).offset(skip).limit(limit).all()
-
-    @staticmethod
-    def create(db: Session, user_in: UserCreate) -> User:
-        if UserService.get_by_email(db, user_in.email):
+        if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered",
+                detail="Email already exists"
             )
-        # Standard placeholder password store
+
         db_user = User(
             full_name=user_in.full_name,
             email=user_in.email,
-            hashed_password=f"hashed_{user_in.password}",  # Integrate passlib/bcrypt as needed
-            role=user_in.role,
-            bio=user_in.bio,
+            hashed_password=hash_password(user_in.password),
+            role=user_in.role
         )
+
         db.add(db_user)
         db.commit()
         db.refresh(db_user)
+
         return db_user
 
     @staticmethod
-    def update(db: Session, user_id: int, user_in: UserUpdate) -> User:
-        db_user = UserService.get_by_id(db, user_id)
-        if not db_user:
+    def get_all(db: Session):
+        return db.query(User).all()
+
+    @staticmethod
+    def get_by_id(db: Session, user_id: int):
+
+        user = db.query(User).filter(
+            User.id == user_id
+        ).first()
+
+        if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
+                status_code=404,
+                detail="User not found"
             )
 
-        if user_in.email and user_in.email != db_user.email:
-            if UserService.get_by_email(db, user_in.email):
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already in use",
-                )
+        return user
 
-        update_data = user_in.model_dump(exclude_unset=True)
-        for field, value in update_data.items():
-            setattr(db_user, field, value)
+    @staticmethod
+    def update(db: Session, user_id: int, user_in: UserUpdate):
+
+        user = UserService.get_by_id(db, user_id)
+
+        if user_in.full_name is not None:
+            user.full_name = user_in.full_name
+
+        if user_in.email is not None:
+            user.email = user_in.email
+
+        if user_in.password is not None:
+            user.hashed_password = hash_password(user_in.password)
+
+        if user_in.role is not None:
+            user.role = user_in.role
 
         db.commit()
-        db.refresh(db_user)
-        return db_user
+        db.refresh(user)
+
+        return user
 
     @staticmethod
-    def delete(db: Session, user_id: int) -> dict:
-        db_user = UserService.get_by_id(db, user_id)
-        if not db_user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found",
-            )
-        db_user.is_deleted = True
+    def delete(db: Session, user_id: int):
+
+        user = UserService.get_by_id(db, user_id)
+
+        db.delete(user)
         db.commit()
-        return {"message": "User deleted successfully"}
-    
-    @staticmethod
-    def search_by_role(db: Session, role: Optional[UserRole] = None, skip: int = 0, limit: int = 100):
-        query = db.query(User).filter(User.is_deleted == False)
-        
-        if role:
-            query = query.filter(User.role == role)
-            
-        total = query.count()
-        users = query.offset(skip).limit(limit).all()
-        
-        return {"total": total, "users": users}
-    
-    @staticmethod
-    def search_by_role(
-        db: Session, 
-        role: Optional[UserRole] = None, 
-        skip: int = 0, 
-        limit: int = 100
-    ):
-        # Base query excluding soft-deleted users
-        query = db.query(User).filter(User.is_deleted == False)
 
-        # Filter by role if provided
-        if role:
-            query = query.filter(User.role == role)
-
-        # Calculate total matching count before applying pagination
-        total = query.count()
-
-        # Fetch paginated user records
-        users = query.offset(skip).limit(limit).all()
-
-        return {"total": total, "users": users}
+        return {
+            "message": "User deleted successfully"
+        }

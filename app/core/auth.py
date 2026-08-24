@@ -1,34 +1,54 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import jwt
+from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
 from app.core.security import SECRET_KEY, ALGORITHM
+from app.db.database import get_db
+from app.models.user import User
 from app.schemas.user import TokenData
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-# In-memory user database reference for auth validation
-# (Import or replace this with your actual DB layer as needed)
-db_users = {}
 
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+):
+    """
+    Validate JWT token and return the current authenticated user.
+    """
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Validates incoming JWT token and returns current authenticated user info."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM],
+        )
+
+        email: str = payload.get("sub")
+
+        if email is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
-    except jwt.PyJWTError:
+
+        token_data = TokenData(email=email)
+
+    except JWTError:
         raise credentials_exception
 
-    user = db_users.get(token_data.username)
+    user = (
+        db.query(User)
+        .filter(User.email == token_data.email)
+        .first()
+    )
+
     if user is None:
         raise credentials_exception
+
     return user
