@@ -15,6 +15,13 @@ from app.routers.content import router as content_router
 from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.social import router as social_router
+from app.models.revenue import Revenue
+from app.models.sponsorship import Sponsorship
+from app.routers.revenue import router as revenue_router
+from app.routers.sponsorship import router as sponsorship_router
+from app.routers.revenue_analytics import (
+    router as revenue_analytics_router,
+)
 
 
 Base.metadata.create_all(bind=engine)
@@ -39,6 +46,11 @@ app.include_router(audience_router)
 
 # Social Media Workflow
 app.include_router(social_router)
+
+# Revenue and Sponsorship APIs
+app.include_router(revenue_router)
+app.include_router(sponsorship_router)
+app.include_router(revenue_analytics_router)
 
 
 @app.get("/")
