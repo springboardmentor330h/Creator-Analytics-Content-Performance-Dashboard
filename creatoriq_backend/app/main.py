@@ -1,12 +1,3 @@
-"""
-Main FastAPI application.
-
-This file:
-1. Creates the FastAPI application.
-2. Initializes the database.
-3. Registers all routers.
-"""
-
 from fastapi import FastAPI
 
 from app.db.init_db import init_db
@@ -18,6 +9,7 @@ from app.routers import (
     content,
     revenue,
     social,
+    sponsorship,
     users
 )
 
@@ -71,7 +63,10 @@ app.include_router(analytics.router)
 app.include_router(audience.router)
 
 # Revenue APIs
-#app.include_router(revenue.router)
+app.include_router(revenue.router)
+
+# Sponsorship APIs
+app.include_router(sponsorship.router)
 
 # Social Media APIs
 app.include_router(social.router)
