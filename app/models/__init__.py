@@ -1,3 +1,1 @@
-from app.models.user import User, UserRole
-
-__all__ = ["User", "UserRole"]
+from app.models.audience import Audience
