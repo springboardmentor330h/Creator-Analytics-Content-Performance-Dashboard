@@ -13,6 +13,8 @@ from app.routers import (
     analytics,
     audience as audience_router,
     content as content_router,
+    notification,
+    report,
     revenue,
     social,
     sponsorship,
@@ -36,6 +38,8 @@ app.include_router(audience_router.router)
 app.include_router(social.router)
 app.include_router(sponsorship.router)  # Registered sponsorship router
 app.include_router(revenue.router)  # Registered revenue router
+app.include_router(notification.router)  # Registered notification router
+app.include_router(report.router)  # Registered report router
 
 
 @app.get("/")
