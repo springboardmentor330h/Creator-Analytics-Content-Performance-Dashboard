@@ -47,7 +47,7 @@ def get_connected_platforms():
     }
 
 
-# Existing generic platform synchronization
+# Generic platform synchronization
 @router.post("/sync")
 def sync_platform(
     platform: str,
@@ -90,7 +90,7 @@ def sync_platform(
     }
 
 
-# YouTube synchronization
+# YouTube synchronization using video_id
 @router.post("/youtube/sync")
 def sync_youtube(
     video_id: str,

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.models.content import Content
 from app.models.audience import Audience
 from app.models.growth import Growth
+from app.models.revenue import Revenue
 def calculate_engagement_rate(content):
     total_engagement = (
         content.likes
@@ -205,3 +206,73 @@ def get_follower_chart(db: Session):
     }
 def get_platform_comparison(db: Session):
     return get_platform_performance(db)
+def get_revenue_summary(db: Session):
+    revenues = db.query(Revenue).all()
+
+    total_revenue = sum(revenue.amount for revenue in revenues)
+
+    average_revenue = (
+        total_revenue / len(revenues)
+        if revenues else 0
+    )
+
+    return {
+        "total_revenue": round(total_revenue, 2),
+        "revenue_records": len(revenues),
+        "average_revenue": round(average_revenue, 2)
+    }
+
+
+def get_revenue_by_source(db: Session):
+    revenues = db.query(Revenue).all()
+
+    sources = {}
+
+    for revenue in revenues:
+        if revenue.source not in sources:
+            sources[revenue.source] = 0
+
+        sources[revenue.source] += revenue.amount
+
+    results = []
+
+    for source, amount in sources.items():
+        results.append({
+            "source": source,
+            "total_revenue": round(amount, 2)
+        })
+
+    results.sort(
+        key=lambda x: x["total_revenue"],
+        reverse=True
+    )
+
+    return results
+
+
+def get_monthly_revenue(db: Session):
+    revenues = db.query(Revenue).order_by(
+        Revenue.revenue_date.asc()
+    ).all()
+
+    monthly_revenue = {}
+
+    for revenue in revenues:
+        month = revenue.revenue_date.strftime("%Y-%m")
+
+        if month not in monthly_revenue:
+            monthly_revenue[month] = 0
+
+        monthly_revenue[month] += revenue.amount
+
+    labels = []
+    values = []
+
+    for month, amount in monthly_revenue.items():
+        labels.append(month)
+        values.append(round(amount, 2))
+
+    return {
+        "labels": labels,
+        "values": values
+    }

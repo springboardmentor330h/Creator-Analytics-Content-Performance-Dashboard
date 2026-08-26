@@ -11,7 +11,10 @@ from app.services.analytics_service import (
     get_dashboard_summary,
     get_kpi_summary,
     get_engagement_chart,
-    get_platform_comparison
+    get_platform_comparison,
+    get_revenue_summary,
+    get_revenue_by_source,
+    get_monthly_revenue
 )
 
 router = APIRouter(
@@ -81,3 +84,22 @@ def platform_comparison(
     db: Session = Depends(get_db)
 ):
     return get_platform_comparison(db)
+@router.get("/revenue/summary")
+def revenue_summary(
+    db: Session = Depends(get_db)
+):
+    return get_revenue_summary(db)
+
+
+@router.get("/revenue/by-source")
+def revenue_by_source(
+    db: Session = Depends(get_db)
+):
+    return get_revenue_by_source(db)
+
+
+@router.get("/revenue/monthly")
+def monthly_revenue(
+    db: Session = Depends(get_db)
+):
+    return get_monthly_revenue(db)
