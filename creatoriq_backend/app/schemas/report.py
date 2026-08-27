@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class ReportResponse(BaseModel):
     creator_id: int
     report_type: str
-    report: dict
+    revenue: dict
 
 
 class ReportExportResponse(BaseModel):
