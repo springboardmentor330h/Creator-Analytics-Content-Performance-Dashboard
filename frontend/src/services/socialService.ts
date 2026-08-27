@@ -25,5 +25,10 @@ export const socialService = {
   sync: async (platform: string): Promise<any> => {
     const { data } = await api.post(`/api/social/${platform}/sync`)
     return data
+  },
+
+  syncYoutube: async (payload?: { channel_id?: string; query?: string; max_results?: number }): Promise<any> => {
+    const { data } = await api.post('/social/youtube/sync', payload || {})
+    return data
   }
 }

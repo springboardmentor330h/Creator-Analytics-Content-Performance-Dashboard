@@ -9,6 +9,8 @@ from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
+from app.routers.notifications import router as notifications_router
+from app.routers.reports import router as reports_router
 from app.routers.revenue import router as revenue_router
 from app.routers.social import router as social_router
 from app.routers.social_connections import router as social_connections_router
@@ -33,12 +35,20 @@ app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(content_router)
 app.include_router(revenue_router)
+app.include_router(revenue_router, prefix="/api")
 app.include_router(sponsorship_router)
+app.include_router(sponsorship_router, prefix="/api")
 app.include_router(agency_router)
 app.include_router(social_connections_router)
 app.include_router(social_router)
 app.include_router(analytics_router)
+app.include_router(analytics_router, prefix="/api")
 app.include_router(audience_router)
+app.include_router(audience_router, prefix="/api")
+app.include_router(notifications_router)
+app.include_router(notifications_router, prefix="/api")
+app.include_router(reports_router)
+app.include_router(reports_router, prefix="/api")
 
 
 @app.get('/')

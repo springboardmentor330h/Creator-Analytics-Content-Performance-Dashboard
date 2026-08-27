@@ -1,24 +1,44 @@
 import { useEffect, useState } from 'react'
-import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { Link } from 'react-router-dom'
 import {
-  ArrowUpRight,
   BarChart3,
-  Bookmark,
   Eye,
   MessageSquare,
   Share2,
   Sparkles,
   ThumbsUp,
   TrendingUp,
+  UserCheck,
   Users,
   Zap,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import contentService, { ContentAnalyticsSummary, ContentItem, ContentTrendPoint } from '../services/contentService'
+import { analyticsApi } from '../services/api'
 import { formatNumber, formatPercent } from '../utils/format'
 
-const PIE_COLORS = ['#4f46e5', '#06b6d4', '#f59e0b', '#ec4899', '#3b82f6']
+const PIE_COLORS = ['#ef4444', '#e1306c', '#0a66c2', '#1877f2', '#0f172a', '#06b6d4', '#8b5cf6']
+
+const PLATFORM_COLORS: Record<string, string> = {
+  YouTube: '#ef4444',
+  Instagram: '#e1306c',
+  Facebook: '#1877f2',
+  LinkedIn: '#0a66c2',
+  X: '#0f172a',
+  Twitter: '#0f172a',
+  TikTok: '#06b6d4',
+}
 
 const PLATFORM_BADGES: Record<string, string> = {
   YouTube: 'bg-red-50 text-red-700 border-red-200',
@@ -29,56 +49,130 @@ const PLATFORM_BADGES: Record<string, string> = {
   LinkedIn: 'bg-indigo-50 text-indigo-700 border-indigo-200',
 }
 
+interface DashboardSummary {
+  total_views: number
+  total_likes: number
+  total_comments: number
+  total_shares: number
+  total_reach: number
+  total_followers: number
+  average_engagement_rate: number
+}
+
+interface ChartResponse {
+  labels: string[]
+  values: number[]
+}
+
+interface PlatformMetric {
+  views: number
+  reach: number
+  engagement_rate: number
+  likes?: number
+  comments?: number
+}
+
+interface TopContentItem {
+  content_title: string
+  platform: string
+  views: number
+  reach: number
+  watch_time?: number
+  engagement_rate: number
+}
+
 export default function Dashboard() {
   const { user } = useAuth()
-  const [summary, setSummary] = useState<ContentAnalyticsSummary | null>(null)
-  const [top, setTop] = useState<ContentItem[]>([])
-  const [trends, setTrends] = useState<ContentTrendPoint[]>([])
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
+  const [engagementTrend, setEngagementTrend] = useState<{ date: string; value: number }[]>([])
+  const [followersTrend, setFollowersTrend] = useState<{ date: string; value: number }[]>([])
+  const [activeChartTab, setActiveChartTab] = useState<'engagement' | 'followers'>('engagement')
+  const [platformMetricTab, setPlatformMetricTab] = useState<'views' | 'reach' | 'engagement_rate'>('reach')
+  const [platformData, setPlatformData] = useState<{ name: string; views: number; reach: number; engagement_rate: number }[]>([])
+  const [topContent, setTopContent] = useState<TopContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const load = async () => {
+    let isMounted = true
+    const loadDashboardData = async () => {
       setLoading(true)
+      setError('')
       try {
-        const [summaryData, topData, trendsData] = await Promise.all([
-          contentService.summary(),
-          contentService.topPerforming(),
-          contentService.trends(),
+        const [summaryRes, engChartRes, folChartRes, platformRes, topContentRes] = await Promise.all([
+          analyticsApi.summary(),
+          analyticsApi.engagementChart(),
+          analyticsApi.followersChart(),
+          analyticsApi.platformComparison(),
+          analyticsApi.topContent(),
         ])
-        setSummary(summaryData)
-        setTop(topData)
-        setTrends(trendsData)
-      } catch {
-        setError('Unable to load dashboard metrics. Please refresh or sign in again.')
+
+        if (!isMounted) return
+
+        // 1. Summary KPIs
+        setSummary(summaryRes.data)
+
+        // 2. Engagement Trend Chart
+        const engData: ChartResponse = engChartRes.data || { labels: [], values: [] }
+        const mappedEng = (engData.labels || []).map((date, idx) => ({
+          date,
+          value: engData.values?.[idx] ?? 0,
+        }))
+        setEngagementTrend(mappedEng)
+
+        // 3. Followers Growth Chart
+        const folData: ChartResponse = folChartRes.data || { labels: [], values: [] }
+        const mappedFol = (folData.labels || []).map((date, idx) => ({
+          date,
+          value: folData.values?.[idx] ?? 0,
+        }))
+        setFollowersTrend(mappedFol)
+
+        // 4. Platform Comparison Distribution
+        const rawPlatforms: Record<string, PlatformMetric> = platformRes.data || {}
+        const mappedPlatforms = Object.entries(rawPlatforms).map(([name, data]) => ({
+          name,
+          views: data.views ?? 0,
+          reach: data.reach ?? 0,
+          engagement_rate: data.engagement_rate ?? 0,
+        }))
+        setPlatformData(mappedPlatforms)
+
+        // 5. Top Content
+        setTopContent(Array.isArray(topContentRes.data) ? topContentRes.data : [])
+      } catch (err: unknown) {
+        if (!isMounted) return
+        setError('Unable to load analytics data. Please refresh or verify your connection.')
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
-    load()
+
+    loadDashboardData()
+    return () => {
+      isMounted = false
+    }
   }, [])
 
-  const cards = [
-    { label: 'Total Views', value: summary?.total_views ?? 0, icon: Eye, change: '+14.2%', color: 'text-indigo-600 bg-indigo-50' },
-    { label: 'Total Likes', value: summary?.total_likes ?? 0, icon: ThumbsUp, change: '+8.7%', color: 'text-blue-600 bg-blue-50' },
-    { label: 'Total Comments', value: summary?.total_comments ?? 0, icon: MessageSquare, change: '+12.1%', color: 'text-amber-600 bg-amber-50' },
-    { label: 'Total Shares', value: summary?.total_shares ?? 0, icon: Share2, change: '+5.4%', color: 'text-emerald-600 bg-emerald-50' },
-    { label: 'Total Saves', value: summary?.total_saves ?? 0, icon: Bookmark, change: '+9.3%', color: 'text-purple-600 bg-purple-50' },
-    { label: 'Total Reach', value: summary?.total_reach ?? 0, icon: Users, change: '+18.6%', color: 'text-cyan-600 bg-cyan-50' },
-  ]
-
-  const platformBreakdown = top.reduce<Record<string, number>>((acc, item) => {
-    acc[item.platform] = (acc[item.platform] || 0) + item.views
-    return acc
-  }, {})
-  const pieData = Object.entries(platformBreakdown).map(([name, value]) => ({ name, value }))
+  const cards = summary
+    ? [
+        { label: 'Total Views', value: summary.total_views, icon: Eye, change: '+14.2%', color: 'text-indigo-600 bg-indigo-50' },
+        { label: 'Total Likes', value: summary.total_likes, icon: ThumbsUp, change: '+8.7%', color: 'text-blue-600 bg-blue-50' },
+        { label: 'Total Comments', value: summary.total_comments, icon: MessageSquare, change: '+12.1%', color: 'text-amber-600 bg-amber-50' },
+        { label: 'Total Shares', value: summary.total_shares, icon: Share2, change: '+5.4%', color: 'text-emerald-600 bg-emerald-50' },
+        { label: 'Total Reach', value: summary.total_reach, icon: Users, change: '+18.6%', color: 'text-cyan-600 bg-cyan-50' },
+        { label: 'Total Followers', value: summary.total_followers, icon: UserCheck, change: '+10.5%', color: 'text-purple-600 bg-purple-50' },
+      ]
+    : []
 
   if (loading) {
     return (
       <div className="flex h-96 items-center justify-center rounded-2xl border border-slate-200/80 bg-white shadow-card">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-          <p className="text-sm font-bold text-slate-500">Loading analytics intelligence...</p>
+          <p className="text-sm font-bold text-slate-500">Loading analytics...</p>
         </div>
       </div>
     )
@@ -87,10 +181,26 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 shadow-sm">
-        <h3 className="text-base font-bold">Failed to load metrics</h3>
+        <h3 className="text-base font-bold">Unable to load analytics data</h3>
         <p className="mt-1 text-xs">{error}</p>
       </div>
     )
+  }
+
+  const currentTrendData = activeChartTab === 'engagement' ? engagementTrend : followersTrend
+  const currentTrendUnit = activeChartTab === 'engagement' ? '%' : ''
+
+  // Chart data for Platform Distribution depending on selected metric
+  const currentPieData = platformData.map((p) => ({
+    name: p.name,
+    value: platformMetricTab === 'views' ? p.views : platformMetricTab === 'reach' ? p.reach : p.engagement_rate,
+    views: p.views,
+    reach: p.reach,
+    engagement_rate: p.engagement_rate,
+  }))
+
+  const getPlatformColor = (name: string, index: number) => {
+    return PLATFORM_COLORS[name] || PIE_COLORS[index % PIE_COLORS.length]
   }
 
   return (
@@ -104,7 +214,7 @@ export default function Dashboard() {
           </div>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Dashboard Overview</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Active Scope: <span className="font-bold text-slate-700">{user?.role}</span> · Real-time 8-metric analytics tracking.
+            Active Scope: <span className="font-bold text-slate-700">{user?.role || 'Creator'}</span> · Real-time analytics tracking.
           </p>
         </div>
         <Link to="/content-analytics" className="ciq-btn-primary self-start sm:self-auto">
@@ -142,36 +252,68 @@ export default function Dashboard() {
       <div className="grid gap-6 xl:grid-cols-3">
         {/* Performance Area Chart */}
         <div className="ciq-card xl:col-span-2">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
             <div>
               <h3 className="text-lg font-extrabold text-slate-900">Performance Trends</h3>
-              <p className="mt-0.5 text-xs text-slate-500">Views and engagement rate progression over published dates.</p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                {activeChartTab === 'engagement' ? 'Engagement rate progression across published content' : 'Follower growth trajectory over time'}
+              </p>
             </div>
-            <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-              System Sync
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200/60">
+                <button
+                  onClick={() => setActiveChartTab('engagement')}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                    activeChartTab === 'engagement' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Engagement Rate
+                </button>
+                <button
+                  onClick={() => setActiveChartTab('followers')}
+                  className={`rounded-lg px-3 py-1 text-xs font-bold transition-all ${
+                    activeChartTab === 'followers' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Followers
+                </button>
+              </div>
+              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100 hidden sm:inline-block">
+                System Sync
+              </span>
+            </div>
           </div>
 
           <div className="mt-6 h-80">
-            {trends.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-400 font-medium">No trend data available</div>
+            {currentTrendData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-slate-400 font-medium">
+                No trend data available
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={currentTrendData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
                       <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
                   <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit={currentTrendUnit} />
                   <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#0f172a', fontSize: '12px', boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.08)' }}
-                    itemStyle={{ color: '#4f46e5', fontWeight: 'bold' }}
+                    contentStyle={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      color: '#0f172a',
+                      fontSize: '12px',
+                      boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.08)',
+                    }}
+                    formatter={(val: number) => [`${formatNumber(val)}${currentTrendUnit}`, activeChartTab === 'engagement' ? 'Engagement Rate' : 'Followers']}
+                    labelStyle={{ fontWeight: 'bold', color: '#1e293b' }}
                   />
-                  <Area type="monotone" dataKey="views" stroke="#4f46e5" strokeWidth={3} fill="url(#viewsFill)" />
+                  <Area type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} fill="url(#trendFill)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -179,35 +321,113 @@ export default function Dashboard() {
         </div>
 
         {/* Platform Mix Donut Chart */}
-        <div className="ciq-card">
-          <h3 className="text-lg font-extrabold text-slate-900">Platform Distribution</h3>
-          <p className="mt-0.5 text-xs text-slate-500">View breakdown across connected social channels.</p>
-          <div className="mt-4 h-64">
-            {pieData.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-slate-400 font-medium">No platform distribution data</div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={4}>
-                    {pieData.map((_, index) => (
-                      <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#0f172a', fontSize: '12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          {/* Legend */}
-          <div className="mt-2 flex flex-wrap justify-center gap-3">
-            {pieData.map((entry, index) => (
-              <div key={entry.name} className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }} />
-                <span>{entry.name}</span>
+        <div className="ciq-card flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 gap-2">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Platform Distribution</h3>
+                <p className="text-[11px] text-slate-500">Cross-channel audience distribution</p>
               </div>
-            ))}
+              <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200/60 text-[10px] font-bold">
+                <button
+                  onClick={() => setPlatformMetricTab('reach')}
+                  className={`rounded px-2 py-0.5 transition-all ${
+                    platformMetricTab === 'reach' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Reach
+                </button>
+                <button
+                  onClick={() => setPlatformMetricTab('views')}
+                  className={`rounded px-2 py-0.5 transition-all ${
+                    platformMetricTab === 'views' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Views
+                </button>
+                <button
+                  onClick={() => setPlatformMetricTab('engagement_rate')}
+                  className={`rounded px-2 py-0.5 transition-all ${
+                    platformMetricTab === 'engagement_rate' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  Rate
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 h-56">
+              {currentPieData.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-slate-400 font-medium">
+                  No platform distribution data
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={currentPieData}
+                      dataKey="value"
+                      nameKey="name"
+                      innerRadius={50}
+                      outerRadius={78}
+                      paddingAngle={3}
+                      minAngle={15}
+                    >
+                      {currentPieData.map((entry, index) => (
+                        <Cell key={entry.name} fill={getPlatformColor(entry.name, index)} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        color: '#0f172a',
+                        fontSize: '12px',
+                      }}
+                      formatter={(_val: number, _name: string, props: any) => {
+                        const p = props.payload
+                        if (platformMetricTab === 'views') {
+                          return [`${formatNumber(p.views)} views`, p.name]
+                        }
+                        if (platformMetricTab === 'reach') {
+                          return [`${formatNumber(p.reach)} reach`, p.name]
+                        }
+                        return [`${formatPercent(p.engagement_rate)}`, p.name]
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {/* Dynamic Legend with percentages & values */}
+          <div className="mt-3 grid grid-cols-2 gap-2 pt-3 border-t border-slate-100">
+            {platformData.map((entry, index) => {
+              const displayVal =
+                platformMetricTab === 'views'
+                  ? `${formatNumber(entry.views)}`
+                  : platformMetricTab === 'reach'
+                  ? `${formatNumber(entry.reach)} reach`
+                  : `${formatPercent(entry.engagement_rate)}`
+
+              return (
+                <div
+                  key={entry.name}
+                  className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: getPlatformColor(entry.name, index) }}
+                    />
+                    <span className="text-xs font-bold text-slate-700 truncate">{entry.name}</span>
+                  </div>
+                  <span className="text-[11px] font-extrabold text-slate-500 shrink-0 ml-1">{displayVal}</span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -234,25 +454,22 @@ export default function Dashboard() {
                 <th className="py-3 px-3">Content Title</th>
                 <th className="py-3 px-3">Platform</th>
                 <th className="py-3 px-3">Views</th>
-                <th className="py-3 px-3">Likes</th>
+                <th className="py-3 px-3">Reach</th>
                 <th className="py-3 px-3">Engagement Rate</th>
-                <th className="py-3 px-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {top.length === 0 ? (
+              {topContent.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400 font-medium">
+                  <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
                     No top content found.
                   </td>
                 </tr>
               ) : (
-                top.map((item) => (
-                  <tr key={item.id} className="group transition-colors hover:bg-slate-50/80">
+                topContent.map((item, idx) => (
+                  <tr key={idx} className="group transition-colors hover:bg-slate-50/80">
                     <td className="py-3.5 px-3 font-bold text-slate-900">
-                      <Link to={`/content/${item.id}`} className="hover:text-indigo-600 flex items-center gap-2">
-                        <span>{item.title}</span>
-                      </Link>
+                      <span>{item.content_title}</span>
                     </td>
                     <td className="py-3.5 px-3">
                       <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-bold ${PLATFORM_BADGES[item.platform] || 'bg-slate-100 text-slate-700'}`}>
@@ -260,7 +477,7 @@ export default function Dashboard() {
                       </span>
                     </td>
                     <td className="py-3.5 px-3 font-semibold text-slate-700">{formatNumber(item.views)}</td>
-                    <td className="py-3.5 px-3 font-semibold text-slate-700">{formatNumber(item.likes)}</td>
+                    <td className="py-3.5 px-3 font-semibold text-slate-700">{formatNumber(item.reach)}</td>
                     <td className="py-3.5 px-3 font-extrabold text-indigo-600">
                       <div className="flex items-center gap-2">
                         <span>{formatPercent(item.engagement_rate)}</span>
@@ -271,15 +488,6 @@ export default function Dashboard() {
                           />
                         </div>
                       </div>
-                    </td>
-                    <td className="py-3.5 px-3 text-right">
-                      <Link
-                        to={`/content/${item.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline"
-                      >
-                        <span>Details</span>
-                        <ArrowUpRight className="h-3.5 w-3.5" />
-                      </Link>
                     </td>
                   </tr>
                 ))
