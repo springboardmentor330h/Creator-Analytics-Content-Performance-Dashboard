@@ -4,6 +4,11 @@ from app.models.content import Content
 from app.schemas.content import ContentCreate, ContentUpdate
 from app.utils.engagement import calculate_engagement_rate
 
+from app.services.notification_service import (
+    check_performance_alert,
+    check_engagement_alert
+)
+
 
 def create_content(
     db: Session,
@@ -38,23 +43,61 @@ def create_content(
     db.commit()
     db.refresh(db_content)
 
+    # Check performance alert
+    check_performance_alert(
+        db,
+        creator_id,
+        db_content
+    )
+
+    # Check engagement alert
+    check_engagement_alert(
+        db,
+        creator_id,
+        db_content
+    )
+
     return db_content
 
 
-def get_content(db: Session, content_id: int):
-    return db.query(Content).filter(Content.id == content_id).first()
+def get_content(
+    db: Session,
+    content_id: int,
+    creator_id: int
+):
+    return (
+        db.query(Content)
+        .filter(
+            Content.id == content_id,
+            Content.creator_id == creator_id
+        )
+        .first()
+    )
 
 
-def get_all_content(db: Session):
-    return db.query(Content).all()
+def get_all_content(
+    db: Session,
+    creator_id: int
+):
+    return (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .order_by(Content.published_date.desc())
+        .all()
+    )
 
 
 def update_content(
     db: Session,
     content_id: int,
-    content: ContentUpdate
+    content: ContentUpdate,
+    creator_id: int
 ):
-    db_content = get_content(db, content_id)
+    db_content = get_content(
+        db,
+        content_id,
+        creator_id
+    )
 
     if not db_content:
         return None
@@ -77,11 +120,33 @@ def update_content(
     db.commit()
     db.refresh(db_content)
 
+    # Check performance alert after update
+    check_performance_alert(
+        db,
+        creator_id,
+        db_content
+    )
+
+    # Check engagement alert after update
+    check_engagement_alert(
+        db,
+        creator_id,
+        db_content
+    )
+
     return db_content
 
 
-def delete_content(db: Session, content_id: int):
-    db_content = get_content(db, content_id)
+def delete_content(
+    db: Session,
+    content_id: int,
+    creator_id: int
+):
+    db_content = get_content(
+        db,
+        content_id,
+        creator_id
+    )
 
     if not db_content:
         return None

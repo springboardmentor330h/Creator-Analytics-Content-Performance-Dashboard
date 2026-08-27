@@ -6,6 +6,9 @@ from app.models.user import User
 from app.models.content import Content
 from app.models.audience import Audience
 from app.models.growth import Growth
+from app.models.revenue import Revenue
+from app.models.sponsorship import Sponsorship
+from app.models.notification import Notification
 
 from app.routers.users import router as user_router
 from app.routers.auth import router as auth_router
@@ -16,6 +19,8 @@ from app.routers.social import router as social_router
 from app.routers.revenue import router as revenue_router
 from app.routers.revenue_analytics import router as revenue_analytics_router
 from app.routers.sponsorship import router as sponsorship_router
+from app.routers.notification import router as notifications_router
+from app.routers.reports import router as reports_router
 
 app = FastAPI(title="Creator Analytics Content Performance Dashboard")
 
@@ -38,7 +43,11 @@ app.include_router(social_router)
 #Include Revenue Router
 app.include_router(revenue_router)
 app.include_router(revenue_analytics_router)
+
 app.include_router(sponsorship_router)
+app.include_router(notifications_router)
+
+app.include_router(reports_router)
 
 @app.get("/")
 def root():

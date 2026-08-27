@@ -1,15 +1,24 @@
-# CreatorIQ
+﻿# CreatorIQ
 
-A FastAPI-based backend scaffold.
-
-
-# CreatorIQ
+A FastAPI-based backend for managing creator content, analytics, audience insights, growth trends, revenue analytics, notifications, and social media data.
 
 ## Project Overview
 
-CreatorIQ is a FastAPI-based backend for managing creator content, analytics, audience insights, growth trends, and social media data.
+CreatorIQ provides backend APIs for:
 
-The project integrates real YouTube API data into the existing CreatorIQ analytics workflow. YouTube content is fetched, transformed into a common CreatorIQ format, stored in PostgreSQL, and made available through existing analytics APIs.
+- User management and JWT authentication
+- Content management and analytics
+- Audience analytics
+- Growth analytics
+- Revenue analytics
+- Social media integration
+- YouTube API integration
+- Notifications and performance alerts
+- PDF and Excel report generation
+
+The project uses FastAPI, SQLAlchemy, PostgreSQL, and external social media APIs.
+
+---
 
 ## System Architecture
 
@@ -24,354 +33,212 @@ Services
   ↓
 PostgreSQL
   ↓
-Analytics APIs
+Analytics
   ↓
 Dashboard-ready Data
-```
 
-### YouTube Integration Flow
-
-```text
-YouTube API
-     ↓
-YouTube Service
-     ↓
-Data Transformation
-     ↓
-PostgreSQL
-     ↓
-Analytics Service
-     ↓
-FastAPI Analytics APIs
-     ↓
-Dashboard
-```
-
-## Modules Implemented
-
-### User Management
-
-* User registration
-* User login
-* Password hashing
-* JWT authentication
-
-### Content Analytics
-
-* Content performance
-* Engagement analytics
-* Content comparison
-* Top-performing content
-* Reach analysis
-* Performance trends
-
-### Audience Analytics
-
-* Audience demographics
-* Gender distribution
-* Age distribution
-* Country and city analysis
-* Device distribution
-* Audience trends
-
-### Growth Analytics
-
-* Follower growth
-* Reach trends
-* Engagement-rate trends
-
-### Social Media Integration
-
-* Social platform connection
-* Platform listing
-* Platform synchronization
-* YouTube API integration
-* YouTube content synchronization
-
-## Database Tables
+Modules
+User Management
+User registration
+User login
+Password hashing
+JWT authentication
+Content Analytics
+Content performance
+Engagement analytics
+Content comparison
+Top-performing content
+Reach analysis
+Performance trends
+Audience Analytics
+Audience demographics
+Gender distribution
+Age distribution
+Country and city analysis
+Device distribution
+Audience trends
+Growth Analytics
+Follower growth
+Reach trends
+Engagement-rate trends
+Revenue Analytics
+Revenue tracking
+Revenue by source
+Revenue transactions
+Total revenue calculation
+Social Media Integration
+Platform connection
+Platform listing
+Platform synchronization
+YouTube API integration
+YouTube content synchronization
+Notifications
+Create notifications
+List notifications
+Unread notifications
+Mark notification as read
+Mark all notifications as read
+Performance alerts
+Engagement alerts
+Revenue alerts
+Reporting & Export
+Creator analytics reports
+PDF reports
+Excel reports
+Combined analytics and revenue reporting
+Database
 
 The project uses PostgreSQL.
 
 Main tables include:
 
-* `users`
-* `content`
-* `audience`
-* `growth`
-
-The `content` table stores common content information from different social media platforms.
-
-## YouTube API Integration
+users
+content
+audience
+growth
+revenue
+sponsorship
+notifications
+YouTube API Integration
 
 The YouTube Data API v3 is integrated through:
 
-```text
 app/services/youtube_service.py
-```
 
 The YouTube service:
 
-* Connects to YouTube Data API v3.
-* Authenticates using an API key stored in `.env`.
-* Fetches channel information.
-* Fetches videos from the channel's uploads playlist.
-* Fetches video statistics.
-* Handles YouTube API errors.
-* Transforms YouTube data into the common CreatorIQ format.
+Connects to YouTube Data API v3
+Fetches channel information
+Fetches videos
+Fetches video statistics
+Transforms YouTube data into the CreatorIQ format
+Handles API errors
 
-The API key is not hard-coded in Python source code.
+The API key is stored securely in .env.
 
-Example environment configuration:
+Example:
 
-```text
 YOUTUBE_API_KEY=your_key_here
-```
 
-The `.env` file is excluded through `.gitignore`.
+The .env file is excluded from Git using .gitignore.
 
-## Data Transformation Workflow
+YouTube Synchronization
 
-YouTube API data is transformed into a common CreatorIQ format.
+Endpoint:
 
-```text
-YouTube Response
-      ↓
-Extract Required Fields
-      ↓
-Transform Data
-      ↓
-CreatorIQ Common Format
-      ↓
-PostgreSQL
-```
-
-The common format includes:
-
-```text
-platform
-external_content_id
-content_title
-views
-likes
-comments
-shares
-saves
-watch_time
-reach
-published_date
-engagement_rate
-```
-
-YouTube provides views, likes, comments, video ID, title, and published date.
-
-Fields that are not provided by the YouTube Data API statistics used by this project are stored with appropriate default values.
-
-## YouTube Synchronization
-
-The synchronization endpoint is:
-
-```text
 POST /social/youtube/sync
-```
 
-The workflow is:
+Workflow:
 
-```text
-API Request
-     ↓
-Fetch YouTube Videos
-     ↓
-Fetch Video Statistics
-     ↓
+YouTube API
+    ↓
+Fetch Videos
+    ↓
+Fetch Statistics
+    ↓
 Transform Data
-     ↓
+    ↓
 Validate Data
-     ↓
+    ↓
 Check Existing Content
-     ↓
-Create or Update PostgreSQL Record
-     ↓
-Return Synchronization Result
-```
+    ↓
+Create / Update PostgreSQL Record
+    ↓
+Return Result
 
-Example request:
+Duplicate content is prevented using:
 
-```json
-{
-  "channel_id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
-  "max_results": 5
-}
-```
-
-Example successful response:
-
-```json
-{
-  "platform": "YouTube",
-  "status": "success",
-  "records_synced": 5
-}
-```
-
-## Duplicate Synchronization
-
-Duplicate YouTube content is prevented using:
-
-```text
 platform + external_content_id
-```
 
-During synchronization:
+If the record already exists, it is updated instead of creating a duplicate.
 
-```text
-Record exists?
-     ↓
-   YES → Update existing record
-     ↓
-    NO → Create new record
-```
-
-This allows the same synchronization request to be executed multiple times without unnecessarily creating duplicate YouTube content records.
-
-## Error Handling
-
-The YouTube integration handles common errors including:
-
-* Invalid API key
-* Invalid channel ID
-* Invalid video ID
-* API request failure
-* Empty API response
-* Duplicate records
-* API quota/rate-limit errors
-* Unexpected API responses
-
-Meaningful HTTP responses are returned through FastAPI instead of allowing the application to terminate unexpectedly.
-
-## Analytics APIs
-
-The existing analytics APIs work with the synchronized YouTube records.
+Analytics APIs
 
 Important endpoints include:
 
-```text
 GET /analytics/summary
 GET /analytics/top-content
 GET /analytics/platform-comparison
 GET /analytics/chart/engagement
 GET /analytics/chart/followers
-```
 
-The analytics service operates on the common `Content` and `Growth` data rather than using separate YouTube-specific analytics logic.
+These APIs use the common CreatorIQ database models and provide dashboard-ready analytics data.
 
-### Dashboard Summary
+Audience & Growth APIs
+GET /analytics/audience
+GET /analytics/growth
+GET /analytics/audience-trends
 
-```text
-GET /analytics/summary
-```
+These APIs provide:
 
-Returns aggregated views, likes, comments, shares, reach, followers, and average engagement rate.
+Followers
+Reach
+Impressions
+Gender distribution
+Age distribution
+Countries
+Cities
+Device distribution
+Growth trends
+Revenue APIs
+POST /revenue
+GET /revenue
+GET /revenue/{id}
+PUT /revenue/{id}
+DELETE /revenue/{id}
 
-### Top Content
+Revenue reporting provides:
 
-```text
-GET /analytics/top-content
-```
+Total revenue
+Revenue by source
+Revenue transactions
+Notification APIs
+POST /notifications
+GET /notifications
+GET /notifications/unread
+GET /notifications/{notification_id}
+PUT /notifications/{notification_id}/read
+PUT /notifications/read-all
 
-Returns top-performing content based on engagement rate.
+The notification system supports performance, engagement, and revenue alerts.
 
-### Platform Comparison
+Reporting & Export APIs
 
-```text
-GET /analytics/platform-comparison
-```
+Creator report:
 
-Compares content performance across platforms.
+GET /reports/creator
 
-### Engagement Chart
+PDF report:
 
-```text
-GET /analytics/chart/engagement
-```
+GET /reports/creator/pdf
 
-Returns dashboard-ready labels and engagement-rate values from growth data.
+Excel report:
 
-### Follower Chart
+GET /reports/creator/excel
 
-```text
-GET /analytics/chart/followers
-```
+The creator report combines:
 
-Returns dashboard-ready labels and follower values from growth data.
+Dashboard summary
+Content performance
+Audience analytics
+Revenue analytics
+Growth trends
+Audience trends
+Platform comparison
 
-## Testing Procedure
+The same report data is used to generate PDF and Excel reports.
 
-The implementation was tested using FastAPI Swagger UI and PostgreSQL/pgAdmin.
-
-### YouTube API Service Testing
-
-The YouTube service was tested directly to verify:
-
-* YouTube API authentication
-* Channel data retrieval
-* Video retrieval
-* Video statistics retrieval
-
-### Swagger Testing
-
-The following endpoint was tested successfully:
-
-```text
-POST /social/youtube/sync
-```
-
-Example result:
-
-```json
-{
-  "platform": "YouTube",
-  "status": "success",
-  "records_synced": 5
-}
-```
-
-The existing analytics APIs were also tested through Swagger.
-
-### PostgreSQL Verification
-
-After synchronization, the synchronized YouTube records were verified in PostgreSQL using pgAdmin.
-
-Five YouTube records were successfully stored in the `content` table during testing.
-
-### End-to-End Workflow
-
-```text
-YouTube API
-     ↓
-YouTube Service
-     ↓
-Data Transformation
-     ↓
-POST /social/youtube/sync
-     ↓
-PostgreSQL
-     ↓
-Analytics Service
-     ↓
-Analytics APIs
-     ↓
-Dashboard-ready Data
-```
-
-## Project Structure
-
-```text
+Project Structure
 creatoriq/
 │
 ├── .env
 ├── .gitignore
 ├── requirements.txt
 ├── README.md
+│
+├── alembic/
+│   ├── env.py
+│   └── versions/
 │
 ├── app/
 │   ├── main.py
@@ -387,89 +254,130 @@ creatoriq/
 │   │   ├── user.py
 │   │   ├── content.py
 │   │   ├── audience.py
-│   │   └── growth.py
+│   │   ├── growth.py
+│   │   ├── revenue.py
+│   │   ├── sponsorship.py
+│   │   └── notification.py
 │   │
 │   ├── schemas/
 │   │   ├── user.py
 │   │   ├── content.py
 │   │   ├── audience.py
-│   │   └── growth.py
+│   │   ├── growth.py
+│   │   ├── revenue.py
+│   │   ├── sponsorship.py
+│   │   ├── notification.py
+│   │   └── report.py
 │   │
 │   ├── routers/
 │   │   ├── users.py
 │   │   ├── content.py
 │   │   ├── analytics.py
 │   │   ├── audience.py
-│   │   └── social.py
+│   │   ├── revenue.py
+│   │   ├── sponsorship.py
+│   │   ├── social.py
+│   │   ├── notification.py
+│   │   └── reports.py
 │   │
 │   └── services/
 │       ├── analytics_service.py
 │       ├── audience_service.py
-│       ├── growth_service.py
+│       ├── content_service.py
+│       ├── revenue_service.py
+│       ├── notification_service.py
+│       ├── reporting_service.py
+│       ├── pdf_service.py
+│       ├── excel_service.py
 │       ├── social_media.py
 │       └── youtube_service.py
 │
 └── tests/
-```
+Testing
 
-## Security
+The implementation was tested using FastAPI Swagger UI and PostgreSQL/pgAdmin.
 
-API credentials and sensitive information must not be committed to GitHub.
+Testing includes:
+
+User authentication
+Content APIs
+Analytics APIs
+Audience analytics
+Growth analytics
+Revenue APIs
+YouTube synchronization
+Notification APIs
+PDF report generation
+Excel report generation
+PostgreSQL data verification
+
+Swagger documentation:
+
+http://127.0.0.1:8000/docs
+Security
+
+Sensitive information must not be committed to GitHub.
 
 The following are excluded from version control:
 
-```text
 .env
 venv/
 __pycache__/
-```
 
-The YouTube API key is stored only in the local `.env` file.
+API keys, passwords, JWT secrets, and other credentials must remain in environment variables.
 
-Before committing or pushing changes, verify that no API keys, passwords, tokens, or other confidential information are staged.
+Running the Project
 
-## Sprint 5 Completion
+Activate the virtual environment:
 
-Sprint 5 – Real Social Media API Integration & End-to-End Integration includes:
+venv\Scripts\activate
 
-* YouTube API integration
-* Secure API credential management
-* YouTube data fetching
-* Data transformation
-* PostgreSQL synchronization
-* Duplicate synchronization handling
-* Error handling
-* Existing analytics integration
-* Platform comparison
-* Dashboard-ready chart APIs
-* Swagger testing
-* PostgreSQL/pgAdmin verification
-* README documentation
+Run the FastAPI application:
 
-## Milestone 2 Workflow
+uvicorn app.main:app --reload
 
-The completed backend supports the following overall workflow:
+Open Swagger:
 
-```text
+http://127.0.0.1:8000/docs
+Sprint 7 Completion
+
+Sprint 7 – Notifications, Reporting & Exportable Reports includes:
+
+Notification and alert system
+Performance alerts
+Engagement alerts
+Revenue alerts
+Creator analytics reporting
+PDF report generation
+Excel report generation
+Revenue reporting
+Integration with existing analytics
+PostgreSQL integration
+Swagger testing
+Overall Workflow
 User Login
     ↓
-Creator
-    ↓
-Content
+Content Management
     ↓
 Content Analytics
-    ↓
-Engagement Analytics
     ↓
 Audience Analytics
     ↓
 Growth Analytics
     ↓
-YouTube Data
+Revenue Analytics
     ↓
-Platform Comparison
+Social Media Integration
     ↓
-Dashboard APIs
-```
+YouTube Synchronization
+    ↓
+Notifications & Alerts
+    ↓
+Creator Reporting
+    ↓
+PDF / Excel Export
+    ↓
+Dashboard-ready Data
+Project Status
 
-This completes the Sprint 5 objective of integrating real YouTube data into the existing CreatorIQ analytics workflow.
+CreatorIQ currently provides an integrated FastAPI backend covering creator management, content analytics, audience and growth analytics, revenue tracking, YouTube synchronization, notifications, and exportable creator reports.

@@ -5,24 +5,52 @@ from app.models.audience import Audience
 from app.models.growth import Growth
 
 
-def get_total_followers(db: Session):
-    return db.query(func.sum(Audience.followers)).scalar() or 0
+def get_total_followers(
+    db: Session,
+    creator_id: int
+):
+    return (
+        db.query(func.sum(Audience.followers))
+        .filter(Audience.creator_id == creator_id)
+        .scalar()
+        or 0
+    )
 
 
-def get_total_reach(db: Session):
-    return db.query(func.sum(Audience.reach)).scalar() or 0
+def get_total_reach(
+    db: Session,
+    creator_id: int
+):
+    return (
+        db.query(func.sum(Audience.reach))
+        .filter(Audience.creator_id == creator_id)
+        .scalar()
+        or 0
+    )
 
 
-def get_total_impressions(db: Session):
-    return db.query(func.sum(Audience.impressions)).scalar() or 0
+def get_total_impressions(
+    db: Session,
+    creator_id: int
+):
+    return (
+        db.query(func.sum(Audience.impressions))
+        .filter(Audience.creator_id == creator_id)
+        .scalar()
+        or 0
+    )
 
 
-def get_gender_distribution(db: Session):
+def get_gender_distribution(
+    db: Session,
+    creator_id: int
+):
     results = (
         db.query(
             Audience.gender,
             func.count(Audience.id)
         )
+        .filter(Audience.creator_id == creator_id)
         .group_by(Audience.gender)
         .all()
     )
@@ -38,12 +66,16 @@ def get_gender_distribution(db: Session):
     }
 
 
-def get_age_distribution(db: Session):
+def get_age_distribution(
+    db: Session,
+    creator_id: int
+):
     results = (
         db.query(
             Audience.age_group,
             func.count(Audience.id)
         )
+        .filter(Audience.creator_id == creator_id)
         .group_by(Audience.age_group)
         .all()
     )
@@ -59,12 +91,16 @@ def get_age_distribution(db: Session):
     }
 
 
-def get_top_countries(db: Session):
+def get_top_countries(
+    db: Session,
+    creator_id: int
+):
     results = (
         db.query(
             Audience.country,
             func.count(Audience.id).label("count")
         )
+        .filter(Audience.creator_id == creator_id)
         .group_by(Audience.country)
         .order_by(func.count(Audience.id).desc())
         .all()
@@ -79,12 +115,16 @@ def get_top_countries(db: Session):
     ]
 
 
-def get_top_cities(db: Session):
+def get_top_cities(
+    db: Session,
+    creator_id: int
+):
     results = (
         db.query(
             Audience.city,
             func.count(Audience.id).label("count")
         )
+        .filter(Audience.creator_id == creator_id)
         .group_by(Audience.city)
         .order_by(func.count(Audience.id).desc())
         .all()
@@ -99,12 +139,16 @@ def get_top_cities(db: Session):
     ]
 
 
-def get_device_distribution(db: Session):
+def get_device_distribution(
+    db: Session,
+    creator_id: int
+):
     results = (
         db.query(
             Audience.device_type,
             func.count(Audience.id)
         )
+        .filter(Audience.creator_id == creator_id)
         .group_by(Audience.device_type)
         .all()
     )
@@ -120,9 +164,14 @@ def get_device_distribution(db: Session):
     }
 
 
-def get_growth_trend(db: Session, days: int = 30):
+def get_growth_trend(
+    db: Session,
+    creator_id: int,
+    days: int = 30
+):
     growth_records = (
         db.query(Growth)
+        .filter(Growth.creator_id == creator_id)
         .order_by(Growth.date.desc())
         .limit(days)
         .all()
@@ -162,9 +211,14 @@ def get_growth_trend(db: Session, days: int = 30):
     return result
 
 
-def get_audience_trends(db: Session, days: int = 30):
+def get_audience_trends(
+    db: Session,
+    creator_id: int,
+    days: int = 30
+):
     growth_records = (
         db.query(Growth)
+        .filter(Growth.creator_id == creator_id)
         .order_by(Growth.date.desc())
         .limit(days)
         .all()

@@ -4,9 +4,15 @@ from app.models.revenue import Revenue
 from app.models.user import User
 from app.schemas.revenue import RevenueCreate, RevenueUpdate
 
+from app.services.notification_service import check_revenue_alert
+
 
 def get_creator_by_email(db: Session, email: str):
-    return db.query(User).filter(User.email == email).first()
+    return (
+        db.query(User)
+        .filter(User.email == email)
+        .first()
+    )
 
 
 def create_revenue(
@@ -27,6 +33,13 @@ def create_revenue(
     db.commit()
     db.refresh(revenue)
 
+    # Check for revenue alert
+    check_revenue_alert(
+        db,
+        creator_id,
+        revenue
+    )
+
     return revenue
 
 
@@ -36,8 +49,12 @@ def get_all_revenue(
 ):
     return (
         db.query(Revenue)
-        .filter(Revenue.creator_id == creator_id)
-        .order_by(Revenue.revenue_date.desc())
+        .filter(
+            Revenue.creator_id == creator_id
+        )
+        .order_by(
+            Revenue.revenue_date.desc()
+        )
         .all()
     )
 
@@ -62,13 +79,26 @@ def update_revenue(
     revenue: Revenue,
     revenue_data: RevenueUpdate
 ):
-    update_data = revenue_data.model_dump(exclude_unset=True)
+    update_data = revenue_data.model_dump(
+        exclude_unset=True
+    )
 
     for field, value in update_data.items():
-        setattr(revenue, field, value)
+        setattr(
+            revenue,
+            field,
+            value
+        )
 
     db.commit()
     db.refresh(revenue)
+
+    # Check for revenue alert after update
+    check_revenue_alert(
+        db,
+        revenue.creator_id,
+        revenue
+    )
 
     return revenue
 
