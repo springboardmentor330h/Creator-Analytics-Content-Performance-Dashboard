@@ -22,6 +22,9 @@ from app.routers.sponsorship import router as sponsorship_router
 from app.routers.revenue_analytics import (
     router as revenue_analytics_router,
 )
+from app.models.notification import Notification
+from app.routers.notification import router as notification_router
+from app.routers.reporting import router as reporting_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -51,6 +54,10 @@ app.include_router(social_router)
 app.include_router(revenue_router)
 app.include_router(sponsorship_router)
 app.include_router(revenue_analytics_router)
+
+# Notifications and Reporting
+app.include_router(notification_router)
+app.include_router(reporting_router)
 
 
 @app.get("/")
