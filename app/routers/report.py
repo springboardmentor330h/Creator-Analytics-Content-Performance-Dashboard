@@ -7,28 +7,45 @@ from app.services.export_service import generate_pdf_report, generate_excel_repo
 
 router = APIRouter(prefix="/reports", tags=["Reports & Exports"])
 
+
+@router.get("/summary/{creator_id}")
+def get_report_summary_endpoint(creator_id: int, db: Session = Depends(get_db)):
+    """
+    Returns aggregate performance metrics, content analytics, revenue stream summaries,
+    audience demographics, and growth trends for the specified creator.
+    """
+    return get_comprehensive_creator_report(creator_id, db)
+
+
 @router.get("/export/pdf/{creator_id}")
 def export_pdf(creator_id: int, db: Session = Depends(get_db)):
+    """
+    Generates and streams an executive PDF report for the specified creator.
+    """
     data = get_comprehensive_creator_report(creator_id, db)
     pdf_buffer = generate_pdf_report(data)
-    
+
     return StreamingResponse(
         pdf_buffer,
         media_type="application/pdf",
         headers={
             "Content-Disposition": f"attachment; filename=creator_{creator_id}_report.pdf"
-        }
+        },
     )
+
 
 @router.get("/export/excel/{creator_id}")
 def export_excel(creator_id: int, db: Session = Depends(get_db)):
+    """
+    Generates and streams a multi-sheet Excel (.xlsx) workbook for the specified creator.
+    """
     data = get_comprehensive_creator_report(creator_id, db)
     excel_buffer = generate_excel_report(data)
-    
+
     return StreamingResponse(
         excel_buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f"attachment; filename=creator_{creator_id}_report.xlsx"
-        }
+        },
     )

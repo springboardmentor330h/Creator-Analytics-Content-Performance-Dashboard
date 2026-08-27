@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import Base, engine
 
 # Import the models module to ensure all ORM relationships register with Base.metadata
@@ -25,6 +26,22 @@ app = FastAPI(
     title="CreatorIQ: Creator Analytics & Content Performance Dashboard",
     description="Backend API for tracking multi-platform creator metrics, audience analytics, and performance growth.",
     version="5.0.0",
+)
+
+# Configure CORS Middleware
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Content-Disposition"],  # Required for PDF & Excel browser downloads
 )
 
 # Create all database tables in PostgreSQL if they don't exist
