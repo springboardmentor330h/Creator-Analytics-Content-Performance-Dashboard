@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.init_db import init_db
 
@@ -12,7 +13,7 @@ from app.routers import (
     revenue,
     social,
     sponsorship,
-    users
+    users,
 )
 
 
@@ -22,13 +23,29 @@ from app.routers import (
 
 app = FastAPI(
     title="CreatorIQ API",
-
     description=(
         "Creator Analytics & Content Performance "
         "Dashboard API"
     ),
+    version="1.0.0",
+)
 
-    version="1.0.0"
+
+# ============================================================
+# CORS — allow React frontend (Vite)
+# ============================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -41,7 +58,6 @@ def startup():
     """
     Create database tables when the application starts.
     """
-
     init_db()
 
 
@@ -49,33 +65,17 @@ def startup():
 # REGISTER ROUTERS
 # ============================================================
 
-# Authentication APIs
 app.include_router(auth.router)
-
-# User APIs
 app.include_router(users.router)
-
-# Content APIs
 app.include_router(content.router)
-
-# Analytics APIs
 app.include_router(analytics.router)
-
-# Audience APIs
 app.include_router(audience.router)
-
-# Revenue APIs
 app.include_router(revenue.router)
-
-# Sponsorship APIs
 app.include_router(sponsorship.router)
-
-# Social Media APIs
 app.include_router(social.router)
-
-# Notifications & Reports (Sprint 7)
 app.include_router(notifications.router)
 app.include_router(reports.router)
+
 
 # ============================================================
 # ROOT ENDPOINT
@@ -83,13 +83,9 @@ app.include_router(reports.router)
 
 @app.get("/")
 def root():
-    """
-    Basic API information.
-    """
-
     return {
         "message": "CreatorIQ API is running",
-        "version": "1.0.0"
+        "version": "1.0.0",
     }
 
 
@@ -99,12 +95,6 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """
-    Health check endpoint.
-
-    Useful for checking whether the API is running.
-    """
-
     return {
-        "status": "healthy"
+        "status": "healthy",
     }

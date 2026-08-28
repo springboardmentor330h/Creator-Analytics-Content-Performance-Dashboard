@@ -8,3 +8,17 @@ venv/
 .DS_Store
 .pytest_cache/
 *.log
+
+# Frontend
+node_modules/
+dist/
+build/
+.npm/
+*.local
+
+# Env in any subfolder
+**/.env
+
+# Optional
+coverage/
+.cache/
