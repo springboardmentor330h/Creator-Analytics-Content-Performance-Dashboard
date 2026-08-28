@@ -28,147 +28,79 @@ export default function YouTubeSyncModal({ isOpen, onClose, onSync }) {
   };
 
   return (
-    <div className="modal-overlay" style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.65)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      backdropFilter: 'blur(4px)'
-    }}>
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '16px',
-        width: '100%',
-        maxWidth: '460px',
-        padding: '24px',
-        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-        position: 'relative'
-      }}>
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
-            background: '#f1f5f9',
-            border: 'none',
-            borderRadius: '50%',
-            width: '32px',
-            height: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
-          }}
-        >
-          <X size={16} color="#64748b" />
-        </button>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <div style={{
-            backgroundColor: '#fef2f2',
-            borderRadius: '12px',
-            width: '44px',
-            height: '44px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <YoutubeIcon size={24} color="#dc2626" />
-          </div>
+    <div className="modal-overlay">
+      <div className="modal-card" style={{ borderTop: '4px solid #dc2626', maxWidth: '480px' }}>
+        {/* Banner Header */}
+        <div className="modal-header-banner">
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: '#0f172a' }}>
-              Sync YouTube Channel Data
+            <div className="modal-badge-tag" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
+              <YoutubeIcon size={13} color="#dc2626" />
+              <span>YouTube Integration</span>
+            </div>
+            <h3 className="modal-title-text">
+              Sync YouTube Channel
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
-              Import channel videos, view counts, reach & subscriber growth logs
+            <p className="modal-subtitle-text">
+              Import video metrics, view counts & subscriber growth
             </p>
           </div>
+          <button onClick={onClose} className="modal-close-icon-btn" title="Close Modal">
+            <X size={18} />
+          </button>
         </div>
 
         {resultMsg ? (
           <div style={{
+            margin: '24px 28px',
             backgroundColor: '#f0fdf4',
             border: '1px solid #bbf7d0',
-            borderRadius: '10px',
-            padding: '16px',
+            borderRadius: '12px',
+            padding: '18px',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px',
+            gap: '12px',
             color: '#166534',
             fontSize: '14px',
-            fontWeight: 600
+            fontWeight: 700
           }}>
-            <CheckCircle2 size={20} color="#16a34a" />
+            <CheckCircle2 size={24} color="#16a34a" />
             <span>{resultMsg}</span>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                YouTube Channel ID / Handle
-              </label>
-              <input
-                type="text"
-                value={channelId}
-                onChange={(e) => setChannelId(e.target.value)}
-                placeholder="e.g. UC_x5XG1OV2P6uZZ5FSM9Ttw"
-                required
-                style={{
-                  width: '100%',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '14px',
-                  boxSizing: 'border-box'
-                }}
-              />
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body-form">
+              <div className="form-group">
+                <label className="form-label">YouTube Channel ID or Handle</label>
+                <div className="input-icon-group">
+                  <YoutubeIcon size={16} color="#dc2626" className="input-prefix-icon" />
+                  <input
+                    type="text"
+                    className="modal-input-field"
+                    value={channelId}
+                    onChange={(e) => setChannelId(e.target.value)}
+                    placeholder="e.g. UC_x5XG1OV2P6uZZ5FSM9Ttw"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', fontSize: '12px', color: '#475569', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
+                ℹ️ <strong>Automated Sync:</strong> Pulls video titles, view counts, likes, comments, and subscriber growth logs directly into CreatorIQ.
+              </div>
             </div>
 
-            <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', fontSize: '12px', color: '#64748b' }}>
-              ℹ️ Syncing will pull video metadata, views, likes, comments, and daily growth logs into your CreatorIQ dashboard.
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#475569',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
+            <div className="modal-footer-actions">
+              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
                 Cancel
               </button>
               <button
                 type="submit"
+                className="btn-primary"
+                style={{ backgroundColor: '#dc2626', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)' }}
                 disabled={loading}
-                style={{
-                  padding: '8px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: '#dc2626',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
               >
                 {loading ? <RefreshCw size={16} className="spin" /> : <YoutubeIcon size={16} color="#ffffff" />}
-                <span>{loading ? 'Syncing...' : 'Sync YouTube'}</span>
+                <span>{loading ? 'Syncing Channel...' : 'Sync YouTube Channel'}</span>
               </button>
             </div>
           </form>

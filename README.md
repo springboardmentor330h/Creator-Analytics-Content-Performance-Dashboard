@@ -1277,6 +1277,134 @@ POST /social/youtube/sync
 
   ---
 
+  # 29. Sprint 7: Notifications, Reporting & Exportable Reports (Milestone 3)
+
+  Sprint 7 builds the notification & contextual alert system, reporting service, and publication-ready PDF & Excel export engines for CreatorIQ.
+
+  ```text
+  Creator Analytics & Revenue Data
+                 ↓
+          Reporting Service
+                 ↓
+     Notification & Alert Engines
+                 ↓
+       PDF / Excel Export Engines
+                 ↓
+  Creator Analytics & Reporting Dashboard
+  ```
+
+  ## 29.1 Notification & Alert System
+
+  Automatically scans database metrics to generate contextual alerts across three categories:
+  - **Performance Alerts**: View landmarks (e.g., content crossing 5,000+ total views) and content viral milestones.
+  - **Engagement Notifications**: High engagement rate detection (>5.0%) and engagement drop warnings (<1.5%).
+  - **Revenue & Payment Alerts**: Cumulative revenue goal achievements ($1,000+, $5,000+), YouTube AdSense updates, active brand deals, and pending sponsorship payout reminders.
+
+  ### Notification APIs
+  - `GET /notifications`: List creator notifications (supports `?unread_only=true` and `?type=...` filters)
+  - `GET /notifications/unread-count`: Get integer count of unread notifications
+  - `PUT /notifications/{id}/read`: Mark single notification as read
+  - `PUT /notifications/read-all`: Mark all notifications as read for current creator
+  - `POST /notifications/check-alerts`: Trigger real-time metric analysis to generate new alerts
+  - `POST /notifications`: Manually create notification (system or test)
+  - `DELETE /notifications/{id}`: Delete notification
+
+  ## 29.2 Analytics Reports Service
+
+  Consumes existing analytics, revenue, audience, and sponsorship logic without creating duplicate analytics code.
+
+  ### Available Report Types:
+  1. **Executive Comprehensive Report** (`executive_summary`)
+  2. **Content Performance Report** (`content_performance`)
+  3. **Audience Analytics Report** (`audience_analytics`)
+  4. **Revenue Analytics Report** (`revenue_analytics`)
+  5. **Growth Trends Report** (`growth_trends`)
+  6. **Platform Comparison Report** (`platform_comparison`)
+
+  ### Reporting APIs
+  - `GET /reports/types`: List available report types and descriptions
+  - `POST /reports/generate`: Generate live structured report JSON (supports `?save=true/false` and `date_range` horizon)
+  - `GET /reports`: List saved reports history for current creator
+  - `GET /reports/{id}`: Get details of saved report by ID
+  - `DELETE /reports/{id}`: Delete saved report
+
+  ## 29.3 PDF & Excel Export Engines
+
+  ### PDF Export (`reportlab`)
+  - Generates binary PDF streams (`application/pdf`) with custom primary navy header, creator profile box, KPI cards grid, formatted content & revenue breakdown tables, strategic insights, and page footer.
+  - `POST /reports/export/pdf`: Stream live generated PDF document for download
+  - `GET /reports/{id}/pdf`: Download PDF binary for saved report ID
+
+  ### Excel Export (`openpyxl`)
+  - Generates multi-tab `.xlsx` workbooks (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`):
+    - `Executive Overview`: Summary metrics, KPI cards, strategic insights & actions.
+    - `Content Performance`: ID, Title, Platform, Format, Views, Likes, Comments, Shares, Engagement Rate %, Published Date.
+    - `Revenue & Sponsorships`: Stream breakdown percentages, contract amounts, deal statuses, payout statuses.
+    - `Platform Comparison`: Cross-platform follower counts, view shares, engagement metrics.
+  - `POST /reports/export/excel`: Stream live generated Excel spreadsheet for download
+  - `GET /reports/{id}/excel`: Download Excel binary for saved report ID
+
+  ## 29.4 Testing & Verification
+
+  - **Backend Unittests**: Run `$env:PYTHONPATH="."; python -m unittest discover -s backend/tests`. All 32 unit & integration tests pass cleanly with 0 errors!
+  - **Alembic Migration**: Migration revision `a8c9e01f2d34` creates `notifications` and `reports` PostgreSQL tables.
+  - **Security**: Strict creator isolation (`creator_id == current_user.id`) enforced on all notification and report endpoints.
+
+  ---
+
+  # 30. Sprint 8: Frontend & Dashboard Integration Phase
+
+  Sprint 8 connects all FastAPI backend APIs developed in previous sprints with a unified, responsive React dashboard UI.
+
+  ```text
+  React Dashboard UI
+         ↓
+    Axios / Fetch
+         ↓
+  FastAPI Backend (port 8000)
+         ↓
+  PostgreSQL Database
+         ↓
+  Real-Time Analytics & Financial Metrics
+         ↓
+  CreatorIQ Dashboard
+  ```
+
+  ## 30.1 Dashboard Architecture & Page Views
+
+  The frontend is structured around a central layout containing a left navigation [`Sidebar`](file:///e:/Projects/Infosys_VIP/creator-iq-test/Creator-Analytics-Content-Performance-Dashboard/frontend/src/components/Sidebar.jsx) and top [`Header`](file:///e:/Projects/Infosys_VIP/creator-iq-test/Creator-Analytics-Content-Performance-Dashboard/frontend/src/components/Header.jsx).
+
+  ### 8 Dedicated Dashboard Pages:
+  1. **Dashboard** (`DashboardView`): Executive Overview, 8 KPI cards, Highlight Banners (Top Platform, Top Content), Donut & Bar Charts, and Quick Action shortcuts.
+  2. **Content Analytics** (`ContentView`): Content Library table, views/likes/comments/shares/engagement calculations, platform filters, CRUD modals, and YouTube Sync.
+  3. **Audience Analytics** (`AudienceView`): Demographics, device usage, age distribution, top countries/cities, and CRUD audience records table.
+  4. **Growth & Trends** (`GrowthView`): 30-day historical follower growth log, virality trajectory, and impression charts.
+  5. **Revenue & Sponsorships** (`RevenueView`): Financial stream breakdown by source, monthly revenue chart, sponsorship deal contract tracking, and payment status badges.
+  6. **Notifications & Alerts** (`NotificationsView`): Notification list, category filter, unread filter, alert scan engine trigger button, mark read/unread, and deletion.
+  7. **Reports & Export** (`ReportsView`): Report generator options, date range horizon selector, live structured preview card, PDF export download, Excel export download, and saved reports log.
+  8. **Profile & Settings** (`SettingsView`): Profile details management (Full Name, Email, Password), connected social platform statuses, and FastAPI backend health status monitor.
+
+  ## 30.2 Running Frontend & Backend
+
+  ### Start FastAPI Backend:
+  ```bash
+  py -3.9 -m uvicorn backend.app.main:app --reload
+  ```
+
+  ### Start React Frontend Dev Server:
+  ```bash
+  cd frontend
+  npm run dev
+  ```
+
+  ### Production Frontend Build:
+  ```bash
+  cd frontend
+  npm run build
+  ```
+
+  ---
+
   ## API Base URL
 
   ```text
@@ -1294,3 +1422,5 @@ POST /social/youtube/sync
   ```text
   http://127.0.0.1:8000/redoc
   ```
+
+

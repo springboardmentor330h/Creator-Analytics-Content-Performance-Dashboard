@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle, Video, Eye, ThumbsUp, MessageSquare, Share2, Clock, Globe } from 'lucide-react';
 
 export default function ContentModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
@@ -97,143 +97,162 @@ export default function ContentModal({ isOpen, onClose, onSave, initialData }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card">
-        <div className="modal-header">
+      <div className="modal-card" style={{ borderTop: '4px solid #2563eb' }}>
+        {/* Banner Header */}
+        <div className="modal-header-banner">
           <div>
-            <h3 className="modal-title">
-              {initialData ? `Edit Content Record #${initialData.id}` : 'Create New Content Record'}
+            <div className="modal-badge-tag" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+              <Video size={13} />
+              <span>Content Performance</span>
+            </div>
+            <h3 className="modal-title-text">
+              {initialData ? `Edit Content #${initialData.id}` : 'Create Content Record'}
             </h3>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
-              {initialData ? 'Update views, likes, reach, and title' : 'Add new video or post performance metrics'}
-            </span>
+            <p className="modal-subtitle-text">
+              {initialData ? 'Update views, likes, comments & reach metrics' : 'Add new video or social media post performance metrics'}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: '#f1f5f9',
-              border: 'none',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <X size={16} color="#64748b" />
+          <button onClick={onClose} className="modal-close-icon-btn" title="Close Modal">
+            <X size={18} />
           </button>
         </div>
 
+        {/* Status Alert Banner */}
         {statusAlert && (
           <div style={{
+            margin: '20px 28px 0 28px',
             backgroundColor: statusAlert.type === 'success' ? '#f0fdf4' : '#ffe4e6',
             border: `1px solid ${statusAlert.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
-            borderRadius: '8px',
-            padding: '10px 14px',
-            marginBottom: '16px',
+            borderRadius: '12px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             color: statusAlert.type === 'success' ? '#166534' : '#be123c',
             fontSize: '13px',
-            fontWeight: 600
+            fontWeight: 700
           }}>
-            {statusAlert.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            {statusAlert.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
             <span>{statusAlert.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="form-grid">
-          <div className="form-group full">
-            <label className="form-label">Content Title</label>
-            <input
-              type="text"
-              className="form-input"
-              value={formData.content_title}
-              onChange={(e) => setFormData({ ...formData, content_title: e.target.value })}
-              placeholder="e.g. Pawan Kalyan Powerful Speech"
-              required
-            />
-            {errors.content_title && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.content_title}</span>}
+        {/* Form Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body-form">
+            <div className="form-grid">
+              <div className="form-group full">
+                <label className="form-label">Content Title</label>
+                <div className="input-icon-group">
+                  <Video size={16} className="input-prefix-icon" />
+                  <input
+                    type="text"
+                    className="modal-input-field"
+                    value={formData.content_title}
+                    onChange={(e) => setFormData({ ...formData, content_title: e.target.value })}
+                    placeholder="e.g. 10 Tech Hacks Every Creator Needs"
+                    required
+                  />
+                </div>
+                {errors.content_title && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.content_title}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Platform Channel</label>
+                <div className="input-icon-group">
+                  <Globe size={16} className="input-prefix-icon" />
+                  <select
+                    className="modal-input-field"
+                    value={formData.platform}
+                    onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
+                  >
+                    <option value="YouTube">YouTube</option>
+                    <option value="Instagram">Instagram</option>
+                    <option value="LinkedIn">LinkedIn</option>
+                    <option value="TikTok">TikTok</option>
+                    <option value="Twitter/X">Twitter/X</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Published Date</label>
+                <div className="input-icon-group">
+                  <Clock size={16} className="input-prefix-icon" />
+                  <input
+                    type="date"
+                    className="modal-input-field"
+                    value={formData.published_date || ''}
+                    onChange={(e) => setFormData({ ...formData, published_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Views</label>
+                <div className="input-icon-group">
+                  <Eye size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    className="modal-input-field"
+                    min="0"
+                    value={formData.views}
+                    onChange={(e) => setFormData({ ...formData, views: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Likes</label>
+                <div className="input-icon-group">
+                  <ThumbsUp size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    className="modal-input-field"
+                    min="0"
+                    value={formData.likes}
+                    onChange={(e) => setFormData({ ...formData, likes: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Comments</label>
+                <div className="input-icon-group">
+                  <MessageSquare size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    className="modal-input-field"
+                    min="0"
+                    value={formData.comments}
+                    onChange={(e) => setFormData({ ...formData, comments: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Organic Reach</label>
+                <div className="input-icon-group">
+                  <Share2 size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    className="modal-input-field"
+                    min="0"
+                    value={formData.reach}
+                    onChange={(e) => setFormData({ ...formData, reach: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Platform Channel</label>
-            <select
-              className="form-input"
-              value={formData.platform}
-              onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-            >
-              <option value="YouTube">YouTube</option>
-              <option value="Instagram">Instagram</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="TikTok">TikTok</option>
-              <option value="Twitter/X">Twitter/X</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Published Date</label>
-            <input
-              type="date"
-              className="form-input"
-              value={formData.published_date || ''}
-              onChange={(e) => setFormData({ ...formData, published_date: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Views</label>
-            <input
-              type="number"
-              className="form-input"
-              min="0"
-              value={formData.views}
-              onChange={(e) => setFormData({ ...formData, views: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Likes</label>
-            <input
-              type="number"
-              className="form-input"
-              min="0"
-              value={formData.likes}
-              onChange={(e) => setFormData({ ...formData, likes: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Comments</label>
-            <input
-              type="number"
-              className="form-input"
-              min="0"
-              value={formData.comments}
-              onChange={(e) => setFormData({ ...formData, comments: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Organic Reach</label>
-            <input
-              type="number"
-              className="form-input"
-              min="0"
-              value={formData.reach}
-              onChange={(e) => setFormData({ ...formData, reach: parseInt(e.target.value) || 0 })}
-            />
-          </div>
-
-          <div className="modal-actions form-group full">
+          <div className="modal-footer-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            <button type="submit" className="btn-primary" style={{ backgroundColor: '#2563eb', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)' }} disabled={isSubmitting}>
               {isSubmitting ? <RefreshCw size={16} className="spin" /> : null}
-              <span>{isSubmitting ? 'Saving Changes...' : initialData ? 'Update Record' : 'Create Record'}</span>
+              <span>{isSubmitting ? 'Saving Changes...' : initialData ? 'Update Content Record' : 'Save Content Record'}</span>
             </button>
           </div>
         </form>
@@ -241,4 +260,3 @@ export default function ContentModal({ isOpen, onClose, onSave, initialData }) {
     </div>
   );
 }
-

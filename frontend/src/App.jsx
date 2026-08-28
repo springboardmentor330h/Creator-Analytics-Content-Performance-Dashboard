@@ -1,34 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import StatCard from './components/StatCard';
-import LineChart from './components/LineChart';
-import DeviceChart from './components/DeviceChart';
-import AgeChart from './components/AgeChart';
-import TopCountries from './components/TopCountries';
+import Sidebar from './components/Sidebar';
+import Header from './components/Header';
+import MobileBottomNav from './components/MobileBottomNav';
+import Toast from './components/Toast';
+
+import DashboardView from './pages/DashboardView';
+import ContentView from './pages/ContentView';
+import AudienceView from './pages/AudienceView';
+import GrowthView from './pages/GrowthView';
+import RevenueView from './pages/RevenueView';
+import NotificationsView from './pages/NotificationsView';
+import ReportsView from './pages/ReportsView';
+import SettingsView from './pages/SettingsView';
+import AuthView from './pages/AuthView';
+
 import AudienceModal from './components/AudienceModal';
 import ContentModal from './components/ContentModal';
 import YouTubeSyncModal from './components/YouTubeSyncModal';
-import PlatformReachBreakdown from './components/PlatformReachBreakdown';
-import PlatformComparison from './components/PlatformComparison';
-import PlatformPieChart from './components/PlatformPieChart';
-import PlatformBarChart from './components/PlatformBarChart';
 import SocialConnectModal from './components/SocialConnectModal';
-import AnalyticsChart from './components/AnalyticsChart';
 import RevenueModal from './components/RevenueModal';
 import SponsorshipModal from './components/SponsorshipModal';
 
-import AuthView from './pages/AuthView';
-import ContentView from './pages/ContentView';
-import GrowthView from './pages/GrowthView';
-import RevenueView from './pages/RevenueView';
-
-import { YoutubeIcon } from './components/PlatformIcons';
 import { api } from './api';
-import { formatNumber, rawNumber } from './utils/format';
-import { Plus, Edit2, Trash2, RefreshCw, LogOut, User as UserIcon, Filter, Link2, BarChart2, DollarSign } from 'lucide-react';
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [toast, setToast] = useState(null);
 
   // Backend States (Realtime Data Only)
   const [summary, setSummary] = useState(null);
@@ -72,6 +72,10 @@ export default function App() {
 
   const [isSponsorshipModalOpen, setIsSponsorshipModalOpen] = useState(false);
   const [editingSponsorship, setEditingSponsorship] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
 
   // Check login session on mount
   useEffect(() => {
@@ -155,6 +159,7 @@ export default function App() {
   const handleLoginSuccess = (email) => {
     setUser({ email });
     setShowAuthModal(false);
+    showToast(`Welcome back, ${email.split('@')[0]}!`, 'success');
     fetchAllBackendData();
   };
 
@@ -162,24 +167,40 @@ export default function App() {
     localStorage.removeItem('creatoriq_token');
     localStorage.removeItem('creatoriq_user');
     setUser(null);
+    showToast('Signed out successfully', 'info');
   };
 
   const handleSyncYouTube = async (channelId) => {
-    const res = await api.syncYouTube(channelId);
-    await fetchAllBackendData();
-    return res;
+    try {
+      const res = await api.syncYouTube(channelId);
+      await fetchAllBackendData();
+      showToast('YouTube channel metrics synced successfully!', 'success');
+      return res;
+    } catch (err) {
+      showToast(`YouTube Sync Error: ${err.message}`, 'error');
+    }
   };
 
   const handleConnectSocial = async (platform, accountName) => {
-    const res = await api.connectSocialPlatform(platform, accountName);
-    await fetchAllBackendData();
-    return res;
+    try {
+      const res = await api.connectSocialPlatform(platform, accountName);
+      await fetchAllBackendData();
+      showToast(`${platform} channel connected!`, 'success');
+      return res;
+    } catch (err) {
+      showToast(`Connection Error: ${err.message}`, 'error');
+    }
   };
 
   const handleSyncSocial = async (platform) => {
-    const res = await api.syncSocialPlatform(platform);
-    await fetchAllBackendData();
-    return res;
+    try {
+      const res = await api.syncSocialPlatform(platform);
+      await fetchAllBackendData();
+      showToast(`${platform} data refreshed!`, 'success');
+      return res;
+    } catch (err) {
+      showToast(`Sync Error: ${err.message}`, 'error');
+    }
   };
 
   // Audience Handlers
@@ -189,14 +210,16 @@ export default function App() {
       if (recordId) {
         const { id, ...payload } = data;
         await api.updateAudience(recordId, payload);
+        showToast('Audience demographic record updated!', 'success');
       } else {
         await api.createAudience(data);
+        showToast('New audience demographic record created!', 'success');
       }
       setEditingAudience(null);
       setIsAudienceModalOpen(false);
       await fetchAllBackendData();
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -205,8 +228,9 @@ export default function App() {
     try {
       await api.deleteAudience(id);
       await fetchAllBackendData();
+      showToast('Audience record deleted', 'info');
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -217,14 +241,16 @@ export default function App() {
       if (recordId) {
         const { id, ...payload } = data;
         await api.updateContent(recordId, payload);
+        showToast('Content item updated successfully!', 'success');
       } else {
         await api.createContent(data);
+        showToast('New content item published to library!', 'success');
       }
       setEditingContent(null);
       setIsContentModalOpen(false);
       await fetchAllBackendData();
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -233,8 +259,9 @@ export default function App() {
     try {
       await api.deleteContent(id);
       await fetchAllBackendData();
+      showToast('Content record removed', 'info');
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -245,14 +272,16 @@ export default function App() {
       if (recordId) {
         const { id, ...payload } = data;
         await api.updateRevenue(recordId, payload);
+        showToast('Revenue record updated!', 'success');
       } else {
         await api.createRevenue(data);
+        showToast('New revenue stream entry saved!', 'success');
       }
       setEditingRevenue(null);
       setIsRevenueModalOpen(false);
       await fetchAllBackendData();
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -261,8 +290,9 @@ export default function App() {
     try {
       await api.deleteRevenue(id);
       await fetchAllBackendData();
+      showToast('Revenue stream entry removed', 'info');
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -273,14 +303,16 @@ export default function App() {
       if (recordId) {
         const { id, ...payload } = data;
         await api.updateSponsorship(recordId, payload);
+        showToast('Sponsorship deal updated!', 'success');
       } else {
         await api.createSponsorship(data);
+        showToast('New sponsorship contract deal logged!', 'success');
       }
       setEditingSponsorship(null);
       setIsSponsorshipModalOpen(false);
       await fetchAllBackendData();
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
@@ -289,124 +321,179 @@ export default function App() {
     try {
       await api.deleteSponsorship(id);
       await fetchAllBackendData();
+      showToast('Sponsorship contract removed', 'info');
     } catch (err) {
-      alert(`Backend Error: ${err.message}`);
+      showToast(`Error: ${err.message}`, 'error');
     }
   };
 
-  const totalViews = summary?.total_views ?? 0;
-  const totalLikes = summary?.total_likes ?? 0;
-  const totalComments = summary?.total_comments ?? 0;
-  const totalShares = summary?.total_shares ?? 0;
-  const totalReach = summary?.total_reach ?? reachBreakdown?.combined_total_reach ?? 0;
-  const totalFollowers = summary?.total_followers ?? audienceReport?.total_followers ?? 0;
-  const avgEngagement = summary?.average_engagement_rate ?? 0;
-  const totalContent = summary?.total_content ?? (contents || []).length;
-  const bestPlatform = summary?.best_platform || 'YouTube';
-  const topContentTitle = summary?.top_content || 'N/A';
+  const getHeaderTitles = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return { title: 'Executive Overview', subtitle: 'Realtime KPIs, performance charts, and top platform metrics' };
+      case 'content':
+        return { title: 'Content Performance', subtitle: 'Manage library items, views, likes, shares & engagement rates' };
+      case 'audience':
+        return { title: 'Audience Analytics', subtitle: 'Demographics, device distribution, and demographic database records' };
+      case 'growth':
+        return { title: 'Growth & Trends', subtitle: '30-day historical follower growth, virality, and impression logs' };
+      case 'revenue':
+        return { title: 'Revenue & Sponsorships', subtitle: 'Financial stream breakdown, monthly revenue & brand deal contracts' };
+      case 'notifications':
+        return { title: 'Notifications & Alerts Hub', subtitle: 'Contextual performance milestones, engagement warnings & revenue alerts' };
+      case 'reports':
+        return { title: 'Analytics Reports & Export', subtitle: 'Generate structured report summaries and download PDF & Excel exports' };
+      case 'settings':
+        return { title: 'Profile & Account Settings', subtitle: 'Manage creator account details, social connections & API status' };
+      default:
+        return { title: 'CreatorIQ Dashboard', subtitle: 'Realtime creator analytics platform' };
+    }
+  };
 
-  const deviceDistribution = (audienceReport && audienceReport.device_distribution && Object.keys(audienceReport.device_distribution).length > 0)
-    ? audienceReport.device_distribution
-    : (() => {
-        if (!audienceRecords || audienceRecords.length === 0) return {};
-        const map = {};
-        let total = 0;
-        audienceRecords.forEach(r => {
-          if (r.device_type) {
-            const val = Number(r.followers || 1);
-            map[r.device_type] = (map[r.device_type] || 0) + val;
-            total += val;
-          }
-        });
-        if (total === 0) return {};
-        const res = {};
-        Object.keys(map).forEach(k => {
-          res[k] = Math.round((map[k] / total) * 100);
-        });
-        return res;
-      })();
+  const headerInfo = getHeaderTitles();
 
-  const ageDistribution = (audienceReport && audienceReport.age_distribution && Object.keys(audienceReport.age_distribution).length > 0)
-    ? audienceReport.age_distribution
-    : (() => {
-        if (!audienceRecords || audienceRecords.length === 0) return {};
-        const map = {};
-        let total = 0;
-        audienceRecords.forEach(r => {
-          if (r.age_group) {
-            const val = Number(r.followers || 1);
-            map[r.age_group] = (map[r.age_group] || 0) + val;
-            total += val;
-          }
-        });
-        if (total === 0) return {};
-        const res = {};
-        Object.keys(map).forEach(k => {
-          res[k] = Math.round((map[k] / total) * 100);
-        });
-        return res;
-      })();
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <DashboardView
+            summary={summary}
+            audienceReport={audienceReport}
+            audienceTrends={audienceTrends}
+            reachBreakdown={reachBreakdown}
+            engagementChartData={engagementChartData}
+            followerGrowthChartData={followerGrowthChartData}
+            platformComparison={platformComparison}
+            selectedPlatform={selectedPlatform}
+            onSelectPlatform={setSelectedPlatform}
+            onRefresh={fetchAllBackendData}
+            onNavigateTab={setActiveTab}
+            loading={loading}
+          />
+        );
+      case 'content':
+        return (
+          <ContentView
+            contents={contents}
+            onAdd={handleSaveContent}
+            onUpdate={(id, data) => handleSaveContent({ ...data, id })}
+            onDelete={handleDeleteContent}
+            onSyncYouTube={handleSyncYouTube}
+            selectedPlatform={selectedPlatform}
+            onSelectPlatform={setSelectedPlatform}
+          />
+        );
+      case 'audience':
+        return (
+          <AudienceView
+            records={audienceRecords}
+            report={audienceReport}
+            onAdd={(data) => handleSaveAudience(data)}
+            onUpdate={(id, data) => handleSaveAudience({ ...data, id })}
+            onDelete={handleDeleteAudience}
+          />
+        );
+      case 'growth':
+        return (
+          <GrowthView
+            growthTrends={growthTrends}
+            selectedPlatform={selectedPlatform}
+            onSelectPlatform={setSelectedPlatform}
+          />
+        );
+      case 'revenue':
+        return (
+          <RevenueView
+            revenueSummary={revenueSummary}
+            revenueRecords={revenueRecords}
+            sponsorshipRecords={sponsorshipRecords}
+            onAddRevenue={() => { setEditingRevenue(null); setIsRevenueModalOpen(true); }}
+            onUpdateRevenue={(rev) => { setEditingRevenue(rev); setIsRevenueModalOpen(true); }}
+            onDeleteRevenue={handleDeleteRevenue}
+            onAddSponsorship={() => { setEditingSponsorship(null); setIsSponsorshipModalOpen(true); }}
+            onUpdateSponsorship={(sp) => { setEditingSponsorship(sp); setIsSponsorshipModalOpen(true); }}
+            onDeleteSponsorship={handleDeleteSponsorship}
+          />
+        );
+      case 'notifications':
+        return <NotificationsView />;
+      case 'reports':
+        return <ReportsView />;
+      case 'settings':
+        return (
+          <SettingsView
+            user={user}
+            onUpdateUser={(upUser) => setUser(upUser)}
+            onOpenSocialModal={() => setIsSocialModalOpen(true)}
+          />
+        );
+      default:
+        return (
+          <DashboardView
+            summary={summary}
+            audienceReport={audienceReport}
+            audienceTrends={audienceTrends}
+            reachBreakdown={reachBreakdown}
+            engagementChartData={engagementChartData}
+            followerGrowthChartData={followerGrowthChartData}
+            platformComparison={platformComparison}
+            selectedPlatform={selectedPlatform}
+            onSelectPlatform={setSelectedPlatform}
+            onRefresh={fetchAllBackendData}
+            onNavigateTab={setActiveTab}
+            loading={loading}
+          />
+        );
+    }
+  };
 
   return (
-    <div className="page-container">
-      {/* Top Navbar */}
-      <header className="navbar">
-        <div className="brand-box">
-          <span className="brand-logo">IQ</span>
-          <div>
-            <span className="brand-title">Creator Analytics Pro</span>
-            <span style={{ display: 'block', fontSize: '11px', color: '#10b981', fontWeight: 700 }}>
-              ● Live Revenue & Analytics Engine
-            </span>
+    <div className="app-container">
+      {/* Toast Popup Notification Alert */}
+      <Toast toast={toast} onClose={() => setToast(null)} />
+
+      {/* Left Sidebar Navigation (Desktop) */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onLogout={handleLogout}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+      />
+
+      {/* Main Content Workspace */}
+      <div className="main-content">
+        {/* Top Header Bar */}
+        <Header
+          title={headerInfo.title}
+          subtitle={headerInfo.subtitle}
+          user={user}
+          onLogout={handleLogout}
+          onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
+          onOpenSocialModal={() => setIsSocialModalOpen(true)}
+          onOpenNotificationsTab={() => setActiveTab('notifications')}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+        />
+
+        {/* Backend Connection Error Banner */}
+        {error && (
+          <div className="section-card" style={{ backgroundColor: '#fee2e2', color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '20px 32px 0 32px' }}>
+            <span><strong>Backend Connection Notice:</strong> {error}</span>
+            <button className="btn-add" onClick={fetchAllBackendData}>Retry Backend Connection</button>
           </div>
-        </div>
+        )}
 
-        <nav className="nav-links">
-          <a href="#revenue" className="nav-btn" style={{ color: '#10b981', fontWeight: 800, backgroundColor: '#ecfdf5' }}>
-            <DollarSign size={14} style={{ display: 'inline', marginRight: '3px' }} />
-            Revenue & Sponsorships
-          </a>
-          <a href="#visualizations" className="nav-btn">Charts</a>
-          <a href="#summary" className="nav-btn">Executive Summary</a>
-          <a href="#comparison" className="nav-btn">Comparison</a>
-          <a href="#trends" className="nav-btn">Trends</a>
-          <a href="#demographics" className="nav-btn">Demographics</a>
-          <a href="#content" className="nav-btn">Content</a>
-          <a href="#growth" className="nav-btn">Growth</a>
-        </nav>
+        {/* Active Page View Body */}
+        <main className="content-area">
+          {renderActiveView()}
+        </main>
+      </div>
 
-        <div className="user-box">
-          <button
-            className="nav-btn"
-            onClick={() => setIsSocialModalOpen(true)}
-            style={{ backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <Link2 size={16} /> Social Connect & Sync
-          </button>
-
-          <button
-            className="nav-btn"
-            onClick={() => setIsYouTubeModalOpen(true)}
-            style={{ backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
-          >
-            <YoutubeIcon size={16} color="#dc2626" /> Sync YouTube
-          </button>
-
-          {user ? (
-            <>
-              <div className="user-avatar">{user.email?.charAt(0).toUpperCase()}</div>
-              <span>{user.email?.split('@')[0]}</span>
-              <button className="nav-btn" onClick={handleLogout} style={{ backgroundColor: '#fee2e2', color: '#991b1b' }}>
-                <LogOut size={14} style={{ marginRight: '4px' }} /> Logout
-              </button>
-            </>
-          ) : (
-            <button className="btn-add" onClick={() => setShowAuthModal(true)}>
-              Sign In / Register
-            </button>
-          )}
-        </div>
-      </header>
+      {/* Smartphone Bottom Navbar (< 768px) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
       {/* Auth Modal Overlay */}
       {showAuthModal && (
@@ -423,292 +510,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Connection Error Banner */}
-      {error && (
-        <div className="section-card" style={{ backgroundColor: '#fee2e2', color: '#991b1b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span><strong>Backend Error:</strong> {error}</span>
-          <button className="btn-add" onClick={fetchAllBackendData}>Retry Backend</button>
-        </div>
-      )}
-
-      {/* SPRINT 6: REVENUE ANALYTICS & SPONSORSHIP TRACKING SECTION */}
-      <section id="revenue">
-        <RevenueView
-          revenueSummary={revenueSummary}
-          revenueRecords={revenueRecords}
-          sponsorshipRecords={sponsorshipRecords}
-          onAddRevenue={() => { setEditingRevenue(null); setIsRevenueModalOpen(true); }}
-          onUpdateRevenue={(rev) => { setEditingRevenue(rev); setIsRevenueModalOpen(true); }}
-          onDeleteRevenue={handleDeleteRevenue}
-          onAddSponsorship={() => { setEditingSponsorship(null); setIsSponsorshipModalOpen(true); }}
-          onUpdateSponsorship={(sp) => { setEditingSponsorship(sp); setIsSponsorshipModalOpen(true); }}
-          onDeleteSponsorship={handleDeleteSponsorship}
-        />
-      </section>
-
-      {/* SECTION 0: INDIVIDUAL PLATFORM REACH VS COMBINED REACH BREAKDOWN */}
-      <section id="reach-breakdown" className="section-card">
-        <PlatformReachBreakdown
-          reachBreakdown={reachBreakdown}
-          selectedPlatform={selectedPlatform}
-          onSelectPlatform={setSelectedPlatform}
-        />
-      </section>
-
-      {/* SECTION 0.5: DONUT & BAR GRAPH VISUALIZATIONS GRID */}
-      <section id="visualizations" className="dashboard-layout">
-        <PlatformPieChart
-          reachBreakdown={reachBreakdown}
-          selectedPlatform={selectedPlatform}
-          onSelectPlatform={setSelectedPlatform}
-        />
-        <PlatformBarChart
-          platformComparison={platformComparison}
-        />
-      </section>
-
-      {/* Executive Overview & KPI Summary */}
-      <section id="summary" className="section-card">
-        <div className="section-header">
-          <div>
-            <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BarChart2 size={20} color="#2563eb" />
-              <span>Executive Overview & Key Performance Indicators</span>
-            </h2>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
-              Realtime aggregated analytics summary from GET /analytics/summary
-            </p>
-          </div>
-          <button className="nav-btn" onClick={fetchAllBackendData} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <RefreshCw size={12} /> Refresh Overview
-          </button>
-        </div>
-
-        {/* Top Highlight Banner: Best Platform & Top Content */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}>
-          <div style={{
-            backgroundColor: '#eff6ff',
-            border: '1px solid #bfdbfe',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px'
-          }}>
-            <div style={{
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '18px'
-            }}>
-              🔥
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase' }}>
-                Top Performing Platform
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
-                {bestPlatform}
-              </div>
-            </div>
-          </div>
-
-          <div style={{
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px'
-          }}>
-            <div style={{
-              backgroundColor: '#059669',
-              color: '#ffffff',
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '18px'
-            }}>
-              🏆
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 700, textTransform: 'uppercase' }}>
-                Top Performing Content
-              </div>
-              <div style={{ fontSize: '15px', fontWeight: 800, color: '#064e3b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {topContentTitle}
-              </div>
-            </div>
-          </div>
-
-          <div style={{
-            backgroundColor: '#fef3c7',
-            border: '1px solid #fde68a',
-            borderRadius: '12px',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '14px'
-          }}>
-            <div style={{
-              backgroundColor: '#d97706',
-              color: '#ffffff',
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 800,
-              fontSize: '18px'
-            }}>
-              📚
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#92400e', fontWeight: 700, textTransform: 'uppercase' }}>
-                Total Published Items
-              </div>
-              <div style={{ fontSize: '18px', fontWeight: 800, color: '#78350f', marginTop: '2px' }}>
-                {totalContent} Posts / Videos
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 8-Card Stat Grid */}
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-          <StatCard label="Total Views" value={totalViews} trend="Live Stream" />
-          <StatCard label="Total Likes" value={totalLikes} trend="Reactions" />
-          <StatCard label="Total Comments" value={totalComments} trend="Feedback" />
-          <StatCard label="Total Shares" value={totalShares} trend="Virality" />
-          <StatCard label="Total Organic Reach" value={totalReach} trend="Audience Reach" />
-          <StatCard label="Total Followers" value={totalFollowers} trend="Community" />
-          <StatCard label="Avg Engagement Rate" value={`${avgEngagement}%`} trend="Overall Rate" />
-          <StatCard label="Total Content" value={totalContent} trend="Library Items" />
-        </div>
-      </section>
-
-      {/* SECTION 2: PLATFORM COMPARISON ANALYTICS */}
-      <section id="comparison">
-        <PlatformComparison platformComparison={platformComparison} />
-      </section>
-
-      {/* SECTION 3: REALTIME TRENDS CHART */}
-      <section id="trends" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-        <AnalyticsChart engagementData={engagementChartData} followerGrowthData={followerGrowthChartData} />
-        <LineChart title="Audience Growth & Reach Realtime Trends" data={audienceTrends} />
-      </section>
-
-      {/* SECTION 3.5: DEMOGRAPHICS GRID */}
-      <section id="demographics" className="dashboard-layout">
-        <DeviceChart title="Device Usage Breakdown" distribution={deviceDistribution} />
-        <AgeChart title="Age Group Breakdown" distribution={ageDistribution} />
-      </section>
-
-      {/* SECTION 4: AUDIENCE DEMOGRAPHIC RECORDS TABLE */}
-      <section id="audience" className="section-card">
-        <div className="section-header">
-          <h2 className="section-title">Audience Records (audience table)</h2>
-          <button className="btn-add" onClick={() => { setEditingAudience(null); setIsAudienceModalOpen(true); }}>
-            + Add Audience Record
-          </button>
-        </div>
-
-        <div className="table-responsive">
-          <table className="simple-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Gender</th>
-                <th>Age Group</th>
-                <th>Location</th>
-                <th>Device</th>
-                <th>Active Hour</th>
-                <th>Followers</th>
-                <th>Reach</th>
-                <th>Impressions</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {audienceRecords && audienceRecords.length > 0 ? (
-                audienceRecords.map((rec) => (
-                  <tr key={rec.id}>
-                    <td>#{rec.id}</td>
-                    <td>{rec.gender || 'N/A'}</td>
-                    <td>{rec.age_group || 'N/A'}</td>
-                    <td>{rec.country}, {rec.city}</td>
-                    <td>{rec.device_type}</td>
-                    <td>{rec.active_hour}:00 HRS</td>
-                    <td className="has-tooltip" title={`Exact: ${rawNumber(rec.followers)}`}>
-                      {formatNumber(rec.followers)}
-                      <span className="number-tooltip">Raw: {rawNumber(rec.followers)}</span>
-                    </td>
-                    <td className="has-tooltip" title={`Exact: ${rawNumber(rec.reach)}`}>
-                      {formatNumber(rec.reach)}
-                      <span className="number-tooltip">Raw: {rawNumber(rec.reach)}</span>
-                    </td>
-                    <td className="has-tooltip" title={`Exact: ${rawNumber(rec.impressions)}`}>
-                      {formatNumber(rec.impressions)}
-                      <span className="number-tooltip">Raw: {rawNumber(rec.impressions)}</span>
-                    </td>
-                    <td>
-                      <button className="btn-small btn-edit" onClick={() => { setEditingAudience(rec); setIsAudienceModalOpen(true); }}>Edit</button>
-                      <button className="btn-small btn-delete" onClick={() => handleDeleteAudience(rec.id)}>Delete</button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                    No audience records found in database.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* SECTION 5: CONTENT PERFORMANCE LIBRARY */}
-      <section id="content">
-        <ContentView
-          contents={contents}
-          onAdd={handleSaveContent}
-          onUpdate={(id, data) => handleSaveContent({ ...data, id })}
-          onDelete={handleDeleteContent}
-          onSyncYouTube={handleSyncYouTube}
-          selectedPlatform={selectedPlatform}
-          onSelectPlatform={setSelectedPlatform}
-        />
-      </section>
-
-      {/* SECTION 6: 30-DAY HISTORICAL GROWTH LOG */}
-      <section id="growth" className="section-card">
-        <GrowthView
-          growthTrends={growthTrends}
-          selectedPlatform={selectedPlatform}
-          onSelectPlatform={setSelectedPlatform}
-        />
-      </section>
-
-      {/* CRUD Modals */}
+      {/* CRUD & Workflow Modals */}
       <AudienceModal
         isOpen={isAudienceModalOpen}
         onClose={() => setIsAudienceModalOpen(false)}

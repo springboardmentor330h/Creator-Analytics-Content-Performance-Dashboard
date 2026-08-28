@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, CheckCircle2, AlertCircle, DollarSign } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle, DollarSign, Calendar, Layers, FileText, Globe } from 'lucide-react';
 
 export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
@@ -79,128 +79,141 @@ export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card">
-        <div className="modal-header">
+      <div className="modal-card" style={{ borderTop: '4px solid #10b981' }}>
+        {/* Banner Header */}
+        <div className="modal-header-banner">
           <div>
-            <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <DollarSign size={20} color="#10b981" />
-              <span>{initialData ? `Edit Revenue #${initialData.id}` : 'Record Revenue Earnings'}</span>
+            <div className="modal-badge-tag" style={{ backgroundColor: '#ecfdf5', color: '#047857' }}>
+              <DollarSign size={13} />
+              <span>Revenue Entry</span>
+            </div>
+            <h3 className="modal-title-text">
+              {initialData ? `Edit Revenue #${initialData.id}` : 'Record Revenue Earnings'}
             </h3>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
-              {initialData ? 'Modify financial revenue entry details' : 'Add earnings from sponsorships, ads, affiliates, or subscriptions'}
-            </span>
+            <p className="modal-subtitle-text">
+              {initialData ? 'Modify financial revenue entry details' : 'Log income from ad revenue, sponsorships, affiliates or subscriptions'}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: '#f1f5f9',
-              border: 'none',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <X size={16} color="#64748b" />
+          <button onClick={onClose} className="modal-close-icon-btn" title="Close Modal">
+            <X size={18} />
           </button>
         </div>
 
+        {/* Status Alert Banner */}
         {statusAlert && (
           <div style={{
+            margin: '20px 28px 0 28px',
             backgroundColor: statusAlert.type === 'success' ? '#f0fdf4' : '#ffe4e6',
             border: `1px solid ${statusAlert.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
-            borderRadius: '8px',
-            padding: '10px 14px',
-            marginBottom: '16px',
+            borderRadius: '12px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             color: statusAlert.type === 'success' ? '#166534' : '#be123c',
             fontSize: '13px',
-            fontWeight: 600
+            fontWeight: 700
           }}>
-            {statusAlert.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            {statusAlert.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
             <span>{statusAlert.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="form-grid">
-          <div className="form-group">
-            <label className="form-label">Revenue Source Stream</label>
-            <select
-              className="form-input"
-              value={formData.source}
-              onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-            >
-              <option value="Sponsorships">Sponsorships</option>
-              <option value="Ad Revenue">Ad Revenue</option>
-              <option value="Affiliate Marketing">Affiliate Marketing</option>
-              <option value="Brand Collaborations">Brand Collaborations</option>
-              <option value="Subscription Revenue">Subscription Revenue</option>
-            </select>
+        {/* Form Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Source Stream</label>
+                <div className="input-icon-group">
+                  <Layers size={16} className="input-prefix-icon" />
+                  <select
+                    className="modal-input-field"
+                    value={formData.source}
+                    onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                  >
+                    <option value="Sponsorships">Sponsorships</option>
+                    <option value="Ad Revenue">Ad Revenue</option>
+                    <option value="Affiliate Marketing">Affiliate Marketing</option>
+                    <option value="Brand Collaborations">Brand Collaborations</option>
+                    <option value="Subscription Revenue">Subscription Revenue</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Amount ($)</label>
+                <div className="input-icon-group">
+                  <DollarSign size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    className="modal-input-field"
+                    value={formData.amount}
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    placeholder="1500.00"
+                    required
+                  />
+                </div>
+                {errors.amount && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.amount}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Currency</label>
+                <div className="input-icon-group">
+                  <Globe size={16} className="input-prefix-icon" />
+                  <select
+                    className="modal-input-field"
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="INR">INR (₹)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Earnings Date</label>
+                <div className="input-icon-group">
+                  <Calendar size={16} className="input-prefix-icon" />
+                  <input
+                    type="date"
+                    className="modal-input-field"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    required
+                  />
+                </div>
+                {errors.date && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.date}</span>}
+              </div>
+
+              <div className="form-group full">
+                <label className="form-label">Description / Notes</label>
+                <div className="input-icon-group">
+                  <FileText size={16} className="input-prefix-icon" />
+                  <input
+                    type="text"
+                    className="modal-input-field"
+                    placeholder="e.g. YouTube AdSense August Payout or Nike Campaign Integration"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Amount ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              className="form-input"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              required
-            />
-            {errors.amount && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.amount}</span>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Currency</label>
-            <select
-              className="form-input"
-              value={formData.currency}
-              onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-            >
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="INR">INR (₹)</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Earnings Date</label>
-            <input
-              type="date"
-              className="form-input"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-            />
-            {errors.date && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.date}</span>}
-          </div>
-
-          <div className="form-group full">
-            <label className="form-label">Description / Notes</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. YouTube AdSense August Payout or Nike Campaign Integration"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            />
-          </div>
-
-          <div className="modal-actions form-group full">
+          <div className="modal-footer-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            <button type="submit" className="btn-primary" style={{ backgroundColor: '#10b981', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)' }} disabled={isSubmitting}>
               {isSubmitting ? <RefreshCw size={16} className="spin" /> : null}
-              <span>{isSubmitting ? 'Saving Earnings...' : initialData ? 'Update Revenue' : 'Add Revenue'}</span>
+              <span>{isSubmitting ? 'Saving Earnings...' : initialData ? 'Update Revenue Entry' : 'Save Revenue Entry'}</span>
             </button>
           </div>
         </form>

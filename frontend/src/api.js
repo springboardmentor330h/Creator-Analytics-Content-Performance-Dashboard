@@ -1,9 +1,71 @@
-// CreatorIQ API Integration - Direct Backend Connection (No Dummy Data)
+// CreatorIQ API Integration - Vite Dev Server Proxy (Zero-CORS Preflight Delay)
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE_URL = typeof window !== 'undefined' && window.location.origin.includes(':5173')
+  ? '/api-backend'
+  : 'http://127.0.0.1:8000';
 
-async function request(endpoint, options = {}) {
-  const token = localStorage.getItem('creatoriq_token');
+let autoAuthPromise = null;
+
+// Singleton Auto-Authentication Promise to prevent concurrent request stampedes
+async function ensureDemoSession() {
+  const existingToken = localStorage.getItem('creatoriq_token');
+  if (existingToken) return existingToken;
+
+  if (autoAuthPromise) {
+    return await autoAuthPromise;
+  }
+
+  autoAuthPromise = (async () => {
+    try {
+      const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'demo@creatoriq.com', password: 'password123' })
+      });
+
+      if (loginRes.ok) {
+        const data = await loginRes.json();
+        localStorage.setItem('creatoriq_token', data.access_token);
+        localStorage.setItem('creatoriq_user', JSON.stringify(data.user || { email: 'demo@creatoriq.com' }));
+        return data.access_token;
+      }
+
+      // If demo account doesn't exist yet, register it
+      const regRes = await fetch(`${API_BASE_URL}/users/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          full_name: 'Demo Creator',
+          email: 'demo@creatoriq.com',
+          password: 'password123',
+          role: 'creator'
+        })
+      });
+
+      if (regRes.ok) {
+        const regData = await regRes.json();
+        localStorage.setItem('creatoriq_token', regData.access_token);
+        localStorage.setItem('creatoriq_user', JSON.stringify(regData.user || { email: 'demo@creatoriq.com' }));
+        return regData.access_token;
+      }
+    } catch (e) {
+      console.warn('Auto-auth notice:', e.message);
+    } finally {
+      autoAuthPromise = null;
+    }
+    return null;
+  })();
+
+  return await autoAuthPromise;
+}
+
+async function request(endpoint, options = {}, isRetry = false) {
+  let token = localStorage.getItem('creatoriq_token');
+  
+  if (!token && !isRetry) {
+    token = await ensureDemoSession();
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -14,6 +76,15 @@ async function request(endpoint, options = {}) {
     ...options,
     headers
   });
+
+  // Handle 401 Unauthorized cleanly with max 1 retry
+  if (response.status === 401 && !isRetry) {
+    localStorage.removeItem('creatoriq_token');
+    const newToken = await ensureDemoSession();
+    if (newToken) {
+      return await request(endpoint, options, true);
+    }
+  }
 
   if (!response.ok) {
     let errorDetail = 'API Request Failed';
@@ -27,6 +98,54 @@ async function request(endpoint, options = {}) {
   }
 
   return await response.json();
+}
+
+async function requestBlob(endpoint, filename, options = {}, isRetry = false) {
+  let token = localStorage.getItem('creatoriq_token');
+  if (!token && !isRetry) {
+    token = await ensureDemoSession();
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers
+  };
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  if (response.status === 401 && !isRetry) {
+    localStorage.removeItem('creatoriq_token');
+    const newToken = await ensureDemoSession();
+    if (newToken) {
+      return await requestBlob(endpoint, filename, options, true);
+    }
+  }
+
+  if (!response.ok) {
+    let errorDetail = 'File Export Failed';
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.detail || JSON.stringify(errJson);
+    } catch (e) {
+      errorDetail = `HTTP ${response.status}: ${response.statusText}`;
+    }
+    throw new Error(errorDetail);
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  return true;
 }
 
 export const api = {
@@ -109,13 +228,6 @@ export const api = {
 
   // YouTube Integration
   syncYouTube: async (channelId) => {
-    const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
-    return await request(`/social/youtube/sync${query}`, {
-      method: 'POST'
-    });
-  },
-
-  syncYouTubeSocial: async (channelId) => {
     const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
     return await request(`/social/youtube/sync${query}`, {
       method: 'POST'
@@ -240,6 +352,95 @@ export const api = {
 
   deleteSponsorship: async (id) => {
     return await request(`/sponsorships/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Sprint 7: Notification & Alert APIs
+  getNotifications: async (unreadOnly = false, type = null) => {
+    const params = new URLSearchParams();
+    if (unreadOnly) params.append('unread_only', 'true');
+    if (type && type !== 'All') params.append('type', type.toLowerCase());
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return await request(`/notifications${queryString}`);
+  },
+
+  getUnreadNotificationCount: async () => {
+    return await request('/notifications/unread-count');
+  },
+
+  markNotificationAsRead: async (id) => {
+    return await request(`/notifications/${id}/read`, {
+      method: 'PUT'
+    });
+  },
+
+  markAllNotificationsAsRead: async () => {
+    return await request('/notifications/read-all', {
+      method: 'PUT'
+    });
+  },
+
+  triggerAlertCheck: async () => {
+    return await request('/notifications/check-alerts', {
+      method: 'POST'
+    });
+  },
+
+  deleteNotification: async (id) => {
+    return await request(`/notifications/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Sprint 7: Reporting Service & Export APIs
+  getReportTypes: async () => {
+    return await request('/reports/types');
+  },
+
+  generateReport: async (reportType = 'executive_summary', dateRange = '30_days', save = true) => {
+    return await request(`/reports/generate?save=${save}`, {
+      method: 'POST',
+      body: JSON.stringify({ report_type: reportType, date_range: dateRange })
+    });
+  },
+
+  getSavedReports: async () => {
+    return await request('/reports');
+  },
+
+  getReportById: async (id) => {
+    return await request(`/reports/${id}`);
+  },
+
+  downloadReportPdf: async (reportType = 'executive_summary', dateRange = '30_days') => {
+    const filename = `CreatorIQ_${reportType}_${Date.now()}.pdf`;
+    return await requestBlob('/reports/export/pdf', filename, {
+      method: 'POST',
+      body: JSON.stringify({ report_type: reportType, date_range: dateRange })
+    });
+  },
+
+  downloadReportExcel: async (reportType = 'executive_summary', dateRange = '30_days') => {
+    const filename = `CreatorIQ_${reportType}_${Date.now()}.xlsx`;
+    return await requestBlob('/reports/export/excel', filename, {
+      method: 'POST',
+      body: JSON.stringify({ report_type: reportType, date_range: dateRange })
+    });
+  },
+
+  downloadSavedReportPdf: async (id) => {
+    const filename = `CreatorIQ_Report_${id}.pdf`;
+    return await requestBlob(`/reports/${id}/pdf`, filename, { method: 'GET' });
+  },
+
+  downloadSavedReportExcel: async (id) => {
+    const filename = `CreatorIQ_Report_${id}.xlsx`;
+    return await requestBlob(`/reports/${id}/excel`, filename, { method: 'GET' });
+  },
+
+  deleteReport: async (id) => {
+    return await request(`/reports/${id}`, {
       method: 'DELETE'
     });
   }

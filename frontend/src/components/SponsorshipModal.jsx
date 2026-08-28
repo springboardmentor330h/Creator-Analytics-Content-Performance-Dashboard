@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw, CheckCircle2, AlertCircle, Briefcase } from 'lucide-react';
+import { X, RefreshCw, CheckCircle2, AlertCircle, Briefcase, Award, DollarSign, Calendar, FileText, CheckSquare, CreditCard } from 'lucide-react';
 
 export default function SponsorshipModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
@@ -91,164 +91,186 @@ export default function SponsorshipModal({ isOpen, onClose, onSave, initialData 
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card">
-        <div className="modal-header">
+      <div className="modal-card" style={{ borderTop: '4px solid #4f46e5' }}>
+        {/* Banner Header */}
+        <div className="modal-header-banner">
           <div>
-            <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Briefcase size={20} color="#2563eb" />
-              <span>{initialData ? `Edit Sponsorship Contract #${initialData.id}` : 'Create Sponsorship Deal'}</span>
+            <div className="modal-badge-tag" style={{ backgroundColor: '#e0e7ff', color: '#4f46e5' }}>
+              <Briefcase size={13} />
+              <span>Sponsorship Deal</span>
+            </div>
+            <h3 className="modal-title-text">
+              {initialData ? `Edit Sponsorship #${initialData.id}` : 'Create Sponsorship Deal'}
             </h3>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
-              {initialData ? 'Update contract details, status, and payment tracking' : 'Add brand sponsorship contract details and value'}
-            </span>
+            <p className="modal-subtitle-text">
+              {initialData ? 'Update contract terms, campaign dates & payment tracking' : 'Log new brand partnership deal and contract terms'}
+            </p>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: '#f1f5f9',
-              border: 'none',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }}
-          >
-            <X size={16} color="#64748b" />
+          <button onClick={onClose} className="modal-close-icon-btn" title="Close Modal">
+            <X size={18} />
           </button>
         </div>
 
+        {/* Status Alert Banner */}
         {statusAlert && (
           <div style={{
+            margin: '20px 28px 0 28px',
             backgroundColor: statusAlert.type === 'success' ? '#f0fdf4' : '#ffe4e6',
             border: `1px solid ${statusAlert.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
-            borderRadius: '8px',
-            padding: '10px 14px',
-            marginBottom: '16px',
+            borderRadius: '12px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '10px',
             color: statusAlert.type === 'success' ? '#166534' : '#be123c',
             fontSize: '13px',
-            fontWeight: 600
+            fontWeight: 700
           }}>
-            {statusAlert.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            {statusAlert.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
             <span>{statusAlert.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="form-grid">
-          <div className="form-group">
-            <label className="form-label">Brand Name</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. Nike, Sony, NordVPN"
-              value={formData.brand_name}
-              onChange={(e) => setFormData({ ...formData, brand_name: e.target.value })}
-              required
-            />
-            {errors.brand_name && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.brand_name}</span>}
+        {/* Form Body */}
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label className="form-label">Brand Name</label>
+                <div className="input-icon-group">
+                  <Award size={16} className="input-prefix-icon" />
+                  <input
+                    type="text"
+                    className="modal-input-field"
+                    placeholder="e.g. Nike, Sony, NordVPN"
+                    value={formData.brand_name}
+                    onChange={(e) => setFormData({ ...formData, brand_name: e.target.value })}
+                    required
+                  />
+                </div>
+                {errors.brand_name && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.brand_name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Campaign Title</label>
+                <div className="input-icon-group">
+                  <FileText size={16} className="input-prefix-icon" />
+                  <input
+                    type="text"
+                    className="modal-input-field"
+                    placeholder="e.g. Fall Tech Showcase 2026"
+                    value={formData.campaign_name}
+                    onChange={(e) => setFormData({ ...formData, campaign_name: e.target.value })}
+                    required
+                  />
+                </div>
+                {errors.campaign_name && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.campaign_name}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Contract Value ($)</label>
+                <div className="input-icon-group">
+                  <DollarSign size={16} className="input-prefix-icon" />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    className="modal-input-field"
+                    value={formData.contract_value}
+                    onChange={(e) => setFormData({ ...formData, contract_value: e.target.value })}
+                    placeholder="3000.00"
+                    required
+                  />
+                </div>
+                {errors.contract_value && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.contract_value}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Start Date</label>
+                <div className="input-icon-group">
+                  <Calendar size={16} className="input-prefix-icon" />
+                  <input
+                    type="date"
+                    className="modal-input-field"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    required
+                  />
+                </div>
+                {errors.start_date && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 700 }}>{errors.start_date}</span>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">End Date (Optional)</label>
+                <div className="input-icon-group">
+                  <Calendar size={16} className="input-prefix-icon" />
+                  <input
+                    type="date"
+                    className="modal-input-field"
+                    value={formData.end_date}
+                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Deal Status</label>
+                <div className="input-icon-group">
+                  <CheckSquare size={16} className="input-prefix-icon" />
+                  <select
+                    className="modal-input-field"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Payment Status</label>
+                <div className="input-icon-group">
+                  <CreditCard size={16} className="input-prefix-icon" />
+                  <select
+                    className="modal-input-field"
+                    value={formData.payment_status}
+                    onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
+                  >
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-group full">
+                <label className="form-label">Notes & Deliverables</label>
+                <div className="input-icon-group">
+                  <FileText size={16} className="input-prefix-icon" style={{ top: '16px' }} />
+                  <textarea
+                    className="modal-input-field"
+                    rows="2"
+                    placeholder="e.g. 60-second video mid-roll + Instagram Story swipe up"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    style={{ resize: 'vertical', paddingTop: '10px' }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Campaign Title</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. Fall Tech Showcase 2026"
-              value={formData.campaign_name}
-              onChange={(e) => setFormData({ ...formData, campaign_name: e.target.value })}
-              required
-            />
-            {errors.campaign_name && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.campaign_name}</span>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Contract Value ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0.01"
-              className="form-input"
-              value={formData.contract_value}
-              onChange={(e) => setFormData({ ...formData, contract_value: e.target.value })}
-              required
-            />
-            {errors.contract_value && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.contract_value}</span>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Start Date</label>
-            <input
-              type="date"
-              className="form-input"
-              value={formData.start_date}
-              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-              required
-            />
-            {errors.start_date && <span style={{ color: '#be123c', fontSize: '11px', fontWeight: 600 }}>{errors.start_date}</span>}
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">End Date (Optional)</label>
-            <input
-              type="date"
-              className="form-input"
-              value={formData.end_date}
-              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Deal Status</label>
-            <select
-              className="form-input"
-              value={formData.status}
-              onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-            >
-              <option value="Active">Active</option>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Payment Status</label>
-            <select
-              className="form-input"
-              value={formData.payment_status}
-              onChange={(e) => setFormData({ ...formData, payment_status: e.target.value })}
-            >
-              <option value="Unpaid">Unpaid</option>
-              <option value="Paid">Paid</option>
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-            </select>
-          </div>
-
-          <div className="form-group full">
-            <label className="form-label">Notes & Deliverables</label>
-            <textarea
-              className="form-input"
-              rows="2"
-              placeholder="e.g. 60-second video mid-roll + Instagram Story swipe up"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              style={{ resize: 'vertical' }}
-            />
-          </div>
-
-          <div className="modal-actions form-group full">
+          <div className="modal-footer-actions">
             <button type="button" className="btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            <button type="submit" className="btn-primary" style={{ backgroundColor: '#4f46e5', boxShadow: '0 4px 14px rgba(79, 70, 229, 0.3)' }} disabled={isSubmitting}>
               {isSubmitting ? <RefreshCw size={16} className="spin" /> : null}
-              <span>{isSubmitting ? 'Saving Deal...' : initialData ? 'Update Deal' : 'Add Sponsorship Deal'}</span>
+              <span>{isSubmitting ? 'Saving Deal...' : initialData ? 'Update Sponsorship Deal' : 'Save Sponsorship Deal'}</span>
             </button>
           </div>
         </form>

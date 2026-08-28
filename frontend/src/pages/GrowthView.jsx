@@ -1,9 +1,11 @@
 import React from 'react';
 import StatCard from '../components/StatCard';
 import LineChart from '../components/LineChart';
-import { TrendingUp, Award, Calendar, Filter, Share2, Activity, ArrowUpRight } from 'lucide-react';
+import { TrendingUp, Calendar, Filter, Share2, Activity, ArrowUpRight } from 'lucide-react';
 import { YoutubeIcon, InstagramIcon, TikTokIcon, LinkedInIcon, TwitterIcon } from '../components/PlatformIcons';
 import { formatNumber, rawNumber } from '../utils/format';
+import EmptyState from '../components/EmptyState';
+import { useSortableData, SortHeader } from '../utils/useSortableData';
 
 const platforms = ['All', 'YouTube', 'Instagram', 'TikTok', 'LinkedIn', 'Twitter/X'];
 
@@ -23,6 +25,8 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
     if (!selectedPlatform || selectedPlatform === 'All') return true;
     return (g.platform || 'All').toLowerCase() === selectedPlatform.toLowerCase();
   });
+
+  const { items: sortedTrends, requestSort, sortConfig } = useSortableData(filteredTrends, { key: 'date', direction: 'desc' });
 
   const totalFollowers = filteredTrends.length > 0 ? filteredTrends[filteredTrends.length - 1].followers : 0;
   const avgReach = filteredTrends.length > 0 ? Math.round(filteredTrends.reduce((acc, g) => acc + (g.reach || 0), 0) / filteredTrends.length) : 0;
@@ -81,7 +85,7 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
       {/* Main Growth Trend Line Chart */}
       <LineChart title={`Audience Growth & Organic Reach Trends (${selectedPlatform || 'All Platforms'})`} data={filteredTrends} />
 
-      {/* Release-Ready Historical Growth Table */}
+      {/* Historical Growth Table with Up/Down Arrow Column Sorting */}
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.06)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
           <div>
@@ -93,7 +97,7 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
               </span>
             </h3>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Historical daily snapshot of total followers, daily reach, and engagement momentum
+              Click headers to sort by Date, Followers, Reach, or Engagement (▲ Ascending / ▼ Descending)
             </p>
           </div>
 
@@ -107,17 +111,17 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
           <table className="simple-table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc' }}>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Date</th>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Platform</th>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Total Followers</th>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Daily Reach</th>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Engagement Rate</th>
-                <th style={{ padding: '14px 18px', fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Daily Growth</th>
+                <SortHeader label="Date" columnKey="date" sortConfig={sortConfig} onSort={requestSort} />
+                <SortHeader label="Platform" columnKey="platform" sortConfig={sortConfig} onSort={requestSort} />
+                <SortHeader label="Total Followers" columnKey="followers" sortConfig={sortConfig} onSort={requestSort} />
+                <SortHeader label="Daily Reach" columnKey="reach" sortConfig={sortConfig} onSort={requestSort} />
+                <SortHeader label="Engagement Rate" columnKey="engagement_rate" sortConfig={sortConfig} onSort={requestSort} />
+                <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Daily Growth</th>
               </tr>
             </thead>
             <tbody>
-              {filteredTrends && filteredTrends.length > 0 ? (
-                filteredTrends.map((g, idx) => {
+              {sortedTrends && sortedTrends.length > 0 ? (
+                sortedTrends.map((g, idx) => {
                   const platformName = g.platform || 'All';
                   const platMeta = platformIconMap[platformName] || { icon: Share2, color: '#334155', bg: '#f1f5f9' };
                   const IconComp = platMeta.icon;
@@ -172,8 +176,12 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
                 })
               ) : (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>
-                    No historical growth logs found for {selectedPlatform || 'All Platforms'}.
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '32px' }}>
+                    <EmptyState
+                      icon={TrendingUp}
+                      title="No Historical Growth Logs"
+                      description={`No historical growth trend logs recorded for ${selectedPlatform || 'All Platforms'}.`}
+                    />
                   </td>
                 </tr>
               )}
@@ -184,5 +192,3 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
     </div>
   );
 }
-
-
