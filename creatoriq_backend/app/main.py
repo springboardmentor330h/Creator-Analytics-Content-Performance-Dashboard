@@ -7,6 +7,8 @@ from app.routers import (
     audience,
     auth,
     content,
+    notifications,
+    reports,
     revenue,
     social,
     sponsorship,
@@ -70,6 +72,10 @@ app.include_router(sponsorship.router)
 
 # Social Media APIs
 app.include_router(social.router)
+
+# Notifications & Reports (Sprint 7)
+app.include_router(notifications.router)
+app.include_router(reports.router)
 
 # ============================================================
 # ROOT ENDPOINT

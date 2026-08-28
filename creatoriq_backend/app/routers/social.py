@@ -16,7 +16,10 @@ from app.models.content import Content
 from app.services.social_media import (
     connect_platform,
     get_connected_platforms,
-    connected_platforms
+    get_platform_data,
+    is_platform_connected,
+    normalize_platform,
+    SUPPORTED_PLATFORMS,
 )
 
 from app.services.youtube_service import (
@@ -57,17 +60,18 @@ def connect_social_platform(
             detail=(
                 "Unsupported platform. "
                 "Available platforms: "
-                "YouTube, Instagram, Facebook, "
-                "LinkedIn, TikTok, Twitter"
+                + ", ".join(SUPPORTED_PLATFORMS)
+                + " (Twitter is accepted as X)"
             )
         )
 
     return {
         "message": (
-            f"{request.platform} "
+            f"{result['platform']} "
             "account connected successfully"
         ),
-        "account_name": request.account_name
+        "platform": result["platform"],
+        "account_name": request.account_name,
     }
 
 
@@ -97,55 +101,132 @@ def synchronize_platform_data(
 ):
 
     # --------------------------------------------------------
-    # CLEAN PLATFORM NAME
+    # NORMALIZE PLATFORM NAME (case / alias insensitive)
+    # Accepts: instagram, Instagram, twitter, Twitter, X, etc.
     # --------------------------------------------------------
 
-    platform_name = platform.strip()
+    platform_name = normalize_platform(platform)
+
+    if not platform_name:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Unsupported platform. "
+                "Available platforms: "
+                + ", ".join(SUPPORTED_PLATFORMS)
+                + " (Twitter is accepted as X)"
+            ),
+        )
 
     # --------------------------------------------------------
     # CHECK PLATFORM CONNECTION
     # --------------------------------------------------------
 
-    if platform_name not in connected_platforms:
-
+    if not is_platform_connected(platform_name):
         raise HTTPException(
             status_code=400,
             detail=(
                 f"{platform_name} is not connected. "
-                "Connect the platform first."
-            )
+                "Call POST /social/connect first."
+            ),
         )
 
     # --------------------------------------------------------
-    # YOUTUBE
+    # YOUTUBE → real API endpoint
     # --------------------------------------------------------
 
-    if platform_name.lower() == "youtube":
-
+    if platform_name == "YouTube":
         raise HTTPException(
             status_code=400,
             detail=(
                 "Use POST /social/youtube/sync "
                 "for real YouTube API synchronization. "
                 "Provide creator_id and channel_id."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # OTHER PLATFORMS — mock sync into PostgreSQL
+    # (Sprint 4 multi-platform workflow)
+    # Real platform APIs can replace this later.
+    # --------------------------------------------------------
+
+    mock_data = get_platform_data(platform_name)
+
+    if not mock_data:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"No mock data available for {platform_name}. "
+                "Supported: YouTube, Instagram, Facebook, "
+                "LinkedIn, TikTok, X"
             )
         )
 
-    # --------------------------------------------------------
-    # OTHER PLATFORMS
-    # --------------------------------------------------------
-    #
-    # Do not insert mock data for Sprint 5.
-    # Real APIs can be added here later.
-    # --------------------------------------------------------
-
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            f"Real API synchronization for "
-            f"{platform_name} is not implemented yet."
-        )
+    external_id = (
+        f"mock-{platform_name.lower()}-"
+        f"{mock_data.get('content_title', 'content')}"
+        .replace(" ", "-")
+        .lower()
     )
+
+    existing = (
+        db.query(Content)
+        .filter(
+            Content.platform == mock_data["platform"],
+            Content.external_content_id == external_id,
+        )
+        .first()
+    )
+
+    if existing:
+        existing.views = mock_data.get("views", 0)
+        existing.likes = mock_data.get("likes", 0)
+        existing.comments = mock_data.get("comments", 0)
+        existing.shares = mock_data.get("shares", 0)
+        existing.saves = mock_data.get("saves", 0)
+        existing.watch_time = mock_data.get("watch_time", 0)
+        existing.reach = mock_data.get("reach", 0)
+        existing.content_title = mock_data.get(
+            "content_title", existing.content_title
+        )
+        existing.published_date = mock_data.get(
+            "published_date", existing.published_date
+        )
+        db.commit()
+        db.refresh(existing)
+        content_row = existing
+        action = "updated"
+    else:
+        content_row = Content(
+            creator_id=mock_data.get("creator_id", 1),
+            platform=mock_data["platform"],
+            external_content_id=external_id,
+            content_title=mock_data.get("content_title", "Untitled"),
+            views=mock_data.get("views", 0),
+            likes=mock_data.get("likes", 0),
+            comments=mock_data.get("comments", 0),
+            shares=mock_data.get("shares", 0),
+            saves=mock_data.get("saves", 0),
+            watch_time=mock_data.get("watch_time", 0),
+            reach=mock_data.get("reach", 0),
+            published_date=mock_data.get("published_date"),
+        )
+        db.add(content_row)
+        db.commit()
+        db.refresh(content_row)
+        action = "created"
+
+    return {
+        "platform": platform_name,
+        "status": "success",
+        "action": action,
+        "content_id": content_row.id,
+        "message": (
+            f"{platform_name} mock data synchronized "
+            f"and stored in PostgreSQL"
+        ),
+    }
 
 
 # REAL YOUTUBE SYNCHRONIZATION

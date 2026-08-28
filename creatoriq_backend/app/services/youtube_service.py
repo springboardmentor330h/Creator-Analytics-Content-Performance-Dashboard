@@ -335,19 +335,21 @@ def get_youtube_channel_videos(
                 )
             ),
 
-            # YouTube Data API does not
-            # provide general share count.
+            # YouTube public Data API does not provide
+            # share count, saves, or watch time.
             "shares": 0,
-
             "saves": 0,
-
-            # Watch time is not available
-            # from this public Data API request.
             "watch_time": 0,
 
-            # Reach is not directly provided
-            # by YouTube Data API.
-            "reach": 0,
+            # Reach is not provided by this API.
+            # Use view count as a practical proxy so
+            # engagement analytics are not always 0.
+            "reach": int(
+                statistics.get(
+                    "viewCount",
+                    0
+                )
+            ),
 
             "published_date": published_date
         })

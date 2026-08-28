@@ -7,7 +7,7 @@ from app.db.database import Base
 class Content(Base):
     __tablename__ = "content"
 
-    __table_args__ = (UniqueConstraint('creator_id', 'external_content_id', name='uq_creator_external_content'),)
+    __table_args__ = (UniqueConstraint('platform', 'external_content_id', name='uq_platform_external_content'),)
 
     id = Column(Integer, primary_key=True, index=True)
 

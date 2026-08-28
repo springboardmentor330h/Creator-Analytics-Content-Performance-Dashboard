@@ -32,6 +32,7 @@ def create_content(
     new_content = Content(
         creator_id=content_data.creator_id,
         platform=content_data.platform,
+        external_content_id=content_data.external_content_id,
         content_title=content_data.content_title,
         views=content_data.views,
         likes=content_data.likes,

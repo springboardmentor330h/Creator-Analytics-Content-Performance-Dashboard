@@ -17,14 +17,16 @@ def calculate_engagement_rate(content):
         + (content.saves or 0)
     )
 
-    if content.reach and content.reach > 0:
+    # Prefer reach. If reach is missing (common for YouTube
+    # public Data API), fall back to views so engagement
+    # is still meaningful instead of always 0.
+    denominator = content.reach or 0
+    if denominator <= 0:
+        denominator = content.views or 0
 
-        engagement_rate = (
-            total_engagement / content.reach
-        ) * 100
-
+    if denominator > 0:
+        engagement_rate = (total_engagement / denominator) * 100
     else:
-
         engagement_rate = 0
 
     return total_engagement, round(
@@ -362,26 +364,51 @@ def get_kpi_summary(db: Session):
         total_followers = 0
 
     # --------------------------------------------------------
+    # TOTAL CONTENT + BEST PLATFORM + TOP CONTENT
+    # (Sprint 2 summary fields, kept alongside Sprint 4 KPIs)
+    # --------------------------------------------------------
+
+    total_content = len(contents)
+
+    # Best platform by average engagement rate
+    platform_rates = {}
+    for content in contents:
+        platform = content.platform or "Unknown"
+        _, rate = calculate_engagement_rate(content)
+        platform_rates.setdefault(platform, []).append(rate)
+
+    best_platform = None
+    best_rate = -1
+    for platform, rates in platform_rates.items():
+        avg = sum(rates) / len(rates) if rates else 0
+        if avg > best_rate:
+            best_rate = avg
+            best_platform = platform
+
+    # Top performing content title by engagement rate
+    top_content_title = None
+    top_rate = -1
+    for content in contents:
+        _, rate = calculate_engagement_rate(content)
+        if rate > top_rate:
+            top_rate = rate
+            top_content_title = content.content_title
+
+    # --------------------------------------------------------
     # FINAL RESPONSE
     # --------------------------------------------------------
 
     return {
-
+        "total_content": total_content,
         "total_views": total_views,
-
         "total_likes": total_likes,
-
         "total_comments": total_comments,
-
         "total_shares": total_shares,
-
         "total_reach": total_reach,
-
         "total_followers": total_followers,
-
-        "average_engagement_rate": (
-            average_engagement_rate
-        )
+        "average_engagement_rate": average_engagement_rate,
+        "best_platform": best_platform,
+        "top_content": top_content_title,
     }
 
 
