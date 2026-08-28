@@ -7,7 +7,7 @@ from app.models.content import Content
 from app.models.audience import Audience
 from app.models.growth import Growth
 from app.models.revenue import Revenue
-
+from app.models.notification import Notification
 from app.routers.users import router as user_router
 from app.routers.auth import router as auth_router
 from app.routers.content import router as content_router
@@ -15,8 +15,9 @@ from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.revenue import router as revenue_router
 from app.routers.sponsorship import router as sponsorship_router
-
+from app.routers.notification import router as notification_router
 from app.routers import social
+from app.routers.report import router as report_router
 
 
 Base.metadata.create_all(bind=engine)
@@ -33,6 +34,8 @@ app.include_router(social.router)
 app.include_router(audience_router)
 app.include_router(revenue_router)
 app.include_router(sponsorship_router)
+app.include_router(notification_router)
+app.include_router(report_router)
 
 @app.get("/")
 def home():

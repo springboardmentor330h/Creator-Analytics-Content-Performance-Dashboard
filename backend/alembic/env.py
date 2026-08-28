@@ -27,7 +27,8 @@ from app.models.content import Content
 from app.models.audience import Audience
 from app.models.growth import Growth
 from app.models.revenue import Revenue
-
+from app.models.notification import Notification
+from app.models.sponsorship import Sponsorship
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
