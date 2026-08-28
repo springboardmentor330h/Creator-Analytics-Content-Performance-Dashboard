@@ -1,31 +1,46 @@
-from datetime import date, timedelta
 from sqlalchemy.orm import Session
+from app.models.notification import Notification
 from app.models.content import Content
-from app.models.growth import Growth
 from app.models.revenue import RevenueRecord
 from app.services.analytics_service import calculate_engagement_rate
 
 
-def performance_alerts(db: Session, creator_id: int) -> list[dict]:
+def generate_performance_alerts(db: Session, creator_id: int) -> list[Notification]:
     items = db.query(Content).filter(Content.creator_id == creator_id).all()
     if not items:
         return []
+
     rates = [calculate_engagement_rate(c) for c in items]
     avg_rate = sum(rates) / len(rates)
+    created = []
 
-    alerts = []
     for c in items:
         rate = calculate_engagement_rate(c)
         if rate > avg_rate * 1.5:
-            alerts.append({"type": "high_performance", "content_title": c.content_title,
-                            "engagement_rate": rate, "message": "Performing significantly above average"})
-        elif rate < avg_rate * 0.5:
-            alerts.append({"type": "low_performance", "content_title": c.content_title,
-                            "engagement_rate": rate, "message": "Performing significantly below average"})
-    return alerts
+            notif_type, title = "performance_alert", "High Performing Content"
+            message = f"'{c.content_title}' is performing significantly above average ({rate}% engagement)."
+        elif rate < avg_rate * 0.5 and avg_rate > 0:
+            notif_type, title = "performance_alert", "Low Performing Content"
+            message = f"'{c.content_title}' is performing below average ({rate}% engagement)."
+        else:
+            continue
+
+        exists = db.query(Notification).filter(
+            Notification.creator_id == creator_id, Notification.message == message
+        ).first()
+        if exists:
+            continue
+
+        notif = Notification(creator_id=creator_id, type=notif_type, title=title, message=message)
+        db.add(notif)
+        db.commit()
+        db.refresh(notif)
+        created.append(notif)
+
+    return created
 
 
-def revenue_alerts(db: Session, creator_id: int, threshold_pct: float = 30.0) -> list[dict]:
+def generate_revenue_alerts(db: Session, creator_id: int, threshold_pct: float = 30.0) -> list[Notification]:
     records = (
         db.query(RevenueRecord)
         .filter(RevenueRecord.creator_id == creator_id)
@@ -35,45 +50,63 @@ def revenue_alerts(db: Session, creator_id: int, threshold_pct: float = 30.0) ->
     if len(records) < 2:
         return []
 
-    alerts = []
+    created = []
     for i in range(1, len(records)):
         prev, curr = records[i - 1].amount, records[i].amount
         if prev == 0:
             continue
         change_pct = ((curr - prev) / prev) * 100
-        if abs(change_pct) >= threshold_pct:
-            alerts.append({
-                "type": "revenue_spike" if change_pct > 0 else "revenue_drop",
-                "date": records[i].earned_date.isoformat(),
-                "change_percentage": round(change_pct, 2),
-                "amount": curr,
-            })
-    return alerts
+        if abs(change_pct) < threshold_pct:
+            continue
+
+        title = "Revenue Spike" if change_pct > 0 else "Revenue Drop"
+        message = f"Revenue changed by {round(change_pct, 2)}% on {records[i].earned_date.isoformat()} (${curr})."
+
+        exists = db.query(Notification).filter(
+            Notification.creator_id == creator_id, Notification.message == message
+        ).first()
+        if exists:
+            continue
+
+        notif = Notification(creator_id=creator_id, type="revenue_alert", title=title, message=message)
+        db.add(notif)
+        db.commit()
+        db.refresh(notif)
+        created.append(notif)
+
+    return created
 
 
-def weekly_report(db: Session, creator_id: int) -> dict:
-    week_ago = date.today() - timedelta(days=7)
+def get_notifications(db: Session, creator_id: int, unread_only: bool = False) -> list[Notification]:
+    query = db.query(Notification).filter(Notification.creator_id == creator_id)
+    if unread_only:
+        query = query.filter(Notification.is_read == False)
+    return query.order_by(Notification.created_at.desc()).all()
 
-    content_items = (
-        db.query(Content)
-        .filter(Content.creator_id == creator_id, Content.published_date >= week_ago)
-        .all()
+
+def mark_as_read(db: Session, notification_id: int) -> Notification | None:
+    notif = db.query(Notification).filter(Notification.id == notification_id).first()
+    if not notif:
+        return None
+    notif.is_read = True
+    db.commit()
+    db.refresh(notif)
+    return notif
+
+
+def mark_all_as_read(db: Session, creator_id: int) -> int:
+    count = (
+        db.query(Notification)
+        .filter(Notification.creator_id == creator_id, Notification.is_read == False)
+        .update({"is_read": True})
     )
-    growth_records = (
-        db.query(Growth)
-        .filter(Growth.creator_id == creator_id, Growth.date >= week_ago)
-        .all()
-    )
-    revenue_records = (
-        db.query(RevenueRecord)
-        .filter(RevenueRecord.creator_id == creator_id, RevenueRecord.earned_date >= week_ago)
-        .all()
-    )
+    db.commit()
+    return count
 
-    return {
-        "period": f"{week_ago.isoformat()} to {date.today().isoformat()}",
-        "new_content_count": len(content_items),
-        "total_views": sum(c.views for c in content_items),
-        "follower_growth": (growth_records[-1].followers - growth_records[0].followers) if len(growth_records) >= 2 else 0,
-        "total_revenue": round(sum(r.amount for r in revenue_records), 2),
-    }
+
+def get_notification_counts(db: Session, creator_id: int) -> dict:
+    total = db.query(Notification).filter(Notification.creator_id == creator_id).count()
+    unread = db.query(Notification).filter(
+        Notification.creator_id == creator_id, Notification.is_read == False
+    ).count()
+    return {"total": total, "unread": unread}

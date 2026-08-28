@@ -6,28 +6,53 @@ import { useCreator } from "../context/CreatorContext";
 
 export default function Notifications() {
   const { creatorId } = useCreator();
-  const [perfAlerts, setPerfAlerts] = useState([]);
-  const [revAlerts, setRevAlerts] = useState([]);
-  const [weekly, setWeekly] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [counts, setCounts] = useState({ total: 0, unread: 0 });
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      setError("");
-      try {
-        const [p, r, w] = await Promise.all([
-          api.get(`/notifications/performance-alerts/${creatorId}`),
-          api.get(`/notifications/revenue-alerts/${creatorId}`),
-          api.get(`/notifications/weekly-report/${creatorId}`),
-        ]);
-        setPerfAlerts(p.data);
-        setRevAlerts(r.data);
-        setWeekly(w.data);
-      } catch {
-        setError("Could not load notifications");
-      }
-    })();
-  }, [creatorId]);
+  const load = async () => {
+    setError("");
+    try {
+      const [listRes, countRes] = await Promise.all([
+        api.get(`/notifications/creator/${creatorId}`),
+        api.get(`/notifications/creator/${creatorId}/count`),
+      ]);
+      setNotifications(listRes.data);
+      setCounts(countRes.data);
+    } catch (err) {
+      setError(err.response?.status === 403 ? "You can only view your own notifications" : "Could not load notifications");
+    }
+  };
+
+  useEffect(() => { load(); }, [creatorId]);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await api.post(`/notifications/generate/${creatorId}`);
+      await load();
+    } catch {
+      setError("Failed to generate notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkRead = async (id) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      await load();
+    } catch {}
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.put(`/notifications/creator/${creatorId}/read-all`);
+      await load();
+    } catch {}
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
@@ -35,39 +60,52 @@ export default function Notifications() {
       <div className="flex-1 overflow-y-auto">
         <Navbar />
         <main className="p-4 sm:p-6">
-          <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Notifications & Reports</h1>
-          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
-
-          {weekly && (
-            <div className="mb-6 rounded-xl bg-white p-4 shadow text-sm">
-              <p className="mb-2 font-medium">Weekly Report ({weekly.period})</p>
-              <p>New Content: {weekly.new_content_count}</p>
-              <p>Total Views: {weekly.total_views.toLocaleString()}</p>
-              <p>Follower Growth: {weekly.follower_growth}</p>
-              <p>Total Revenue: ${weekly.total_revenue}</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-xl font-semibold sm:text-2xl">
+              Notifications {counts.unread > 0 && <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{counts.unread} unread</span>}
+            </h1>
+            <div className="flex gap-2">
+              <button onClick={handleGenerate} disabled={loading} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                {loading ? "Scanning..." : "Check for New Alerts"}
+              </button>
+              <button onClick={handleMarkAllRead} className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700">
+                Mark All Read
+              </button>
             </div>
-          )}
+          </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-xl bg-white p-4 shadow">
-              <p className="mb-2 font-medium">Performance Alerts</p>
-              {perfAlerts.map((a, i) => (
-                <div key={i} className={`mb-1 rounded p-2 text-sm ${a.type === "high_performance" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                  {a.content_title}: {a.message} ({a.engagement_rate}%)
+          {error && <p className="mb-4 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+
+          <div className="space-y-2">
+            {notifications.map((n) => (
+              <div
+                key={n.id}
+                className={`rounded-xl p-4 shadow ${n.is_read ? "bg-white" : "bg-indigo-50 border border-indigo-200"}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium">
+                      {n.title}
+                      <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                        n.type === "revenue_alert" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                      }`}>
+                        {n.type.replace("_", " ")}
+                      </span>
+                    </p>
+                    <p className="text-sm text-gray-600">{n.message}</p>
+                    <p className="mt-1 text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</p>
+                  </div>
+                  {!n.is_read && (
+                    <button onClick={() => handleMarkRead(n.id)} className="whitespace-nowrap text-xs text-indigo-600">
+                      Mark read
+                    </button>
+                  )}
                 </div>
-              ))}
-              {perfAlerts.length === 0 && <p className="text-sm text-gray-500">No alerts.</p>}
-            </div>
-
-            <div className="rounded-xl bg-white p-4 shadow">
-              <p className="mb-2 font-medium">Revenue Alerts</p>
-              {revAlerts.map((a, i) => (
-                <div key={i} className={`mb-1 rounded p-2 text-sm ${a.type === "revenue_spike" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                  {a.date}: {a.change_percentage}% change (${a.amount})
-                </div>
-              ))}
-              {revAlerts.length === 0 && <p className="text-sm text-gray-500">No alerts.</p>}
-            </div>
+              </div>
+            ))}
+            {notifications.length === 0 && !error && (
+              <p className="text-sm text-gray-500">No notifications yet. Click "Check for New Alerts" to scan your data.</p>
+            )}
           </div>
         </main>
       </div>

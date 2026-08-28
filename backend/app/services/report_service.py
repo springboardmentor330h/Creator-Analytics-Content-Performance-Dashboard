@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.content import Content
 from app.models.audience import Audience
 from app.models.revenue import RevenueRecord
+from app.services import analytics_service, audience_service, revenue_service
 
 
 def _content_rows(db: Session, creator_id: int):
@@ -78,3 +79,21 @@ def generate_revenue_excel(db: Session, creator_id: int) -> io.BytesIO:
     wb.save(buffer)
     buffer.seek(0)
     return buffer
+
+
+def generate_combined_report(db: Session, creator_id: int) -> dict:
+    """
+    Reuses existing services — no duplicate analytics logic per the
+    sprint's explicit requirement.
+    """
+    return {
+        "creator_id": creator_id,
+        "content_summary": analytics_service.get_kpi_summary(db),
+        "audience_summary": audience_service.get_audience_report(db),
+        "revenue_summary": revenue_service.get_revenue_summary(db, creator_id),
+        "growth_summary": {
+            "monthly_revenue": revenue_service.get_monthly_revenue(db, creator_id),
+            "trend": revenue_service.get_revenue_trend(db, creator_id),
+        },
+        "platform_comparison": analytics_service.get_platform_comparison(db),
+    }

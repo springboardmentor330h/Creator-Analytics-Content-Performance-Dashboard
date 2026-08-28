@@ -21,6 +21,7 @@ from app.routers.social import router as social_router
 from app.models import social_connection as social_connection_model
 from app.routers.sponsorship import router as sponsorship_router
 from app.models import sponsorship as sponsorship_model
+from app.models import notification as notification_model
 
 
 Base.metadata.create_all(bind=engine)
