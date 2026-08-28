@@ -37,8 +37,11 @@ class AnalyticsService:
         }
 
     @staticmethod
-    def get_top_performing_content(db: Session, limit: int = 5) -> List[Dict[str, Any]]:
-        contents = db.query(Content).all()
+    def get_top_performing_content(db: Session, limit: int = 5, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = db.query(Content)
+        if platform and platform.lower() != "all":
+            query = query.filter(Content.platform.ilike(platform))
+        contents = query.all()
         items = []
         for item in contents:
             eng_rate = AnalyticsService.calculate_engagement_rate(
@@ -58,8 +61,11 @@ class AnalyticsService:
         return items[:limit]
 
     @staticmethod
-    def get_platform_performance(db: Session) -> List[Dict[str, Any]]:
-        contents = db.query(Content).all()
+    def get_platform_performance(db: Session, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+        query = db.query(Content)
+        if platform and platform.lower() != "all":
+            query = query.filter(Content.platform.ilike(platform))
+        contents = query.all()
         platform_map: Dict[str, Dict[str, Any]] = {}
 
         for item in contents:
@@ -96,8 +102,12 @@ class AnalyticsService:
         return result
 
     @staticmethod
-    def get_dashboard_summary(db: Session) -> Dict[str, Any]:
-        contents = db.query(Content).all()
+    def get_dashboard_summary(db: Session, platform: Optional[str] = None) -> Dict[str, Any]:
+        query = db.query(Content)
+        if platform and platform.lower() != "all":
+            query = query.filter(Content.platform.ilike(platform))
+        contents = query.all()
+
         total_content = len(contents)
         total_views = sum(item.views or 0 for item in contents)
         total_likes = sum(item.likes or 0 for item in contents)
@@ -105,11 +115,19 @@ class AnalyticsService:
         total_shares = sum(item.shares or 0 for item in contents)
         total_reach = sum(item.reach or 0 for item in contents)
 
-        audience_records = db.query(Audience).all()
+        aud_query = db.query(Audience)
+        if platform and platform.lower() != "all":
+            # Filter audience by platform if platform column exists or return sum
+            aud_query = aud_query
+        audience_records = aud_query.all()
+
         if audience_records:
             total_followers = sum(a.followers or 0 for a in audience_records)
         else:
-            latest_growth = db.query(Growth).order_by(Growth.date.desc()).first()
+            g_query = db.query(Growth)
+            if platform and platform.lower() != "all":
+                g_query = g_query.filter(Growth.platform.ilike(platform))
+            latest_growth = g_query.order_by(Growth.date.desc()).first()
             total_followers = latest_growth.followers if latest_growth else 0
 
         rates = [
@@ -120,11 +138,11 @@ class AnalyticsService:
         ]
         avg_eng_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
 
-        top_items = AnalyticsService.get_top_performing_content(db, limit=1)
+        top_items = AnalyticsService.get_top_performing_content(db, limit=1, platform=platform)
         top_content = top_items[0]["content_title"] if top_items else None
 
-        platforms = AnalyticsService.get_platform_performance(db)
-        best_platform = max(platforms, key=lambda x: x["average_engagement_rate"])["platform"] if platforms else None
+        platforms = AnalyticsService.get_platform_performance(db, platform=platform)
+        best_platform = max(platforms, key=lambda x: x["average_engagement_rate"])["platform"] if platforms else (platform if platform and platform.lower() != "all" else "YouTube")
 
         return {
             "total_views": total_views,

@@ -288,6 +288,9 @@ export default function DashboardView({
         />
       </section>
 
+      {/* Cross-Platform Comparison Section */}
+      <PlatformComparison platformComparison={platformComparison} />
+
       {/* Visualizations Donut & Bar Charts Grid */}
       <div className="dashboard-layout">
         <PlatformPieChart

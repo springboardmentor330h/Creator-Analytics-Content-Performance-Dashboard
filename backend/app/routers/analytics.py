@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Dict, Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
 
 from backend.app.db.database import get_db
 from backend.app.services.analytics_service import AnalyticsService
@@ -20,8 +20,8 @@ router = APIRouter(
 
 @router.get("/summary", response_model=DashboardSummaryResponse)
 @router.get("/summary/", response_model=DashboardSummaryResponse)
-def get_dashboard_summary(db: Session = Depends(get_db)):
-    return AnalyticsService.get_dashboard_summary(db)
+def get_dashboard_summary(platform: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    return AnalyticsService.get_dashboard_summary(db, platform=platform)
 
 @router.get("/chart/engagement", response_model=ChartDataResponse)
 @router.get("/chart/engagement/", response_model=ChartDataResponse)
@@ -50,13 +50,13 @@ def get_content_engagement(id: int, db: Session = Depends(get_db)):
 
 @router.get("/top-content", response_model=List[TopContentResponse])
 @router.get("/top-content/", response_model=List[TopContentResponse])
-def get_top_content(limit: int = 3, db: Session = Depends(get_db)):
-    return AnalyticsService.get_top_performing_content(db, limit=limit)
+def get_top_content(limit: int = 3, platform: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    return AnalyticsService.get_top_performing_content(db, limit=limit, platform=platform)
 
 @router.get("/platform-performance", response_model=List[PlatformPerformanceResponse])
 @router.get("/platform-performance/", response_model=List[PlatformPerformanceResponse])
-def get_platform_performance(db: Session = Depends(get_db)):
-    return AnalyticsService.get_platform_performance(db)
+def get_platform_performance(platform: Optional[str] = Query(None), db: Session = Depends(get_db)):
+    return AnalyticsService.get_platform_performance(db, platform=platform)
 
 @router.get("/reach-breakdown", response_model=PlatformReachBreakdownResponse)
 @router.get("/reach-breakdown/", response_model=PlatformReachBreakdownResponse)

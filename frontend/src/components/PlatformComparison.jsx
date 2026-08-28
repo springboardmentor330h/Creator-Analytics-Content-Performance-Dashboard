@@ -26,10 +26,27 @@ const platformColorMap = {
 };
 
 export default function PlatformComparison({ platformComparison }) {
-  if (!platformComparison || Object.keys(platformComparison).length === 0) return null;
+  if (!platformComparison) return null;
 
-  const platforms = Object.keys(platformComparison);
-  const maxViews = Math.max(...platforms.map(p => platformComparison[p]?.views || 0), 1);
+  let comparisonMap = {};
+  if (Array.isArray(platformComparison)) {
+    platformComparison.forEach(item => {
+      if (item && item.platform) comparisonMap[item.platform] = item;
+    });
+  } else if (typeof platformComparison === 'object') {
+    if (platformComparison.comparison && Array.isArray(platformComparison.comparison)) {
+      platformComparison.comparison.forEach(item => {
+        if (item && item.platform) comparisonMap[item.platform] = item;
+      });
+    } else {
+      comparisonMap = platformComparison;
+    }
+  }
+
+  const platforms = Object.keys(comparisonMap);
+  if (platforms.length === 0) return null;
+
+  const maxViews = Math.max(...platforms.map(p => comparisonMap[p]?.views || comparisonMap[p]?.total_views || 0), 1);
 
   return (
     <div className="section-card" style={{ marginTop: '24px' }}>
@@ -47,10 +64,15 @@ export default function PlatformComparison({ platformComparison }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         {platforms.map((p) => {
-          const data = platformComparison[p] || {};
+          const data = comparisonMap[p] || {};
           const IconComp = platformIconMap[p] || Share2;
           const color = platformColorMap[p] || '#6366f1';
-          const pctWidth = Math.min(100, Math.round(((data.views || 0) / maxViews) * 100));
+          const pViews = data.views ?? data.total_views ?? 0;
+          const pLikes = data.likes ?? data.total_likes ?? 0;
+          const pComments = data.comments ?? data.total_comments ?? 0;
+          const pReach = data.reach ?? data.total_reach ?? 0;
+          const pEng = data.engagement_rate ?? data.average_engagement_rate ?? 0;
+          const pctWidth = Math.min(100, Math.round((pViews / maxViews) * 100));
 
           return (
             <div
@@ -93,7 +115,7 @@ export default function PlatformComparison({ platformComparison }) {
                   fontWeight: 700,
                   color: color
                 }}>
-                  {data.engagement_rate || 0}% Eng. Rate
+                  {pEng}% Eng. Rate
                 </div>
               </div>
 
@@ -101,7 +123,7 @@ export default function PlatformComparison({ platformComparison }) {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>
                   <span>Views Volume</span>
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatNumber(data.views || 0)}</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatNumber(pViews)}</span>
                 </div>
                 <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
                   <div style={{ width: `${pctWidth}%`, height: '100%', backgroundColor: color, borderRadius: '4px' }} />
@@ -120,19 +142,19 @@ export default function PlatformComparison({ platformComparison }) {
               }}>
                 <div>
                   <div style={{ color: '#64748b', fontSize: '11px' }}>Organic Reach</div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(data.reach || 0)}</div>
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(pReach)}</div>
                 </div>
                 <div>
                   <div style={{ color: '#64748b', fontSize: '11px' }}>Total Likes</div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(data.likes || 0)}</div>
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(pLikes)}</div>
                 </div>
                 <div>
                   <div style={{ color: '#64748b', fontSize: '11px' }}>Comments</div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(data.comments || 0)}</div>
+                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{formatNumber(pComments)}</div>
                 </div>
                 <div>
                   <div style={{ color: '#64748b', fontSize: '11px' }}>Avg Eng Rate</div>
-                  <div style={{ fontWeight: 700, color: color, fontSize: '13px' }}>{data.engagement_rate || 0}%</div>
+                  <div style={{ fontWeight: 700, color: color, fontSize: '13px' }}>{pEng}%</div>
                 </div>
               </div>
             </div>

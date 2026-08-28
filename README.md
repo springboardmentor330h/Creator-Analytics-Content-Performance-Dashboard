@@ -1423,4 +1423,46 @@ POST /social/youtube/sync
   http://127.0.0.1:8000/redoc
   ```
 
+  ---
+
+  # 31. Sprint 9: Multi-Platform Social Media Integration Phase
+
+  Sprint 9 extends CreatorIQ from a YouTube-focused dashboard into a true multi-platform social media analytics engine by integrating **Instagram** alongside YouTube, implementing a **Common CreatorIQ Data Structure**, providing an **Instagram Service & Platform Synchronization Engine**, adding **Global Platform Filtering & Cross-Platform Comparison** to the React dashboard, and unit tests.
+
+  ```text
+  Social Media APIs (Instagram Graph API / YouTube Data API v3 / TikTok / LinkedIn / X)
+                                     ↓
+                          Fetch & Extract Metrics
+                                     ↓
+                    Transform to CreatorIQ Common Format
+                                     ↓
+                      Synchronize to PostgreSQL DB
+                                     ↓
+                    Omnichannel Analytics & Comparison
+                                     ↓
+              React Dashboard (Platform Filter & Comparison View)
+  ```
+
+  ## 31.1 Architecture Components Introduced in Sprint 9
+
+  1. **Common CreatorIQ Data Structure**:
+     - Standardized normalized data format across all social media platforms (`platform`, `external_content_id`, `content_title`, `views`, `likes`, `comments`, `shares`, `saves`, `watch_time`, `reach`, `published_date`).
+  2. **Instagram Service (`instagram_service.py`)**:
+     - Connects to Instagram Graph API (`/me/media`), transforms media objects into CreatorIQ Common Format, and synchronizes items into PostgreSQL contents & growth tables with duplicate record prevention.
+  3. **Multi-Platform Router (`platforms.py`)**:
+     - Endpoints:
+       - `GET /social/platforms`: List connected and available platforms.
+       - `POST /social/platforms/connect`: Connect social platform account.
+       - `POST /social/platforms/{platform}/sync`: Synchronize Instagram, YouTube, TikTok, LinkedIn, or X.
+       - `GET /social/platforms/comparison`: Fetch comparative metrics across platforms.
+  4. **Analytics Service Platform Filtering (`analytics_service.py`)**:
+     - Analytics static functions now accept an optional `platform` parameter (`YouTube`, `Instagram`, `TikTok`, `LinkedIn`, `X`, `All`).
+  5. **React Global Platform Selector (`Header.jsx`)**:
+     - Global dropdown header widget (`🌐 All Platforms`, `📺 YouTube`, `📸 Instagram`, `🎵 TikTok`, `💼 LinkedIn`, `🐦 X`).
+  6. **Cross-Platform Comparison View (`PlatformComparison.jsx`)**:
+     - Side-by-side performance cards comparing views volume, likes, comments, organic reach, and engagement rates across platforms.
+  7. **Automated Platform Testing (`test_platforms.py`)**:
+     - 37/37 passing backend unit tests covering Instagram service, Common Format transformer, PostgreSQL sync engine, and platform comparison API routes.
+
+
 

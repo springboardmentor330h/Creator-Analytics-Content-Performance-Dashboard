@@ -226,12 +226,30 @@ export const api = {
     });
   },
 
-  // YouTube Integration
+  // YouTube & Instagram Multi-Platform Integration
   syncYouTube: async (channelId) => {
     const query = channelId ? `?channel_id=${encodeURIComponent(channelId)}` : '';
     return await request(`/social/youtube/sync${query}`, {
       method: 'POST'
     });
+  },
+
+  syncInstagram: async (handle) => {
+    const query = handle ? `?account_id=${encodeURIComponent(handle)}` : '';
+    return await request(`/social/platforms/Instagram/sync${query}`, {
+      method: 'POST'
+    });
+  },
+
+  syncPlatform: async (platform, accountId) => {
+    const query = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    return await request(`/social/platforms/${encodeURIComponent(platform)}/sync${query}`, {
+      method: 'POST'
+    });
+  },
+
+  getPlatformComparison: async () => {
+    return await request('/social/platforms/comparison');
   },
 
   // Audience CRUD

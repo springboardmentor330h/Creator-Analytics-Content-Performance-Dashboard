@@ -17,6 +17,7 @@ import AuthView from './pages/AuthView';
 import AudienceModal from './components/AudienceModal';
 import ContentModal from './components/ContentModal';
 import YouTubeSyncModal from './components/YouTubeSyncModal';
+import InstagramSyncModal from './components/InstagramSyncModal';
 import SocialConnectModal from './components/SocialConnectModal';
 import RevenueModal from './components/RevenueModal';
 import SponsorshipModal from './components/SponsorshipModal';
@@ -64,6 +65,7 @@ export default function App() {
   const [editingContent, setEditingContent] = useState(null);
 
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
+  const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
   // Sprint 6 Modals
@@ -178,6 +180,17 @@ export default function App() {
       return res;
     } catch (err) {
       showToast(`YouTube Sync Error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleSyncInstagram = async (handle) => {
+    try {
+      const res = await api.syncInstagram(handle);
+      await fetchAllBackendData();
+      showToast('Instagram media & reels synced successfully!', 'success');
+      return res;
+    } catch (err) {
+      showToast(`Instagram Sync Error: ${err.message}`, 'error');
     }
   };
 
@@ -468,8 +481,11 @@ export default function App() {
           title={headerInfo.title}
           subtitle={headerInfo.subtitle}
           user={user}
+          selectedPlatform={selectedPlatform}
+          onPlatformChange={setSelectedPlatform}
           onLogout={handleLogout}
           onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
+          onOpenInstagramModal={() => setIsInstagramModalOpen(true)}
           onOpenSocialModal={() => setIsSocialModalOpen(true)}
           onOpenNotificationsTab={() => setActiveTab('notifications')}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -529,6 +545,12 @@ export default function App() {
         isOpen={isYouTubeModalOpen}
         onClose={() => setIsYouTubeModalOpen(false)}
         onSync={handleSyncYouTube}
+      />
+
+      <InstagramSyncModal
+        isOpen={isInstagramModalOpen}
+        onClose={() => setIsInstagramModalOpen(false)}
+        onSync={handleSyncInstagram}
       />
 
       <SocialConnectModal

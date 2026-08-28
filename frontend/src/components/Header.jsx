@@ -7,8 +7,11 @@ export default function Header({
   title,
   subtitle,
   user,
+  selectedPlatform = 'All',
+  onPlatformChange,
   onLogout,
   onOpenYouTubeModal,
+  onOpenInstagramModal,
   onOpenSocialModal,
   onOpenNotificationsTab,
   onToggleMobileSidebar
@@ -49,9 +52,29 @@ export default function Header({
       </div>
 
       <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div className="search-bar">
-          <Search size={16} color="#94a3b8" />
-          <input type="text" placeholder="Search content, revenue, analytics..." />
+        {/* Global Platform Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '4px 10px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+          <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Platform:</span>
+          <select
+            value={selectedPlatform}
+            onChange={(e) => onPlatformChange && onPlatformChange(e.target.value)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#0f172a',
+              cursor: 'pointer',
+              outline: 'none'
+            }}
+          >
+            <option value="All">🌐 All Platforms</option>
+            <option value="YouTube">📺 YouTube</option>
+            <option value="Instagram">📸 Instagram</option>
+            <option value="TikTok">🎵 TikTok</option>
+            <option value="LinkedIn">💼 LinkedIn</option>
+            <option value="X">🐦 X (Twitter)</option>
+          </select>
         </div>
 
         {/* Notification Bell Dropdown Widget */}
@@ -60,16 +83,18 @@ export default function Header({
         {/* Action Buttons */}
         <button
           className="nav-btn"
-          onClick={onOpenSocialModal}
-          style={{ backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
+          onClick={onOpenInstagramModal}
+          style={{ backgroundColor: '#fce7f3', color: '#e1306c', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
+          title="Sync Instagram Media"
         >
-          <Link2 size={15} /> Social Sync
+          <InstagramIcon size={15} color="#e1306c" /> Instagram
         </button>
 
         <button
           className="nav-btn"
           onClick={onOpenYouTubeModal}
           style={{ backgroundColor: '#fee2e2', color: '#dc2626', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}
+          title="Sync YouTube Channel"
         >
           <YoutubeIcon size={15} color="#dc2626" /> YouTube
         </button>

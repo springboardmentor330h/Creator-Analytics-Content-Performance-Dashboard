@@ -12,13 +12,14 @@ from backend.app.routers.revenue import router as revenue_router
 from backend.app.routers.sponsorships import router as sponsorships_router
 from backend.app.routers.notifications import router as notifications_router
 from backend.app.routers.reports import router as reports_router
+from backend.app.routers.platforms import router as platforms_router
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="CreatorIQ API - Notifications, Reporting & Export Platform",
-    description="Sprint 7: Notification System, Contextual Alerts, Reporting Engine, PDF & Excel Export APIs",
-    version="3.1.0"
+    title="CreatorIQ API - Multi-Platform Analytics Engine",
+    description="Sprint 9: Multi-Platform Integration, Instagram Graph API, Omnichannel Analytics & Cross-Platform Comparison",
+    version="4.0.0"
 )
 
 # Permissive CORS configuration supporting credentials and all origins
@@ -48,6 +49,8 @@ app.include_router(audience_router)
 app.include_router(youtube_router)
 app.include_router(youtube_router, prefix="/api")
 app.include_router(social_router)
+app.include_router(platforms_router)
+app.include_router(platforms_router, prefix="/api")
 app.include_router(revenue_router)
 app.include_router(revenue_router, prefix="/api")
 app.include_router(sponsorships_router)
