@@ -1,8 +1,10 @@
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
+from app.models.user import User
 
 from app.schemas.revenue_analytics import (
     RevenueSummaryResponse,
@@ -10,8 +12,6 @@ from app.schemas.revenue_analytics import (
     MonthlyRevenueResponse,
     RevenueTrendResponse
 )
-
-from app.services.revenue_service import get_creator_by_email
 
 from app.services.revenue_analytics_service import (
     get_total_revenue,
@@ -33,20 +33,13 @@ router = APIRouter(
 )
 def get_revenue_summary_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     total_revenue = get_total_revenue(
         db,
-        user.id
+        creator_id
     )
 
     return {
@@ -60,20 +53,13 @@ def get_revenue_summary_api(
 )
 def get_revenue_by_source_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_revenue_by_source(
         db,
-        user.id
+        creator_id
     )
 
 
@@ -83,20 +69,13 @@ def get_revenue_by_source_api(
 )
 def get_monthly_revenue_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_monthly_revenue(
         db,
-        user.id
+        creator_id
     )
 
 
@@ -106,18 +85,12 @@ def get_monthly_revenue_api(
 )
 def get_revenue_trends_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_revenue_trends(
         db,
-        user.id
+        creator_id
     )
+

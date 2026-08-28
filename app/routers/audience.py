@@ -1,13 +1,32 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.db.database import get_db
 from app.models.audience import Audience
+from app.models.user import User
 from app.schemas.audience import AudienceCreate, AudienceUpdate
 from app.services import audience_service
 
 
 router = APIRouter(tags=["Audience"])
+
+
+# --------------------------------------------------
+# Helper: Get authenticated user
+# --------------------------------------------------
+
+def get_authenticated_user(
+    current_user=Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authenticated user not found"
+        )
+
+    return current_user
 
 
 # --------------------------------------------------
@@ -17,10 +36,31 @@ router = APIRouter(tags=["Audience"])
 @router.post("/audience")
 def create_audience(
     audience: AudienceCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    # Support User object returned by authentication
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+
+    # Support email string returned by authentication
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     new_audience = Audience(
-        creator_id=audience.creator_id,
+        creator_id=creator_id,
         age_group=audience.age_group,
         gender=audience.gender,
         country=audience.country,
@@ -48,9 +88,31 @@ def create_audience(
 
 @router.get("/audience")
 def get_all_audience(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
-    audience_records = db.query(Audience).all()
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     return {
         "count": len(audience_records),
@@ -65,11 +127,32 @@ def get_all_audience(
 @router.get("/audience/{audience_id}")
 def get_audience_by_id(
     audience_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -92,11 +175,32 @@ def get_audience_by_id(
 def update_audience(
     audience_id: int,
     updated_audience: AudienceUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -109,6 +213,9 @@ def update_audience(
     update_data = updated_audience.model_dump(
         exclude_unset=True
     )
+
+    # Never allow client to change ownership
+    update_data.pop("creator_id", None)
 
     for field, value in update_data.items():
         setattr(audience, field, value)
@@ -129,11 +236,32 @@ def update_audience(
 @router.delete("/audience/{audience_id}")
 def delete_audience(
     audience_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -157,32 +285,74 @@ def delete_audience(
 
 @router.get("/analytics/audience")
 def get_audience_analytics(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     gender_distribution = (
-        audience_service.get_gender_distribution(db)
+        audience_service.get_gender_distribution(
+            db,
+            creator_id
+        )
     )
 
     age_distribution = (
-        audience_service.get_age_distribution(db)
+        audience_service.get_age_distribution(
+            db,
+            creator_id
+        )
     )
 
     top_countries = (
-        audience_service.get_top_countries(db)
+        audience_service.get_top_countries(
+            db,
+            creator_id
+        )
     )
 
     top_cities = (
-        audience_service.get_top_cities(db)
+        audience_service.get_top_cities(
+            db,
+            creator_id
+        )
     )
 
     device_distribution = (
-        audience_service.get_device_distribution(db)
+        audience_service.get_device_distribution(
+            db,
+            creator_id
+        )
     )
 
     return {
-        "total_followers": audience_service.get_total_followers(db),
-        "total_reach": audience_service.get_total_reach(db),
-        "total_impressions": audience_service.get_total_impressions(db),
+        "total_followers": audience_service.get_total_followers(
+            db,
+            creator_id
+        ),
+        "total_reach": audience_service.get_total_reach(
+            db,
+            creator_id
+        ),
+        "total_impressions": audience_service.get_total_impressions(
+            db,
+            creator_id
+        ),
         "gender_distribution": gender_distribution,
         "age_distribution": age_distribution,
         "top_countries": top_countries,
@@ -197,10 +367,29 @@ def get_audience_analytics(
 
 @router.get("/analytics/growth")
 def get_growth_analytics(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     return audience_service.get_growth_trend(
         db,
+        creator_id,
         days=30
     )
 
@@ -211,9 +400,29 @@ def get_growth_analytics(
 
 @router.get("/analytics/audience-trends")
 def get_audience_trends(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_authenticated_user)
 ):
+    if isinstance(current_user, User):
+        creator_id = current_user.id
+    else:
+        user = (
+            db.query(User)
+            .filter(User.email == current_user)
+            .first()
+        )
+
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="Authenticated user not found"
+            )
+
+        creator_id = user.id
+
     return audience_service.get_audience_trends(
         db,
+        creator_id,
         days=30
     )
+

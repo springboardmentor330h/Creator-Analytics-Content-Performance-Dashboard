@@ -1,8 +1,10 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
+from app.models.user import User
 
 from app.schemas.content import (
     ContentCreate,
@@ -18,8 +20,6 @@ from app.services.content_service import (
     delete_content,
 )
 
-from app.services.revenue_service import get_creator_by_email
-
 
 router = APIRouter(
     prefix="/content",
@@ -34,23 +34,14 @@ router = APIRouter(
 def create_new_content(
     content: ContentCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return create_content(
         db=db,
         content=content,
-        creator_id=user.id,
+        creator_id=creator_id,
     )
 
 
@@ -60,22 +51,13 @@ def create_new_content(
 )
 def get_all_contents(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_all_content(
         db,
-        user.id
+        creator_id
     )
 
 
@@ -86,23 +68,14 @@ def get_all_contents(
 def get_content_by_id(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     content = get_content(
         db,
         content_id,
-        user.id
+        creator_id
     )
 
     if not content:
@@ -122,24 +95,15 @@ def update_existing_content(
     content_id: int,
     content: ContentUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     updated_content = update_content(
         db=db,
         content_id=content_id,
         content=content,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
     if not updated_content:
@@ -157,23 +121,14 @@ def update_existing_content(
 def delete_existing_content(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     deleted_content = delete_content(
         db=db,
         content_id=content_id,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
     if not deleted_content:
@@ -186,3 +141,4 @@ def delete_existing_content(
         "message": "Content deleted successfully",
         "content_id": content_id,
     }
+

@@ -1,8 +1,10 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
+from app.models.user import User
 
 from app.schemas.sponsorship import (
     SponsorshipCreate,
@@ -11,7 +13,6 @@ from app.schemas.sponsorship import (
 )
 
 from app.services.sponsorship_service import (
-    get_creator_by_email,
     create_sponsorship,
     get_all_sponsorships,
     get_sponsorship_by_id,
@@ -26,6 +27,10 @@ router = APIRouter(
 )
 
 
+# --------------------------------------------------
+# 1. Create Sponsorship
+# --------------------------------------------------
+
 @router.post(
     "",
     response_model=SponsorshipResponse,
@@ -34,22 +39,20 @@ router = APIRouter(
 def create_sponsorship_api(
     sponsorship_data: SponsorshipCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return create_sponsorship(
         db,
         sponsorship_data,
-        user.id
+        creator_id
     )
 
+
+# --------------------------------------------------
+# 2. Get All Sponsorships
+# --------------------------------------------------
 
 @router.get(
     "",
@@ -57,21 +60,19 @@ def create_sponsorship_api(
 )
 def get_sponsorship_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_all_sponsorships(
         db,
-        user.id
+        creator_id
     )
 
+
+# --------------------------------------------------
+# 3. Get Sponsorship By ID
+# --------------------------------------------------
 
 @router.get(
     "/{sponsorship_id}",
@@ -80,20 +81,14 @@ def get_sponsorship_api(
 def get_sponsorship_by_id_api(
     sponsorship_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     sponsorship = get_sponsorship_by_id(
         db,
         sponsorship_id,
-        user.id
+        creator_id
     )
 
     if not sponsorship:
@@ -105,6 +100,10 @@ def get_sponsorship_by_id_api(
     return sponsorship
 
 
+# --------------------------------------------------
+# 4. Update Sponsorship
+# --------------------------------------------------
+
 @router.put(
     "/{sponsorship_id}",
     response_model=SponsorshipResponse
@@ -113,20 +112,14 @@ def update_sponsorship_api(
     sponsorship_id: int,
     sponsorship_data: SponsorshipUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     sponsorship = get_sponsorship_by_id(
         db,
         sponsorship_id,
-        user.id
+        creator_id
     )
 
     if not sponsorship:
@@ -142,6 +135,10 @@ def update_sponsorship_api(
     )
 
 
+# --------------------------------------------------
+# 5. Delete Sponsorship
+# --------------------------------------------------
+
 @router.delete(
     "/{sponsorship_id}",
     status_code=status.HTTP_204_NO_CONTENT
@@ -149,20 +146,14 @@ def update_sponsorship_api(
 def delete_sponsorship_api(
     sponsorship_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     sponsorship = get_sponsorship_by_id(
         db,
         sponsorship_id,
-        user.id
+        creator_id
     )
 
     if not sponsorship:
@@ -171,6 +162,10 @@ def delete_sponsorship_api(
             detail="Sponsorship record not found"
         )
 
-    delete_sponsorship(db, sponsorship)
+    delete_sponsorship(
+        db,
+        sponsorship
+    )
 
     return None
+

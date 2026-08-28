@@ -1,8 +1,10 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
+from app.models.user import User
 
 from app.schemas.analytics import (
     EngagementResponse,
@@ -31,8 +33,6 @@ from app.services.analytics_service import (
     get_platform_comparison
 )
 
-from app.services.revenue_service import get_creator_by_email
-
 
 router = APIRouter(
     prefix="/analytics",
@@ -51,23 +51,14 @@ router = APIRouter(
 def get_content_engagement(
     content_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     engagement_data = get_engagement_data(
         db=db,
         content_id=content_id,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
     if not engagement_data:
@@ -90,18 +81,9 @@ def get_content_engagement(
 def get_content_comparison(
     content_ids: str,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     try:
         ids = [
@@ -111,10 +93,7 @@ def get_content_comparison(
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=(
-                "content_ids must contain "
-                "comma-separated integers"
-            )
+            detail="content_ids must contain comma-separated integers"
         )
 
     if not ids:
@@ -126,7 +105,7 @@ def get_content_comparison(
     comparison_data = compare_content(
         db=db,
         content_ids=ids,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
     if not comparison_data:
@@ -149,22 +128,13 @@ def get_content_comparison(
 def get_top_performing_content_api(
     limit: int = 5,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_top_performing_content(
         db=db,
-        creator_id=user.id,
+        creator_id=creator_id,
         limit=limit
     )
 
@@ -180,22 +150,13 @@ def get_top_performing_content_api(
 def get_reach_analysis_api(
     limit: int = 5,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_reach_analysis(
         db=db,
-        creator_id=user.id,
+        creator_id=creator_id,
         limit=limit
     )
 
@@ -211,22 +172,13 @@ def get_reach_analysis_api(
 def get_performance_trends_api(
     limit: int = 10,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_performance_trends(
         db=db,
-        creator_id=user.id,
+        creator_id=creator_id,
         limit=limit
     )
 
@@ -242,22 +194,13 @@ def get_performance_trends_api(
 def get_top_content_api(
     limit: int = 5,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_top_content(
         db=db,
-        creator_id=user.id,
+        creator_id=creator_id,
         limit=limit
     )
 
@@ -272,22 +215,13 @@ def get_top_content_api(
 )
 def get_platform_performance_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_platform_performance(
         db=db,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
 
@@ -301,22 +235,13 @@ def get_platform_performance_api(
 )
 def get_dashboard_summary_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_dashboard_summary(
         db=db,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
 
@@ -330,22 +255,13 @@ def get_dashboard_summary_api(
 )
 def get_engagement_chart_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_engagement_chart(
         db=db,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
 
@@ -359,22 +275,13 @@ def get_engagement_chart_api(
 )
 def get_follower_chart_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_follower_chart(
         db=db,
-        creator_id=user.id
+        creator_id=creator_id
     )
 
 
@@ -388,20 +295,12 @@ def get_follower_chart_api(
 )
 def get_platform_comparison_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(
-        db,
-        current_user
-    )
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_platform_comparison(
         db=db,
-        creator_id=user.id
+        creator_id=creator_id
     )
+

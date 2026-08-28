@@ -7,12 +7,12 @@ from app.schemas.revenue import RevenueCreate, RevenueUpdate
 from app.services.notification_service import check_revenue_alert
 
 
-def get_creator_by_email(db: Session, email: str):
-    return (
-        db.query(User)
-        .filter(User.email == email)
-        .first()
-    )
+# def get_creator_by_email(db: Session, email: str):
+#     return (
+#         db.query(User)
+#         .filter(User.email == email)
+#         .first()
+#     )
 
 
 def create_revenue(

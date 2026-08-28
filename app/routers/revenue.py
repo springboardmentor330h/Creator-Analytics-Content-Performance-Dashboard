@@ -1,15 +1,18 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.core.auth import get_current_user
+from app.models.user import User
+
 from app.schemas.revenue import (
     RevenueCreate,
     RevenueUpdate,
     RevenueResponse
 )
+
 from app.services.revenue_service import (
-    get_creator_by_email,
     create_revenue,
     get_all_revenue,
     get_revenue_by_id,
@@ -32,20 +35,14 @@ router = APIRouter(
 def create_revenue_api(
     revenue_data: RevenueCreate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return create_revenue(
         db,
         revenue_data,
-        user.id
+        creator_id
     )
 
 
@@ -55,19 +52,13 @@ def create_revenue_api(
 )
 def get_revenue_api(
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     return get_all_revenue(
         db,
-        user.id
+        creator_id
     )
 
 
@@ -78,20 +69,14 @@ def get_revenue_api(
 def get_revenue_by_id_api(
     revenue_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     revenue = get_revenue_by_id(
         db,
         revenue_id,
-        user.id
+        creator_id
     )
 
     if not revenue:
@@ -111,20 +96,14 @@ def update_revenue_api(
     revenue_id: int,
     revenue_data: RevenueUpdate,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     revenue = get_revenue_by_id(
         db,
         revenue_id,
-        user.id
+        creator_id
     )
 
     if not revenue:
@@ -147,20 +126,14 @@ def update_revenue_api(
 def delete_revenue_api(
     revenue_id: int,
     db: Session = Depends(get_db),
-    current_user: str = Depends(get_current_user)
+    current_user: User = Depends(get_current_user)
 ):
-    user = get_creator_by_email(db, current_user)
-
-    if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="Creator not found"
-        )
+    creator_id = current_user.id
 
     revenue = get_revenue_by_id(
         db,
         revenue_id,
-        user.id
+        creator_id
     )
 
     if not revenue:
@@ -169,6 +142,10 @@ def delete_revenue_api(
             detail="Revenue record not found"
         )
 
-    delete_revenue(db, revenue)
+    delete_revenue(
+        db,
+        revenue
+    )
 
     return None
+

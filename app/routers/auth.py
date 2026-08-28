@@ -48,6 +48,42 @@
 #     return current_user
 
 # 5 august 2026
+# from fastapi import APIRouter, Depends, HTTPException
+# from sqlalchemy.orm import Session
+
+# from app.db.database import get_db
+# from app.models.user import User
+# from app.schemas.user_schema import UserLogin
+# from app.core.security import verify_password
+# from app.core.auth import create_access_token
+
+# router = APIRouter()
+
+# @router.post("/login")
+# def login(user: UserLogin, db: Session = Depends(get_db)):
+#     db_user = db.query(User).filter(User.email == user.email).first()
+
+#     if not db_user:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid email or password"
+#         )
+
+#     if not verify_password(user.password, db_user.password):
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid email or password"
+#         )
+
+#     access_token = create_access_token(
+#         data={"sub": db_user.email}
+#     )
+
+#     return {
+#         "access_token": access_token,
+#         "token_type": "bearer"
+#     }
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -55,9 +91,10 @@ from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user_schema import UserLogin
 from app.core.security import verify_password
-from app.core.auth import create_access_token
+from app.core.auth import create_access_token, get_current_user
 
 router = APIRouter()
+
 
 @router.post("/login")
 def login(user: UserLogin, db: Session = Depends(get_db)):
@@ -82,4 +119,16 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer"
+    }
+
+
+@router.get("/users/me")
+def get_current_user_profile(
+    current_user=Depends(get_current_user)
+):
+    return {
+        "id": current_user.id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "role": current_user.role
     }
