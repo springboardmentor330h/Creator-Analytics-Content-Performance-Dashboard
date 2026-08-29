@@ -2,18 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { getReportSummary } from '../services/api';
 import { User, Mail, Shield } from 'lucide-react';
 
-export default function ProfilePage() {
+export default function ProfilePage({ user }) {
   const [creator, setCreator] = useState(null);
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   useEffect(() => {
-    getReportSummary(8).then(res => setCreator(res.data.creator));
-  }, []);
+    getReportSummary(creatorId).then(res => setCreator(res.data.creator));
+  }, [creatorId]);
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Creator Profile</h2>
-        <p className="text-gray-500 text-sm">Account details associated with Creator #8.</p>
+        <h2 className="text-2xl font-bold text-gray-900">Profile</h2>
+        <p className="text-gray-500 text-sm">Account details for the active workspace user.</p>
       </div>
 
       {creator && (

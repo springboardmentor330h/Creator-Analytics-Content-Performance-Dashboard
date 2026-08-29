@@ -2,8 +2,8 @@ import React from 'react';
 import { getPdfReportUrl, getExcelReportUrl } from '../services/api';
 import { FileText, Download, Table } from 'lucide-react';
 
-export default function ReportsPage() {
-  const creatorId = 8;
+export default function ReportsPage({ user }) {
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   return (
     <div className="space-y-6 max-w-4xl">

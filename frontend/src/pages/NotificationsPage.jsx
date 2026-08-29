@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { getNotifications, markNotificationRead } from '../services/api';
 import { Bell, CheckCircle } from 'lucide-react';
 
-export default function NotificationsPage() {
+export default function NotificationsPage({ user }) {
   const [notifs, setNotifs] = useState([]);
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   const loadNotifs = () => {
-    getNotifications(8).then(res => setNotifs(res.data));
+    getNotifications(creatorId).then(res => setNotifs(res.data));
   };
 
   useEffect(() => {
     loadNotifs();
-  }, []);
+  }, [creatorId]);
 
   const handleRead = (id) => {
     markNotificationRead(id).then(() => loadNotifs());
@@ -61,7 +62,7 @@ export default function NotificationsPage() {
           ))
         ) : (
           <div className="p-12 text-center bg-white border border-gray-200 rounded-xl text-gray-400">
-            No notifications logged for Creator #8.
+            No notifications logged for this workspace yet.
           </div>
         )}
       </div>

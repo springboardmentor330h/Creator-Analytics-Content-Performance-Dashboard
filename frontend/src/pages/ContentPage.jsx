@@ -2,16 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { getReportSummary } from '../services/api';
 import { Video, ThumbsUp, MessageSquare, Share2, Eye } from 'lucide-react';
 
-export default function ContentPage() {
+export default function ContentPage({ user }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   useEffect(() => {
-    getReportSummary(8).then(res => {
-      setData(res.data.content_performance);
+    getReportSummary(creatorId).then(res => {
+      setData(res.data.content_summary);
+      setLoading(false);
+    }).catch(() => {
       setLoading(false);
     });
-  }, []);
+  }, [creatorId]);
 
   if (loading) return <div className="p-8 text-gray-500 font-medium">Loading content metrics...</div>;
 

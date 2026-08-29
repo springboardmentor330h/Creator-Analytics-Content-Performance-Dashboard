@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getReportSummary } from '../services/api';
 
-export default function GrowthPage() {
+export default function GrowthPage({ user }) {
   const [growth, setGrowth] = useState([]);
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   useEffect(() => {
-    getReportSummary(8).then(res => {
+    getReportSummary(creatorId).then(res => {
       setGrowth(res.data.growth_trends || []);
     });
-  }, []);
+  }, [creatorId]);
 
   return (
     <div className="space-y-6 max-w-7xl">

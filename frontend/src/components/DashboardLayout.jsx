@@ -24,7 +24,11 @@ const navigation = [
   { name: 'Profile', href: '/profile', icon: User },
 ];
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ user }) {
+  const displayName = user?.full_name || user?.name || 'Workspace User';
+  const roleLabel = user?.role || 'User';
+  const avatarLetter = (displayName || 'W').charAt(0).toUpperCase();
+
   return (
     <div className="flex h-screen bg-gray-50 text-gray-800 font-sans">
       {/* Sidebar */}
@@ -61,11 +65,11 @@ export default function DashboardLayout() {
           <h1 className="text-xl font-bold text-gray-800">Creator Analytics Workspace</h1>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <span className="block text-sm font-semibold text-gray-900">Creator #8</span>
-              <span className="block text-xs text-gray-500">Active Workspace</span>
+              <span className="block text-sm font-semibold text-gray-900">{displayName}</span>
+              <span className="block text-xs text-gray-500">{roleLabel}</span>
             </div>
             <div className="w-10 h-10 rounded-full bg-sky-600 text-white flex items-center justify-center font-bold shadow-sm">
-              C8
+              {avatarLetter}
             </div>
           </div>
         </header>

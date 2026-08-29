@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.security import get_current_user
+from app.core.security import get_current_admin_user, get_current_user
 from app.db.database import get_db
 from app.models.user import UserRole
 from app.schemas.user import UserCreate, UserListResponse, UserResponse, UserUpdate
@@ -11,7 +11,9 @@ from app.services.user_service import UserService
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
-# PROTECTED ROUTE (Triggers the Swagger Authorize button)
+# 1. SPECIFIC NAMED ROUTES FIRST
+
+# Get current authenticated user profile
 @router.get("/me", response_model=UserResponse)
 def get_me(
     current_user_id: str = Depends(get_current_user),
@@ -20,47 +22,67 @@ def get_me(
     return UserService.get_by_id(db, int(current_user_id))
 
 
-@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
-    return UserService.create(db, user_in)
-
-
-@router.get("/", response_model=List[UserResponse])
-def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return UserService.get_all(db, skip=skip, limit=limit)
-
-
-# 1. SEARCH ENDPOINT
+# Search users by role query parameter
 @router.get("/search", response_model=UserListResponse)
 def search_users(
     role: Optional[UserRole] = Query(None, description="Filter users by role"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
+    _: object = Depends(get_current_admin_user),
 ):
     return UserService.search_by_role(db, role=role, skip=skip, limit=limit)
 
 
-# 2. GET SINGLE USER ENDPOINT
+# List all users
+@router.get("/", response_model=List[UserResponse])
+def get_users(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    _: object = Depends(get_current_admin_user),
+):
+    return UserService.get_all(db, skip=skip, limit=limit)
+
+
+# Create user
+@router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+def create_user(
+    user_in: UserCreate,
+    db: Session = Depends(get_db),
+    _: object = Depends(get_current_admin_user),
+):
+    return UserService.create(db, user_in)
+
+
+# 2. PARAMETERIZED ROUTES LAST ({user_id})
+
+# Get single user by ID
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    _: object = Depends(get_current_admin_user),
+):
     return UserService.get_by_id(db, user_id)
 
 
+# Update user by ID
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
     user_in: UserUpdate,
     db: Session = Depends(get_db),
-    current_user_id: str = Depends(get_current_user),
+    _: object = Depends(get_current_admin_user),
 ):
     return UserService.update(db, user_id, user_in)
 
 
+# Soft/Hard delete user by ID
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user_id: str = Depends(get_current_user),
+    _: object = Depends(get_current_admin_user),
 ):
     return UserService.delete(db, user_id)

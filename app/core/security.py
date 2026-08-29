@@ -4,8 +4,11 @@ import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.db.database import get_db
+from app.models.user import User, UserRole
 
 # Password Hashing Setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -57,3 +60,22 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+def get_current_admin_user(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> User:
+    """Ensures the authenticated user is an administrator before granting access."""
+    user = db.query(User).filter(User.id == int(current_user_id)).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authenticated user not found.",
+        )
+    if user.role not in (UserRole.ADMIN, UserRole.ADMINISTRATOR):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator privileges required.",
+        )
+    return user

@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getReportSummary } from '../services/api';
 
-export default function AudiencePage() {
+export default function AudiencePage({ user }) {
   const [audience, setAudience] = useState([]);
+  const creatorId = user?.id ?? user?.user_id ?? 1;
 
   useEffect(() => {
-    getReportSummary(8).then(res => {
+    getReportSummary(creatorId).then(res => {
       setAudience(res.data.audience_demographics || []);
     });
-  }, []);
+  }, [creatorId]);
 
   return (
     <div className="space-y-6 max-w-7xl">

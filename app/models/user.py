@@ -11,6 +11,20 @@ class UserRole(str, enum.Enum):
     AGENCY = "Agency"
     MARKETING_TEAM = "Marketing Team"
     ADMINISTRATOR = "Administrator"
+    ADMIN = "Administrator"
+
+    @classmethod
+    def _missing_(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            for member in cls:
+                if member.value.lower() == normalized:
+                    return member
+                if member.name.lower() == normalized:
+                    return member
+        return None
 
 
 class User(Base):

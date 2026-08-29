@@ -3,10 +3,12 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.schemas.social import (
+    InstagramSyncRequest,
     PlatformConnectRequest,
     SyncRequest,
     YouTubeSyncRequest,
 )
+from app.services.instagram_service import InstagramService
 from app.services.social_media import SocialMediaService
 from app.services.youtube_service import YouTubeService
 
@@ -36,6 +38,18 @@ def sync_youtube_data(payload: YouTubeSyncRequest, db: Session = Depends(get_db)
     return YouTubeService.sync_youtube_data(
         db=db,
         channel_id=payload.channel_id,
+        creator_id=payload.creator_id,
+        max_results=payload.max_results,
+    )
+
+
+@router.post("/instagram/sync", status_code=status.HTTP_200_OK)
+def sync_instagram_data(payload: InstagramSyncRequest, db: Session = Depends(get_db)):
+    """Synchronize Instagram data into the common CreatorIQ content model."""
+    return InstagramService.sync_instagram_data(
+        db=db,
+        account_id=payload.account_id,
+        access_token=payload.access_token,
         creator_id=payload.creator_id,
         max_results=payload.max_results,
     )
