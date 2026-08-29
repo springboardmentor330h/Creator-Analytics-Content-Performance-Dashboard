@@ -7,6 +7,7 @@ class Content(Base):
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, nullable=False)
     platform = Column(String, nullable=False)
+    channel_handle = Column(String, nullable=True, index=True)
     external_content_id = Column(String, nullable=True, index=True)
     content_title = Column(String, nullable=False)
     views = Column(Integer, default=0)

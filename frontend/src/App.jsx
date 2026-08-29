@@ -93,7 +93,7 @@ export default function App() {
   }, []);
 
   // Fetch all realtime backend data
-  const fetchAllBackendData = async () => {
+  const fetchAllBackendData = async (platform = selectedPlatform) => {
     setLoading(true);
     setError(null);
     try {
@@ -113,12 +113,12 @@ export default function App() {
         revListRes,
         spListRes
       ] = await Promise.all([
-        api.getDashboardSummary().catch(() => null),
+        api.getDashboardSummary(platform).catch(() => null),
         api.getAudienceReport().catch(() => null),
         api.getAudience().catch(() => []),
-        api.getContent().catch(() => []),
-        api.getGrowthReport().catch(() => []),
-        api.getAudienceTrends().catch(() => []),
+        api.getContent(platform).catch(() => []),
+        api.getGrowthReport(platform).catch(() => []),
+        api.getAudienceTrends(platform).catch(() => []),
         api.getReachBreakdown().catch(() => null),
         api.getEngagementChart().catch(() => null),
         api.getFollowerGrowthChart().catch(() => null),
@@ -155,8 +155,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchAllBackendData();
-  }, []);
+    fetchAllBackendData(selectedPlatform);
+  }, [selectedPlatform]);
 
   const handleLoginSuccess = (email) => {
     setUser({ email });
@@ -191,6 +191,16 @@ export default function App() {
       return res;
     } catch (err) {
       showToast(`Instagram Sync Error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleAutoSyncAll = async () => {
+    try {
+      const res = await api.autoSyncAccounts();
+      await fetchAllBackendData();
+      showToast(res?.message || 'All saved channels & handles auto-synced successfully!', 'success');
+    } catch (err) {
+      showToast(`Auto-Sync Error: ${err.message}`, 'error');
     }
   };
 
@@ -483,6 +493,7 @@ export default function App() {
           user={user}
           selectedPlatform={selectedPlatform}
           onPlatformChange={setSelectedPlatform}
+          onAutoSync={handleAutoSyncAll}
           onLogout={handleLogout}
           onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
           onOpenInstagramModal={() => setIsInstagramModalOpen(true)}

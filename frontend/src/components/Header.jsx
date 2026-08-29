@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Link2, LogOut, Menu } from 'lucide-react';
 import NotificationBell from './NotificationBell';
-import { YoutubeIcon } from './PlatformIcons';
+import { YoutubeIcon, InstagramIcon } from './PlatformIcons';
 
 export default function Header({
   title,
@@ -9,6 +9,7 @@ export default function Header({
   user,
   selectedPlatform = 'All',
   onPlatformChange,
+  onAutoSync,
   onLogout,
   onOpenYouTubeModal,
   onOpenInstagramModal,
@@ -76,6 +77,18 @@ export default function Header({
             <option value="X">🐦 X (Twitter)</option>
           </select>
         </div>
+
+        {/* Auto-Sync All Button */}
+        {onAutoSync && (
+          <button
+            className="nav-btn"
+            onClick={onAutoSync}
+            style={{ backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 700, border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '4px' }}
+            title="Auto-Sync All Saved Channels & Handles"
+          >
+            ⚡ Auto-Sync All
+          </button>
+        )}
 
         {/* Notification Bell Dropdown Widget */}
         <NotificationBell onOpenFullNotifications={onOpenNotificationsTab} />

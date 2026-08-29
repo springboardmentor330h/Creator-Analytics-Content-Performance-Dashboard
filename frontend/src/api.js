@@ -165,8 +165,9 @@ export const api = {
   },
 
   // Dashboard & Analytics APIs
-  getDashboardSummary: async () => {
-    return await request('/analytics/summary');
+  getDashboardSummary: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/summary${query}`);
   },
 
   getReachBreakdown: async () => {
@@ -187,12 +188,14 @@ export const api = {
     return await request(`/analytics/audience-trends${query}`);
   },
 
-  getTopContent: async () => {
-    return await request('/analytics/top-content');
+  getTopContent: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/top-content${query}`);
   },
 
-  getPlatformPerformance: async () => {
-    return await request('/analytics/platform-performance');
+  getPlatformPerformance: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/platform-performance${query}`);
   },
 
   getEngagementChart: async () => {
@@ -204,10 +207,35 @@ export const api = {
   },
 
   getPlatformComparison: async () => {
-    return await request('/analytics/platform-comparison');
+    return await request('/social/platforms/comparison');
   },
 
   // Social Media Workflow APIs
+  getSavedAccounts: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/social/platforms/saved-accounts${query}`);
+  },
+
+  saveSocialAccount: async (platform, handle, accountName) => {
+    const pQuery = `platform=${encodeURIComponent(platform)}&handle=${encodeURIComponent(handle)}`;
+    const nQuery = accountName ? `&account_name=${encodeURIComponent(accountName)}` : '';
+    return await request(`/social/platforms/saved-accounts?${pQuery}${nQuery}`, {
+      method: 'POST'
+    });
+  },
+
+  deleteSavedAccount: async (accountId) => {
+    return await request(`/social/platforms/saved-accounts/${accountId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  autoSyncAccounts: async () => {
+    return await request('/social/platforms/auto-sync', {
+      method: 'POST'
+    });
+  },
+
   connectSocialPlatform: async (platform, accountName) => {
     return await request('/social/connect', {
       method: 'POST',

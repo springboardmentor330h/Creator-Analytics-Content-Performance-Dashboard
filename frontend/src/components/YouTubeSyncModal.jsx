@@ -1,47 +1,105 @@
-import React, { useState } from 'react';
-import { RefreshCw, X, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, X, CheckCircle2, Trash2, Plus, Play } from 'lucide-react';
 import { YoutubeIcon } from './PlatformIcons';
+import { api } from '../api';
 
 export default function YouTubeSyncModal({ isOpen, onClose, onSync }) {
-  const [channelId, setChannelId] = useState('UC_CreatorIQ_Official');
+  const [channelInput, setChannelInput] = useState('');
+  const [channelNameInput, setChannelNameInput] = useState('');
+  const [savedChannels, setSavedChannels] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(false);
   const [resultMsg, setResultMsg] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const fetchChannels = async () => {
+    setFetching(true);
+    try {
+      const accs = await api.getSavedAccounts('YouTube');
+      setSavedChannels(Array.isArray(accs) ? accs : []);
+    } catch (err) {
+      console.error('Failed to load saved YouTube channels', err);
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchChannels();
+      setResultMsg(null);
+      setErrorMsg(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e) => {
+  const handleAddChannel = async (e) => {
     e.preventDefault();
-    if (!channelId.trim()) return;
+    if (!channelInput.trim()) return;
+    if (savedChannels.length >= 5) {
+      setErrorMsg('Maximum limit of 5 saved YouTube channels reached. Delete an existing channel to add a new one.');
+      return;
+    }
+
     setLoading(true);
+    setErrorMsg(null);
+    setResultMsg(null);
+
+    try {
+      await api.saveSocialAccount('YouTube', channelInput.trim(), channelNameInput.trim() || undefined);
+      setChannelInput('');
+      setChannelNameInput('');
+      setResultMsg('YouTube channel saved and synchronized successfully!');
+      await fetchChannels();
+      if (onSync) onSync(channelInput.trim());
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to save YouTube channel');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSyncSingle = async (handle) => {
+    setLoading(true);
+    setErrorMsg(null);
     setResultMsg(null);
     try {
-      const res = await onSync(channelId.trim());
-      setResultMsg(res?.message || 'YouTube channel synced successfully!');
-      setTimeout(() => {
-        setLoading(false);
-        onClose();
-      }, 1500);
+      if (onSync) await onSync(handle);
+      setResultMsg(`Channel ${handle} synchronized successfully!`);
+      await fetchChannels();
     } catch (err) {
+      setErrorMsg(`Sync Failed: ${err.message}`);
+    } finally {
       setLoading(false);
-      alert(`YouTube Sync Failed: ${err.message}`);
+    }
+  };
+
+  const handleDelete = async (id, handle) => {
+    if (!window.confirm(`Remove saved YouTube channel ${handle}?`)) return;
+    try {
+      await api.deleteSavedAccount(id);
+      await fetchChannels();
+    } catch (err) {
+      alert(`Delete Error: ${err.message}`);
     }
   };
 
   return (
     <div className="modal-overlay">
-      <div className="modal-card" style={{ borderTop: '4px solid #dc2626', maxWidth: '480px' }}>
+      <div className="modal-card" style={{ borderTop: '4px solid #dc2626', maxWidth: '540px' }}>
         {/* Banner Header */}
         <div className="modal-header-banner">
           <div>
             <div className="modal-badge-tag" style={{ backgroundColor: '#fee2e2', color: '#dc2626' }}>
               <YoutubeIcon size={13} color="#dc2626" />
-              <span>YouTube Integration</span>
+              <span>YouTube Integration ({savedChannels.length}/5 Saved)</span>
             </div>
             <h3 className="modal-title-text">
-              Sync YouTube Channel
+              Saved YouTube Channels & Sync
             </h3>
             <p className="modal-subtitle-text">
-              Import video metrics, view counts & subscriber growth
+              Save up to 5 YouTube channels & auto-sync video performance metrics
             </p>
           </div>
           <button onClick={onClose} className="modal-close-icon-btn" title="Close Modal">
@@ -49,62 +107,140 @@ export default function YouTubeSyncModal({ isOpen, onClose, onSync }) {
           </button>
         </div>
 
-        {resultMsg ? (
-          <div style={{
-            margin: '24px 28px',
-            backgroundColor: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            padding: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            color: '#166534',
-            fontSize: '14px',
-            fontWeight: 700
-          }}>
-            <CheckCircle2 size={24} color="#16a34a" />
-            <span>{resultMsg}</span>
+        {errorMsg && (
+          <div style={{ margin: '16px 24px 0 24px', backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
+            ⚠️ {errorMsg}
           </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
-            <div className="modal-body-form">
+        )}
+
+        {resultMsg && (
+          <div style={{ margin: '16px 24px 0 24px', backgroundColor: '#f0fdf4', color: '#166534', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle2 size={18} color="#16a34a" /> {resultMsg}
+          </div>
+        )}
+
+        <div className="modal-body-form" style={{ gap: '16px' }}>
+          {/* Saved Channels List */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>
+                Connected Channels ({savedChannels.length}/5)
+              </span>
+              {fetching && <RefreshCw size={12} className="spin" color="#64748b" />}
+            </div>
+
+            {savedChannels.length === 0 ? (
+              <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px border-dashed #cbd5e1', fontSize: '12px', color: '#64748b', textAlign: 'center' }}>
+                No saved YouTube channels yet. Add your channel handle or ID below.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {savedChannels.map((acc) => (
+                  <div
+                    key={acc.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      padding: '10px 12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <YoutubeIcon size={18} color="#dc2626" />
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                          {acc.account_name || acc.account_handle}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>
+                          {acc.account_handle}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleSyncSingle(acc.account_handle)}
+                        disabled={loading}
+                        style={{
+                          backgroundColor: '#fee2e2',
+                          color: '#dc2626',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 10px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        title="Sync Channel Now"
+                      >
+                        <RefreshCw size={12} className={loading ? 'spin' : ''} /> Sync
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(acc.id, acc.account_handle)}
+                        style={{
+                          backgroundColor: '#f1f5f9',
+                          color: '#64748b',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px',
+                          cursor: 'pointer'
+                        }}
+                        title="Delete Channel"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Add New Channel Form */}
+          {savedChannels.length < 5 && (
+            <form onSubmit={handleAddChannel} style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <div className="form-group">
-                <label className="form-label">YouTube Channel ID or Handle</label>
+                <label className="form-label">Add YouTube Channel (Handle / Channel ID / Link)</label>
                 <div className="input-icon-group">
                   <YoutubeIcon size={16} color="#dc2626" className="input-prefix-icon" />
                   <input
                     type="text"
                     className="modal-input-field"
-                    value={channelId}
-                    onChange={(e) => setChannelId(e.target.value)}
-                    placeholder="e.g. UC_x5XG1OV2P6uZZ5FSM9Ttw"
+                    value={channelInput}
+                    onChange={(e) => setChannelInput(e.target.value)}
+                    placeholder="e.g. @CreatorIQ_Official or UC_x5XG1OV2P6uZZ5FSM9Ttw"
                     required
                   />
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', fontSize: '12px', color: '#475569', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
-                ℹ️ <strong>Automated Sync:</strong> Pulls video titles, view counts, likes, comments, and subscriber growth logs directly into CreatorIQ.
-              </div>
-            </div>
-
-            <div className="modal-footer-actions">
-              <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
-                Cancel
-              </button>
               <button
                 type="submit"
                 className="btn-primary"
-                style={{ backgroundColor: '#dc2626', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)' }}
+                style={{ backgroundColor: '#dc2626', boxShadow: '0 4px 14px rgba(220, 38, 38, 0.25)', width: '100%', justifyContent: 'center' }}
                 disabled={loading}
               >
-                {loading ? <RefreshCw size={16} className="spin" /> : <YoutubeIcon size={16} color="#ffffff" />}
-                <span>{loading ? 'Syncing Channel...' : 'Sync YouTube Channel'}</span>
+                {loading ? <RefreshCw size={16} className="spin" /> : <Plus size={16} />}
+                <span>{loading ? 'Saving & Syncing...' : 'Save & Connect Channel'}</span>
               </button>
-            </div>
-          </form>
-        )}
+            </form>
+          )}
+        </div>
+
+        <div className="modal-footer-actions">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Done
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -19,12 +19,30 @@ class InstagramService:
     """
 
     @staticmethod
+    def resolve_instagram_handle(handle_input: Optional[str]) -> str:
+        """
+        Parses Instagram profile URLs (e.g. https://instagram.com/creator_official) or handle inputs into clean handle format.
+        """
+        if not handle_input:
+            return "@creatoriq_official"
+
+        clean = handle_input.strip()
+        if "instagram.com/" in clean:
+            clean = clean.split("instagram.com/")[1].split("/")[0].split("?")[0]
+
+        if not clean.startswith("@"):
+            clean = f"@{clean}"
+
+        return clean
+
+    @staticmethod
     def fetch_instagram_media(instagram_handle: Optional[str] = None, max_results: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch Instagram media posts/reels.
+        Fetch Instagram media posts/reels strictly for the specified unique handle or account ID.
         Connects to live Instagram Graph API if credentials exist, or returns a high-fidelity real-time dataset.
         """
         access_token = getattr(settings, 'INSTAGRAM_ACCESS_TOKEN', None)
+        clean_handle = InstagramService.resolve_instagram_handle(instagram_handle)
         media_items = []
 
         if access_token and access_token != "your_instagram_token_here":
@@ -42,7 +60,7 @@ class InstagramService:
                     for item in data.get("data", []):
                         media_items.append({
                             "id": item.get("id"),
-                            "caption": item.get("caption", "Instagram Post"),
+                            "caption": item.get("caption", f"Instagram Post ({clean_handle})"),
                             "timestamp": item.get("timestamp", "2026-08-01T00:00:00Z"),
                             "likeCount": item.get("like_count", 2500),
                             "commentCount": item.get("comments_count", 180),
@@ -56,7 +74,7 @@ class InstagramService:
             media_items = [
                 {
                     "id": "ig_reel_101",
-                    "caption": "10 Minimal Design System Guidelines for Mobile & Web 🎨 #ui #design",
+                    "caption": f"10 Minimal Design System Guidelines for Mobile & Web 🎨 ({clean_handle})",
                     "timestamp": "2026-08-02T14:00:00Z",
                     "likeCount": 18500,
                     "commentCount": 1420,
