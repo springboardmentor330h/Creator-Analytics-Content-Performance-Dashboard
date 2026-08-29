@@ -79,4 +79,5 @@ def get_revenue_summary(db: Session, creator_id: int) -> Dict[str, Any]:
         "total_revenue": get_total_revenue(db, creator_id),
         "revenue_by_source": get_revenue_by_source(db, creator_id),
         "monthly_revenue": get_monthly_revenue(db, creator_id),
+        "revenue_trend": get_revenue_trend(db, creator_id),
     }

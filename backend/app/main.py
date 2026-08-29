@@ -8,11 +8,14 @@ from app.routers.social import router as social_router
 from app.routers.analytics import router as analytics_router
 from app.routers.revenue import router as revenue_router
 from app.routers.sponsorship import router as sponsorship_router
+from app.routers.notification import router as notification_router
+from app.routers.report import router as report_router
 from app.api.user_api import router as user_practice_router
 from app.models import practice_user
 from app.models import audience, growth
 from app.models import content
 from app.models import revenue, sponsorship
+from app.models import notification
 
 Base.metadata.create_all(bind=engine)
 
@@ -35,6 +38,8 @@ app.include_router(social_router)
 app.include_router(analytics_router)
 app.include_router(revenue_router)
 app.include_router(sponsorship_router)
+app.include_router(notification_router)
+app.include_router(report_router)
 
 @app.get("/")
 def root():
