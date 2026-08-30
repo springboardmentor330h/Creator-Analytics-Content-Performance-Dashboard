@@ -18,19 +18,34 @@ class AnalyticsService:
         return 0
 
     @staticmethod
-    def get_kpi_summary(db: Session, creator_id: int = 1) -> Dict[str, Any]:
-        # Aggregate totals from Content table
-        content_stats = (
-            db.query(
-                func.coalesce(func.sum(Content.views), 0).label("total_views"),
-                func.coalesce(func.sum(Content.likes), 0).label("total_likes"),
-                func.coalesce(func.sum(Content.comments), 0).label("total_comments"),
-                func.coalesce(func.sum(Content.shares), 0).label("total_shares"),
-                func.coalesce(func.sum(Content.reach), 0).label("total_reach"),
-            )
-            .filter(Content.creator_id == creator_id)
-            .first()
-        )
+    def _normalize_platform_name(platform: str | None) -> str:
+        if not platform:
+            return "Unknown"
+
+        platform_map = {
+            "youtube": "YouTube",
+            "instagram": "Instagram",
+            "linkedin": "LinkedIn",
+            "facebook": "Facebook",
+            "tiktok": "TikTok",
+            "x": "X",
+        }
+        return platform_map.get(platform.strip().lower(), platform.strip().title())
+
+    @staticmethod
+    def get_kpi_summary(db: Session, creator_id: int = 1, platform: str | None = None) -> Dict[str, Any]:
+        query = db.query(
+            func.coalesce(func.sum(Content.views), 0).label("total_views"),
+            func.coalesce(func.sum(Content.likes), 0).label("total_likes"),
+            func.coalesce(func.sum(Content.comments), 0).label("total_comments"),
+            func.coalesce(func.sum(Content.shares), 0).label("total_shares"),
+            func.coalesce(func.sum(Content.reach), 0).label("total_reach"),
+        ).filter(Content.creator_id == creator_id)
+
+        if platform and platform.lower() != "all":
+            query = query.filter(func.lower(Content.platform) == platform.lower())
+
+        content_stats = query.first()
 
         # Get latest growth record safely
         latest_growth = (
@@ -51,6 +66,7 @@ class AnalyticsService:
         avg_engagement = round((total_interactions / total_reach) * 100, 2)
 
         return {
+            "platform": platform or "All",
             "total_views": int(content_stats.total_views),
             "total_likes": int(content_stats.total_likes),
             "total_comments": int(content_stats.total_comments),
@@ -87,28 +103,25 @@ class AnalyticsService:
         return {"labels": labels, "values": values}
 
     @staticmethod
-    def get_platform_comparison(db: Session, creator_id: int = 1) -> Dict[str, Any]:
-        # Safely check if 'saves' column exists on Content model
+    def get_platform_comparison(db: Session, creator_id: int = 1, platform: str | None = None) -> Dict[str, Any]:
         has_saves = hasattr(Content, "saves")
-        
-        query_cols = [
-            Content.platform,
+
+        query = db.query(
+            func.lower(Content.platform).label("platform_key"),
             func.coalesce(func.sum(Content.views), 0).label("views"),
             func.coalesce(func.sum(Content.reach), 0).label("reach"),
             func.coalesce(func.sum(Content.likes), 0).label("likes"),
             func.coalesce(func.sum(Content.comments), 0).label("comments"),
             func.coalesce(func.sum(Content.shares), 0).label("shares"),
-        ]
-        
-        if has_saves:
-            query_cols.append(func.coalesce(func.sum(Content.saves), 0).label("saves"))
+        ).filter(Content.creator_id == creator_id)
 
-        platform_stats = (
-            db.query(*query_cols)
-            .filter(Content.creator_id == creator_id)
-            .group_by(Content.platform)
-            .all()
-        )
+        if platform and platform.lower() != "all":
+            query = query.filter(func.lower(Content.platform) == platform.lower())
+
+        if has_saves:
+            query = query.add_columns(func.coalesce(func.sum(Content.saves), 0).label("saves"))
+
+        platform_stats = query.group_by(func.lower(Content.platform)).all()
 
         comparison = {}
         for row in platform_stats:
@@ -116,8 +129,9 @@ class AnalyticsService:
             saves_val = getattr(row, "saves", 0)
             interactions = row.likes + row.comments + row.shares + saves_val
             engagement_rate = round((interactions / reach) * 100, 2)
+            platform_name = AnalyticsService._normalize_platform_name(row.platform_key)
 
-            comparison[row.platform] = {
+            comparison[platform_name] = {
                 "views": int(row.views),
                 "reach": int(row.reach),
                 "likes": int(row.likes),

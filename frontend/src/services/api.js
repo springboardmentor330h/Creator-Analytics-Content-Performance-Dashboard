@@ -1,32 +1,48 @@
-import axios from 'axios';
+// src/services/api.js
+const BASE_URL = 'http://127.0.0.1:8000';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-const API = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
+async function request(endpoint, options = {}) {
+  const token = localStorage.getItem('token');
+  
+  const headers = {
     'Content-Type': 'application/json',
-  },
-});
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
 
-// Reports & Comprehensive Analytics
-export const getReportSummary = (creatorId) => API.get(`/reports/summary/${creatorId}`);
-export const getPdfReportUrl = (creatorId) => `${API_BASE_URL}/reports/export/pdf/${creatorId}`;
-export const getExcelReportUrl = (creatorId) => `${API_BASE_URL}/reports/export/excel/${creatorId}`;
+  const config = {
+    ...options,
+    headers,
+  };
 
-// Notifications
-export const getNotifications = (creatorId, unreadOnly = false) => 
-  API.get(`/notifications/creator/${creatorId}`, { params: { unread_only: unreadOnly } });
-export const markNotificationRead = (notifId) => API.put(`/notifications/${notifId}/read`);
-export const createNotification = (data) => API.post('/notifications/', data);
-export const deleteNotification = (notifId) => API.delete(`/notifications/${notifId}`);
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
-// Revenue & Sponsorships
-export const getRevenues = (creatorId) => API.get(`/revenue/creator/${creatorId}`);
-export const getSponsorships = (creatorId) => API.get(`/sponsorships/creator/${creatorId}`);
+    // Handle session expiration or invalid token globally
+    if (response.status === 401) {
+      localStorage.clear();
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      throw new Error('Session expired. Please log in again.');
+    }
 
-// User management
-export const getUsers = () => API.get('/users/');
-export const getCurrentUser = () => API.get('/users/me');
+    const data = await response.json().catch(() => ({}));
 
-export default API;
+    if (!response.ok) {
+      const errorMessage = data.detail || data.message || `Request failed with status ${response.status}`;
+      throw new Error(errorMessage);
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+export const api = {
+  get: (endpoint) => request(endpoint, { method: 'GET' }),
+  post: (endpoint, body) => request(endpoint, { method: 'POST', body: JSON.stringify(body) }),
+  put: (endpoint, body) => request(endpoint, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (endpoint) => request(endpoint, { method: 'DELETE' }),
+};

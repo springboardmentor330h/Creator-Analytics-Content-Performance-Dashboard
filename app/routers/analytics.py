@@ -26,10 +26,11 @@ def _verify_creator_exists(db: Session, creator_id: int) -> None:
 )
 def get_kpi_summary(
     creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    platform: str = Query("All", description="Optional platform filter: All, YouTube, Instagram"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     _verify_creator_exists(db, creator_id)
-    return AnalyticsService.get_kpi_summary(db, creator_id=creator_id)
+    return AnalyticsService.get_kpi_summary(db, creator_id=creator_id, platform=platform)
 
 
 @router.get(
@@ -65,7 +66,8 @@ def get_follower_growth_chart_data(
 )
 def get_platform_comparison(
     creator_id: int = Query(6, description="Creator ID to fetch stats for"),
+    platform: str = Query("All", description="Optional platform filter: All, YouTube, Instagram"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     _verify_creator_exists(db, creator_id)
-    return AnalyticsService.get_platform_comparison(db, creator_id=creator_id)
+    return AnalyticsService.get_platform_comparison(db, creator_id=creator_id, platform=platform)

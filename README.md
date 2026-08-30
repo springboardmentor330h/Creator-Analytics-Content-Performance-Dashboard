@@ -24,6 +24,13 @@ A high-performance FastAPI backend designed for content creators, agencies, and 
 * **Live Video Import**: Instantly fetch real-time public video metrics (views, likes, comments, title) using the YouTube Data API v3.
 * **Secure Key Management**: Loads API keys dynamically from environment configuration (`.env`).
 
+### 🌐 4. Multi-Platform Social Sync
+
+* **Reusable Common Data Model**: Content records are standardized around shared fields such as `platform`, `content_title`, `views`, `likes`, `comments`, `shares`, `reach`, and `published_date`.
+* **Instagram Integration**: Adds an additional platform service alongside YouTube using the same CreatorIQ data pipeline.
+* **Platform-Aware Analytics**: KPI and comparison endpoints support filtering by `All`, `YouTube`, and `Instagram` without duplicating analytics code.
+* **Duplicate Protection**: Synchronization checks existing creator + platform + content records before inserting duplicates.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -78,7 +85,38 @@ creatoriq/
 
 ---
 
-## 🚀 API Endpoints Overview
+## � Multi-Platform Sprint Flow
+
+CreatorIQ now follows a reusable social sync pipeline:
+
+```text
+Social API -> Fetch Data -> Transform to common format -> Validate metrics -> Store in PostgreSQL -> Analytics & Dashboard
+```
+
+### Supported Sprint Platforms
+
+- YouTube (reference implementation)
+- Instagram (added platform integration)
+- Shared filtering and comparison logic for future platform additions
+
+### Common Content Contract
+
+Each synchronized post/video is stored in the common content shape used across the dashboard:
+
+- `platform`
+- `external_content_id`
+- `content_title`
+- `views`
+- `likes`
+- `comments`
+- `shares`
+- `saves`
+- `reach`
+- `published_date`
+
+---
+
+## �🚀 API Endpoints Overview
 
 ### Content Analytics (`/content`)
 
@@ -134,14 +172,22 @@ SECRET_KEY=your_jwt_secret_key_here
 
 ```
 
-### 5. Run the Server
+### 5. Run the Backend Server
 
 ```bash
 uvicorn app.main:app --reload
 
 ```
 
-### 6. Test via Interactive API Docs
+### 6. Run the Frontend Dashboard
+
+```bash
+cd frontend
+npm install
+npm run dev -- --host 0.0.0.0 --port 4173
+```
+
+### 7. Test via Interactive API Docs
 
 Open your browser and navigate to:
 

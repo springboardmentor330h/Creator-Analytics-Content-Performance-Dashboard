@@ -1,6 +1,7 @@
 import random
 from datetime import date, timedelta
 from typing import List, Dict, Any
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.content import Content
 
@@ -14,8 +15,9 @@ class SocialMediaService:
 
     @staticmethod
     def connect_platform(platform: str, account_name: str) -> Dict[str, str]:
-        CONNECTED_PLATFORMS[platform] = account_name
-        return {"message": f"{platform} account connected successfully"}
+        normalized = platform.strip().title()
+        CONNECTED_PLATFORMS[normalized] = account_name
+        return {"message": f"{normalized} account connected successfully"}
 
     @staticmethod
     def get_connected_platforms() -> Dict[str, List[str]]:
@@ -62,17 +64,34 @@ class SocialMediaService:
     @staticmethod
     def sync_platform_data(db: Session, platform: str, creator_id: int = 1) -> Dict[str, Any]:
         """Task 8: Ingest, process, and store platform data in PostgreSQL."""
-        if platform not in CONNECTED_PLATFORMS:
-            # Fallback connection if not explicitly connected first
-            CONNECTED_PLATFORMS[platform] = "DemoCreator"
+        normalized_platform = platform.strip().title()
+        if normalized_platform not in CONNECTED_PLATFORMS:
+            CONNECTED_PLATFORMS[normalized_platform] = "DemoCreator"
 
-        raw_data = SocialMediaService.generate_mock_platform_data(platform)
+        raw_data = SocialMediaService.generate_mock_platform_data(normalized_platform)
         synced_records = []
+        skipped_duplicates = 0
 
         for item in raw_data:
+            content_title = item["content_title"]
+            existing_record = (
+                db.query(Content)
+                .filter(
+                    Content.creator_id == creator_id,
+                    func.lower(Content.platform) == normalized_platform.lower(),
+                    Content.content_title == content_title,
+                )
+                .first()
+            )
+
+            if existing_record:
+                skipped_duplicates += 1
+                continue
+
             content_record = Content(
                 creator_id=creator_id,
                 platform=item["platform"],
+                external_content_id=f"{normalized_platform.lower()}_{content_title.lower().replace(' ', '_')}_{random.randint(1000, 9999)}",
                 content_title=item["content_title"],
                 views=item["views"],
                 likes=item["likes"],
@@ -90,7 +109,8 @@ class SocialMediaService:
 
         return {
             "status": "success",
-            "message": f"Successfully synchronized {len(synced_records)} items from {platform}",
+            "message": f"Successfully synchronized {len(synced_records)} new items from {normalized_platform}",
             "synced_count": len(synced_records),
-            "platform": platform,
+            "duplicate_count": skipped_duplicates,
+            "platform": normalized_platform,
         }

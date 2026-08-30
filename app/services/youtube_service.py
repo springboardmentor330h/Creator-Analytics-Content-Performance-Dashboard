@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any, Dict, List
 from fastapi import HTTPException, status
 import requests
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -148,7 +149,7 @@ class YouTubeService:
                 db.query(Content)
                 .filter(
                     Content.creator_id == creator_id,
-                    Content.platform == "YouTube",
+                    func.lower(Content.platform) == "youtube",
                     Content.external_content_id == item["external_content_id"],
                 )
                 .first()

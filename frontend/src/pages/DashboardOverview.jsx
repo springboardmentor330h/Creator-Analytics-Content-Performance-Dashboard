@@ -1,181 +1,255 @@
-import React, { useEffect, useState } from 'react';
-import { getReportSummary } from '../services/api';
-import { Eye, ThumbsUp, MessageSquare, Share2, Video, DollarSign, Award, AlertCircle, Loader2, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../services/api';
 
-export default function DashboardOverview({ user }) {
-  const [data, setData] = useState(null);
+const PLATFORM_OPTIONS = ['All', 'YouTube', 'Instagram'];
+
+export default function DashboardOverview() {
   const [selectedPlatform, setSelectedPlatform] = useState('All');
+  const [summary, setSummary] = useState({
+    total_views: 0,
+    total_likes: 0,
+    total_comments: 0,
+    total_shares: 0,
+    total_reach: 0,
+    total_followers: 0,
+    average_engagement_rate: 0,
+  });
+  const [comparison, setComparison] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Dynamic user ID resolution without hardcoded creator fallback
-  const creatorId = user?.id ?? user?.user_id ?? 1;
-
   useEffect(() => {
-    setLoading(true);
-    // Fetch metrics filtered by selected platform
-    getReportSummary(creatorId, selectedPlatform)
-      .then((res) => {
-        setData(res.data);
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const [summaryData, comparisonData] = await Promise.all([
+          api.get(`/analytics/summary?creator_id=1&platform=${encodeURIComponent(selectedPlatform)}`),
+          api.get('/analytics/platform-comparison?creator_id=1'),
+        ]);
+
+        setSummary(summaryData);
+        setComparison(comparisonData || {});
+      } catch (fetchError) {
+        console.error('Dashboard fetch failed:', fetchError);
+        setError(fetchError.message || 'Unable to load analytics right now.');
+      } finally {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to fetch dashboard metrics. Verify backend server is running on port 8000.");
-        setLoading(false);
-      });
-  }, [creatorId, selectedPlatform]);
+      }
+    };
 
-  if (loading && !data) return (
-    <div className="flex items-center justify-center h-64 text-gray-500 gap-2 font-medium">
-      <Loader2 className="w-6 h-6 animate-spin text-sky-600" /> Loading multi-platform analytics...
-    </div>
-  );
+    loadDashboardData();
+  }, [selectedPlatform]);
 
-  if (error) return (
-    <div className="p-4 bg-red-50 text-red-700 border border-red-200 rounded-lg flex items-center gap-2 font-medium">
-      <AlertCircle className="w-5 h-5 shrink-0" /> {error}
-    </div>
-  );
-
-  // Safely extract content metrics with fallbacks
-  const contentSummary = data?.content_summary ?? data?.content_performance ?? {};
-  const totalPosts = contentSummary.total_posts ?? 0;
-  const totalViews = contentSummary.total_views ?? 0;
-  const totalLikes = contentSummary.total_likes ?? 0;
-  const totalComments = contentSummary.total_comments ?? 0;
-  const totalShares = contentSummary.total_shares ?? null;
-  
-  const directRevenue = data?.revenue_summary?.total_direct_revenue ?? 0;
-  const sponsorshipValue = data?.revenue_summary?.total_sponsorship_value ?? 0;
-  const combinedTotal = data?.revenue_summary?.combined_total ?? (directRevenue + sponsorshipValue);
-  
-  const totalEngagements = totalLikes + totalComments;
-
-  const kpis = [
-    { label: 'Published Posts', value: totalPosts.toLocaleString(), icon: Video, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Total Views', value: totalViews.toLocaleString(), icon: Eye, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Total Likes', value: totalLikes.toLocaleString(), icon: ThumbsUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { label: 'Total Comments', value: totalComments.toLocaleString(), icon: MessageSquare, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Total Shares', value: totalShares !== null && totalShares !== undefined ? totalShares.toLocaleString() : 'N/A', icon: Share2, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { label: 'Direct Revenue', value: `$${directRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Sponsorship Value', value: `$${sponsorshipValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Award, color: 'text-purple-600', bg: 'bg-purple-50' },
-  ];
-
-  const revenueChartData = [
-    { name: 'Direct Revenue', amount: directRevenue },
-    { name: 'Sponsorships', amount: sponsorshipValue },
-  ];
-
-  // Platform Comparison Chart Data (Fallback if backend doesn't return comparison array yet)
-  const platformComparisonData = data?.platform_comparison || [
-    { platform: 'YouTube', views: totalViews, likes: totalLikes, comments: totalComments },
-    { platform: 'LinkedIn', views: Math.round(totalViews * 0.4), likes: Math.round(totalLikes * 0.3), comments: Math.round(totalComments * 0.5) }
-  ];
+  const comparisonRows = useMemo(() => Object.entries(comparison), [comparison]);
+  const maxViews = Math.max(...comparisonRows.map(([, values]) => values.views || 0), 1);
 
   return (
-    <div className="space-y-8 max-w-7xl">
-      {/* Header & Platform Filter (Sprint Task 7) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div style={styles.page}>
+      <div style={styles.headerRow}>
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">
-            Welcome back, {data?.creator?.name || user?.name || 'Creator'}!
-          </h2>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {data?.creator?.email || user?.email || 'Multi-platform content analytics and performance overview.'}
-          </p>
+          <p style={styles.eyebrow}>CreatorIQ Overview</p>
+          <h1 style={styles.title}>Multi-platform dashboard</h1>
         </div>
 
-        {/* Platform Selector */}
-        <div className="flex items-center gap-2 bg-white px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
-          <Filter className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Platform:</span>
-          <select 
-            value={selectedPlatform} 
-            onChange={(e) => setSelectedPlatform(e.target.value)}
-            className="text-sm font-bold text-sky-700 bg-transparent focus:outline-none cursor-pointer"
+        <label style={styles.selectWrap}>
+          <span style={styles.selectLabel}>Platform</span>
+          <select
+            value={selectedPlatform}
+            onChange={(event) => setSelectedPlatform(event.target.value)}
+            style={styles.select}
           >
-            <option value="All">All Platforms</option>
-            <option value="YouTube">YouTube</option>
-            <option value="LinkedIn">LinkedIn</option>
+            {PLATFORM_OPTIONS.map((platform) => (
+              <option key={platform} value={platform}>{platform}</option>
+            ))}
           </select>
-        </div>
+        </label>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {kpis.map((kpi, idx) => {
-          const Icon = kpi.icon;
-          return (
-            <div key={idx} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">{kpi.label}</p>
-                <p className="text-2xl font-extrabold text-gray-900 mt-1">{kpi.value}</p>
-              </div>
-              <div className={`p-3 rounded-lg ${kpi.bg} ${kpi.color}`}>
-                <Icon className="w-6 h-6" />
-              </div>
+      {loading ? (
+        <p style={styles.loading}>Loading analytics...</p>
+      ) : error ? (
+        <div style={styles.errorBox}>{error}</div>
+      ) : (
+        <>
+          <div style={styles.kpiGrid}>
+            <KpiCard label="Total Views" value={summary.total_views?.toLocaleString?.() ?? '0'} accent="#2563eb" />
+            <KpiCard label="Total Likes" value={summary.total_likes?.toLocaleString?.() ?? '0'} accent="#10b981" />
+            <KpiCard label="Comments" value={summary.total_comments?.toLocaleString?.() ?? '0'} accent="#f59e0b" />
+            <KpiCard label="Reach" value={summary.total_reach?.toLocaleString?.() ?? '0'} accent="#8b5cf6" />
+            <KpiCard label="Followers" value={summary.total_followers?.toLocaleString?.() ?? '0'} accent="#ef4444" />
+            <KpiCard label="Engagement" value={`${summary.average_engagement_rate ?? 0}%`} accent="#14b8a6" />
+          </div>
+
+          <div style={styles.panel}>
+            <div style={styles.panelHeader}>
+              <h2 style={styles.panelTitle}>Platform comparison</h2>
+              <span style={styles.badge}>{selectedPlatform}</span>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Revenue Stream Breakdown Chart */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Revenue Stream Breakdown</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={revenueChartData}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
-                <Bar dataKey="amount" fill="#0284c7" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={styles.comparisonList}>
+              {comparisonRows.map(([platform, data]) => (
+                <div key={platform} style={styles.platformRow}>
+                  <div style={styles.platformMeta}>
+                    <strong>{platform}</strong>
+                    <span>{data.engagement_rate ?? 0}% engagement</span>
+                  </div>
+                  <div style={styles.barTrack}>
+                    <div
+                      style={{
+                        ...styles.barFill,
+                        width: `${((data.views || 0) / maxViews) * 100}%`,
+                        background: platform === 'Instagram' ? '#8b5cf6' : '#2563eb',
+                      }}
+                    />
+                  </div>
+                  <span style={styles.valueText}>{(data.views || 0).toLocaleString()} views</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Cross-Platform Metrics Comparison (Sprint Task 8) */}
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Cross-Platform Comparison</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={platformComparisonData}>
-                <XAxis dataKey="platform" />
-                <YAxis />
-                <Tooltip formatter={(val) => Number(val).toLocaleString()} />
-                <Legend />
-                <Bar dataKey="views" name="Views" fill="#0284c7" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="likes" name="Likes" fill="#10b981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="comments" name="Comments" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Combined Financial Summary */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-        <div>
-          <h3 className="text-lg font-bold text-gray-900 mb-2">Combined Financial Summary</h3>
-          <p className="text-sm text-gray-500 mb-6">Aggregate totals across all tracked channels ({selectedPlatform} view).</p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 bg-sky-50 border border-sky-100 rounded-lg">
-            <span className="text-sm font-semibold text-sky-800">Combined Total Revenue</span>
-            <p className="text-3xl font-extrabold text-sky-950 mt-1">
-              ${combinedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-1 text-sm text-gray-600">
-            <p>• Total Content Items: <strong className="text-gray-900">{totalPosts}</strong></p>
-            <p>• Total Engagements: <strong className="text-gray-900">{totalEngagements.toLocaleString()}</strong></p>
-          </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }
+
+function KpiCard({ label, value, accent }) {
+  return (
+    <div style={{ ...styles.kpiCard, borderTop: `4px solid ${accent}` }}>
+      <div style={styles.kpiLabel}>{label}</div>
+      <div style={styles.kpiValue}>{value}</div>
+    </div>
+  );
+}
+
+const styles = {
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+    padding: '0.5rem 0'
+  },
+  headerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'end',
+    gap: '1rem',
+    flexWrap: 'wrap'
+  },
+  eyebrow: {
+    margin: 0,
+    textTransform: 'uppercase',
+    fontSize: '0.7rem',
+    color: '#64748b',
+    letterSpacing: '0.08em'
+  },
+  title: {
+    margin: '0.25rem 0 0',
+    fontSize: '2rem',
+    color: '#0f172a'
+  },
+  selectWrap: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.4rem',
+    fontWeight: 600,
+    color: '#334155'
+  },
+  selectLabel: {
+    fontSize: '0.8rem'
+  },
+  select: {
+    border: '1px solid #dbe3f0',
+    background: '#fff',
+    borderRadius: '10px',
+    padding: '0.7rem 1rem',
+    fontSize: '0.95rem',
+    color: '#0f172a'
+  },
+  loading: {
+    color: '#475569',
+    fontSize: '1rem'
+  },
+  kpiGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    gap: '1rem'
+  },
+  kpiCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '1.25rem',
+    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.06)',
+    minHeight: '120px'
+  },
+  kpiLabel: {
+    color: '#64748b',
+    fontSize: '0.8rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em'
+  },
+  kpiValue: {
+    marginTop: '0.9rem',
+    fontSize: '1.8rem',
+    fontWeight: 700,
+    color: '#0f172a'
+  },
+  panel: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '1.25rem',
+    boxShadow: '0 8px 20px rgba(15, 23, 42, 0.06)'
+  },
+  panelHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '1rem'
+  },
+  panelTitle: {
+    margin: 0,
+    fontSize: '1.2rem',
+    color: '#0f172a'
+  },
+  badge: {
+    background: '#eff6ff',
+    color: '#1d4ed8',
+    borderRadius: '999px',
+    padding: '0.38rem 0.72rem',
+    fontSize: '0.78rem',
+    fontWeight: 700
+  },
+  comparisonList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1rem'
+  },
+  platformRow: {
+    display: 'grid',
+    gridTemplateColumns: '160px 1fr 110px',
+    alignItems: 'center',
+    gap: '0.75rem'
+  },
+  platformMeta: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.2rem',
+    color: '#334155'
+  },
+  barTrack: {
+    height: '12px',
+    background: '#e2e8f0',
+    borderRadius: '999px',
+    overflow: 'hidden'
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: '999px'
+  },
+  valueText: {
+    fontSize: '0.8rem',
+    color: '#475569',
+    textAlign: 'right'
+  }
+};

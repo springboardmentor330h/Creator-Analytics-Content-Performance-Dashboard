@@ -1,25 +1,16 @@
-# CreatorIQ — Frontend
+# React + Vite
 
-CreatorIQ is a analytics and workspace dashboard built for creators. It provides real-time performance tracking across content engagement, audience demographics, growth trends, revenue streams, sponsorship deals, notifications, and exportable executive reports.
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
----
+Currently, two official plugins are available:
 
-## 🚀 Tech Stack
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
 
-- **Framework:** React 18 (Vite)
-- **Styling:** Tailwind CSS v4
-- **Routing:** React Router v6
-- **HTTP Client:** Axios
-- **Icons:** Lucide React
-- **Charts:** Recharts
+## React Compiler
 
----
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## 🛠️ Project Setup & Installation
+## Expanding the ESLint configuration
 
-### 1. Install Dependencies
-Navigate to the `frontend` folder and run:
-
-```bash
-cd frontend
-npm install
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.

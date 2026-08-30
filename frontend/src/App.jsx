@@ -1,99 +1,225 @@
+// src/App.jsx
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import DashboardLayout from './components/DashboardLayout';
-import DashboardOverview from './pages/DashboardOverview';
-import ContentPage from './pages/ContentPage';
-import AudiencePage from './pages/AudiencePage';
-import GrowthPage from './pages/GrowthPage';
-import RevenuePage from './pages/RevenuePage';
-import SponsorshipsPage from './pages/SponsorshipsPage';
-import NotificationsPage from './pages/NotificationsPage';
-import ReportsPage from './pages/ReportsPage';
-import ProfilePage from './pages/ProfilePage';
-import Login from './pages/Login';
-import AdminDashboardPage from './pages/AdminDashboardPage';
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  NavLink, 
+  Navigate, 
+  useNavigate 
+} from 'react-router-dom';
+import { LayoutDashboard, FolderKanban, User, LogOut } from 'lucide-react';
+
+import DashboardOverview from './pages/DashboardOverview.jsx';
+import ContentManager from './pages/ContentManager.jsx';
+import Profile from './pages/Profile.jsx';
+import Login from './pages/Login.jsx'; // Assume your login form component is imported here
+
+// Protected Layout Frame
+function DashboardLayout({ children, onLogout }) {
+  return (
+    <div style={styles.appWrapper}>
+      {/* Sidebar Navigation */}
+      <aside style={styles.sidebar}>
+        <div style={styles.brand}>
+          <div style={styles.logoBadge}>A</div>
+          <span style={styles.brandTitle}>Analytics Hub</span>
+        </div>
+
+        <nav style={styles.navGroup}>
+          <NavLink 
+            to="/dashboard" 
+            style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.navActive : {}) })}
+          >
+            <LayoutDashboard size={18} />
+            Overview
+          </NavLink>
+
+          <NavLink 
+            to="/content" 
+            style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.navActive : {}) })}
+          >
+            <FolderKanban size={18} />
+            Content Manager
+          </NavLink>
+
+          <NavLink 
+            to="/profile" 
+            style={({ isActive }) => ({ ...styles.navItem, ...(isActive ? styles.navActive : {}) })}
+          >
+            <User size={18} />
+            Profile
+          </NavLink>
+        </nav>
+
+        <button onClick={onLogout} style={styles.sidebarLogout}>
+          <LogOut size={18} />
+          Sign Out
+        </button>
+      </aside>
+
+      {/* Main Content Area */}
+      <main style={styles.mainContent}>
+        {children}
+      </main>
+    </div>
+  );
+}
+
+// Route Guard Component
+function ProtectedRoute({ isAuthenticated, children, onLogout }) {
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  return <DashboardLayout onLogout={onLogout}>{children}</DashboardLayout>;
+}
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!localStorage.getItem('token')
+  );
 
-  useEffect(() => {
-    // Restore session on initial load
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse stored user session", e);
-        localStorage.removeItem('user');
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  const handleLoginSuccess = (userData) => {
-    setUser(userData);
+  const handleLoginSuccess = (token, user) => {
+    localStorage.setItem('token', token);
+    if (user) localStorage.setItem('user', JSON.stringify(user));
+    setIsAuthenticated(true);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+    localStorage.clear();
+    setIsAuthenticated(false);
   };
 
-  const isAdmin = String(user?.role || '').toLowerCase().includes('admin');
-
-  if (loading) {
-    return null; // Prevents flash of login screen during session hydration
-  }
-
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
-        <Route
-          path="/login"
+        {/* Public Login Route */}
+        <Route 
+          path="/login" 
           element={
-            !user ? (
-              <Login onLoginSuccess={handleLoginSuccess} />
+            isAuthenticated ? (
+              <Navigate to="/dashboard" replace />
             ) : (
-              <Navigate to={isAdmin ? '/admin' : '/'} replace />
+              <Login onLoginSuccess={handleLoginSuccess} />
             )
-          }
+          } 
         />
 
-        {isAdmin && (
-          <Route path="/admin" element={<DashboardLayout user={user} onLogout={handleLogout} />}>
-            <Route index element={<AdminDashboardPage user={user} />} />
-            <Route path="users" element={<AdminDashboardPage user={user} />} />
-            <Route path="profile" element={<ProfilePage user={user} />} />
-          </Route>
-        )}
+        {/* Protected Application Routes */}
+        <Route 
+          path="/dashboard" 
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
+              <DashboardOverview />
+            </ProtectedRoute>
+          } 
+        />
 
-        {!isAdmin && (
-          <Route
-            path="/"
-            element={
-              user ? (
-                <DashboardLayout user={user} onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/login" replace />
-              )
-            }
-          >
-            <Route index element={<DashboardOverview user={user} />} />
-            <Route path="content" element={<ContentPage user={user} />} />
-            <Route path="audience" element={<AudiencePage user={user} />} />
-            <Route path="growth" element={<GrowthPage user={user} />} />
-            <Route path="revenue" element={<RevenuePage user={user} />} />
-            <Route path="sponsorships" element={<SponsorshipsPage user={user} />} />
-            <Route path="notifications" element={<NotificationsPage user={user} />} />
-            <Route path="reports" element={<ReportsPage user={user} />} />
-            <Route path="profile" element={<ProfilePage user={user} />} />
-          </Route>
-        )}
+        <Route 
+          path="/content" 
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
+              <ContentManager />
+            </ProtectedRoute>
+          } 
+        />
 
-        <Route path="*" element={<Navigate to={isAdmin ? '/admin' : '/login'} replace />} />
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
+              <Profile onLogout={handleLogout} />
+            </ProtectedRoute>
+          } 
+        />
+
+        {/* Fallback Redirect */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
+
+const styles = {
+  appWrapper: {
+    display: 'flex',
+    minHeight: '100vh',
+    backgroundColor: '#f8fafc',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  },
+  sidebar: {
+    width: '240px',
+    backgroundColor: '#0f172a',
+    color: '#94a3b8',
+    padding: '1.5rem 1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    borderRight: '1px solid #1e293b',
+  },
+  brand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0 0.5rem 1.5rem 0.5rem',
+    borderBottom: '1px solid #1e293b',
+  },
+  logoBadge: {
+    width: '32px',
+    height: '32px',
+    borderRadius: '8px',
+    backgroundColor: '#2563eb',
+    color: '#ffffff',
+    fontWeight: '700',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandTitle: {
+    fontSize: '1.125rem',
+    fontWeight: '700',
+    color: '#f8fafc',
+  },
+  navGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    marginTop: '1.5rem',
+    flex: 1,
+  },
+  navItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.625rem 0.875rem',
+    borderRadius: '6px',
+    color: '#94a3b8',
+    textDecoration: 'none',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    transition: 'all 0.15s ease',
+  },
+  navActive: {
+    backgroundColor: '#1e293b',
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  sidebarLogout: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    padding: '0.625rem 0.875rem',
+    borderRadius: '6px',
+    backgroundColor: 'transparent',
+    border: 'none',
+    color: '#ef4444',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    cursor: 'pointer',
+  },
+  mainContent: {
+    flex: 1,
+    padding: '2rem',
+    overflowY: 'auto',
+  },
+};

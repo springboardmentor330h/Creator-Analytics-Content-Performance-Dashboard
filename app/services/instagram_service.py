@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 import requests
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.content import Content
@@ -145,7 +146,7 @@ class InstagramService:
                 db.query(Content)
                 .filter(
                     Content.creator_id == creator_id,
-                    Content.platform == "Instagram",
+                    func.lower(Content.platform) == "instagram",
                     Content.external_content_id == item["external_content_id"],
                 )
                 .first()

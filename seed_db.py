@@ -77,13 +77,17 @@ def seed_creator_analytics(db, creator_user: User):
     if not creator_user or creator_user.role != UserRole.CREATOR:
         return
 
-    if db.query(Content).filter(Content.creator_id == creator_user.id).first():
-        return
+    existing_platforms = {
+        (content.platform or "").lower()
+        for content in db.query(Content).filter(Content.creator_id == creator_user.id).all()
+    }
 
     base_views = 120000 + (creator_user.id * 9000)
     base_reach = 310000 + (creator_user.id * 28000)
-    db.add_all(
-        [
+    records_to_add = []
+
+    if "youtube" not in existing_platforms:
+        records_to_add.append(
             Content(
                 creator_id=creator_user.id,
                 platform="YouTube",
@@ -95,7 +99,11 @@ def seed_creator_analytics(db, creator_user: User):
                 saves=int(base_views * 0.004),
                 reach=base_reach,
                 published_date=date.today() - timedelta(days=12),
-            ),
+            )
+        )
+
+    if "instagram" not in existing_platforms:
+        records_to_add.append(
             Content(
                 creator_id=creator_user.id,
                 platform="Instagram",
@@ -107,7 +115,11 @@ def seed_creator_analytics(db, creator_user: User):
                 saves=int(base_views * 0.005),
                 reach=int(base_reach * 0.74),
                 published_date=date.today() - timedelta(days=8),
-            ),
+            )
+        )
+
+    if "linkedin" not in existing_platforms:
+        records_to_add.append(
             Content(
                 creator_id=creator_user.id,
                 platform="LinkedIn",
@@ -119,9 +131,11 @@ def seed_creator_analytics(db, creator_user: User):
                 saves=int(base_views * 0.002),
                 reach=int(base_reach * 0.28),
                 published_date=date.today() - timedelta(days=4),
-            ),
-        ]
-    )
+            )
+        )
+
+    if records_to_add:
+        db.add_all(records_to_add)
 
     if not db.query(Revenue).filter(Revenue.creator_id == creator_user.id).first():
         db.add_all(
