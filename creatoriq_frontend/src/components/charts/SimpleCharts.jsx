@@ -51,6 +51,24 @@ export function Donut({ data, height = 240 }) {
   )
 }
 
+export function GroupedBar({ data, xKey = 'name', bars = [], height = 280 }) {
+  if (!data?.length) return <Empty />
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+        <XAxis dataKey={xKey} tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fill: '#64748b', fontSize: 11 }} tickLine={false} axisLine={false} />
+        <Tooltip contentStyle={tip} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        {bars.map((b, i) => (
+          <Bar key={b.key} dataKey={b.key} name={b.label || b.key} fill={b.color || COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
 function Empty() {
   return <div className="h-60 flex items-center justify-center text-slate-500 text-sm">No data yet</div>
 }

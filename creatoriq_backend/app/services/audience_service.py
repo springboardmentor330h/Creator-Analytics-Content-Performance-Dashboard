@@ -147,12 +147,17 @@ def get_top_device(records):
 # AUDIENCE REPORT
 # ============================================================
 
-def get_audience_report(db: Session):
+def get_audience_report(db: Session, creator_id: int | None = None):
+    """
+    creator_id is optional so the existing global /analytics/audience
+    endpoint keeps working unchanged; when supplied (e.g. from the
+    reporting service) results are scoped to that creator only.
+    """
 
-    records = (
-        db.query(Audience)
-        .all()
-    )
+    query = db.query(Audience)
+    if creator_id is not None:
+        query = query.filter(Audience.creator_id == creator_id)
+    records = query.all()
 
     return {
 
@@ -198,15 +203,24 @@ def get_audience_report(db: Session):
 # GROWTH ANALYTICS
 # ============================================================
 
-def get_growth_report(db: Session):
+def get_growth_report(db: Session, creator_id: int | None = None):
+    """
+    creator_id is optional so the existing global /analytics/growth
+    endpoint keeps working unchanged; when supplied (e.g. from the
+    reporting service) results are scoped to that creator only.
+    """
 
     # Fetch the most recent 30 records (newest first), then reverse
     # to chronological order for the response. Ordering ascending
     # with a plain limit would return the OLDEST 30 records instead
     # once more than 30 rows exist — the wrong end of the timeline
     # for a "last 30 days" report.
+    growth_query = db.query(Growth)
+    if creator_id is not None:
+        growth_query = growth_query.filter(Growth.creator_id == creator_id)
+
     growth_records = (
-        db.query(Growth)
+        growth_query
         .order_by(Growth.date.desc())
         .limit(30)
         .all()
@@ -273,31 +287,35 @@ def get_growth_report(db: Session):
 # AUDIENCE TRENDS
 # ============================================================
 
-def get_audience_trends(db: Session):
+def get_audience_trends(
+    db: Session,
+    creator_id: int | None = None,
+):
+    query = db.query(Growth)
+
+    if creator_id is not None:
+        query = query.filter(
+            Growth.creator_id == creator_id
+        )
 
     growth_records = (
-        db.query(Growth)
+        query
         .order_by(Growth.date.desc())
         .limit(30)
         .all()
     )
 
-    growth_records = list(reversed(growth_records))
+    growth_records = list(
+        reversed(growth_records)
+    )
 
     result = []
 
     for record in growth_records:
-
         result.append({
-
-            "date":
-                record.date.isoformat(),
-
-            "followers":
-                record.followers,
-
-            "reach":
-                record.reach
+            "date": record.date.isoformat(),
+            "followers": record.followers or 0,
+            "reach": record.reach or 0,
         })
 
     return result

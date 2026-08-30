@@ -1,10 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    status,
+)
+
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_db
+
 from app.models.revenue import Revenue
 from app.models.user import User
+
 from app.schemas.revenue import (
     RevenueCreate,
     RevenueUpdate,
@@ -13,6 +22,7 @@ from app.schemas.revenue import (
     MonthlyRevenue,
     RevenueTrendPoint,
 )
+
 from app.services import revenue_service
 
 
@@ -23,7 +33,24 @@ router = APIRouter(
 
 
 # ============================================================
+# ROLE HELPERS
+# ============================================================
+
+def is_admin(
+    current_user: User,
+) -> bool:
+    return current_user.role == "Administrator"
+
+
+def is_creator(
+    current_user: User,
+) -> bool:
+    return current_user.role == "Creator"
+
+
+# ============================================================
 # CREATE REVENUE
+# POST /revenue
 # ============================================================
 
 @router.post(
@@ -36,9 +63,31 @@ def create_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only creators can create revenue.
+
+    creator_id is always taken from the authenticated user.
+    """
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can create revenue records."
+            ),
+        )
+
     new_revenue = Revenue(
         creator_id=current_user.id,
-        source=revenue_data.source.value,
+        source=(
+            revenue_data.source.value
+            if hasattr(
+                revenue_data.source,
+                "value",
+            )
+            else revenue_data.source
+        ),
         amount=revenue_data.amount,
         currency=revenue_data.currency,
         description=revenue_data.description,
@@ -46,14 +95,17 @@ def create_revenue(
     )
 
     db.add(new_revenue)
+
     db.commit()
+
     db.refresh(new_revenue)
 
     return new_revenue
 
 
 # ============================================================
-# GET ALL REVENUE (current creator only)
+# GET ALL REVENUE
+# GET /revenue
 # ============================================================
 
 @router.get(
@@ -64,10 +116,28 @@ def get_all_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Creator:
+        Own revenue only.
+
+    Administrator:
+        All creators' revenue.
+    """
+
+    query = db.query(Revenue)
+
+    if not is_admin(current_user):
+
+        query = query.filter(
+            Revenue.creator_id == current_user.id
+        )
+
     revenues = (
-        db.query(Revenue)
-        .filter(Revenue.creator_id == current_user.id)
-        .order_by(Revenue.date.desc())
+        query
+        .order_by(
+            Revenue.date.desc(),
+            Revenue.id.desc(),
+        )
         .all()
     )
 
@@ -75,8 +145,8 @@ def get_all_revenue(
 
 
 # ============================================================
-# ANALYTICS — must be declared before "/{revenue_id}"
-# so "analytics" is not parsed as an id
+# REVENUE ANALYTICS SUMMARY
+# GET /revenue/analytics/summary
 # ============================================================
 
 @router.get(
@@ -87,8 +157,30 @@ def revenue_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return revenue_service.get_revenue_summary(db, current_user.id)
+    """
+    Creator:
+        Revenue summary for themselves.
 
+    Administrator:
+        Revenue summary across all creators.
+    """
+
+    creator_id = (
+        None
+        if is_admin(current_user)
+        else current_user.id
+    )
+
+    return revenue_service.get_revenue_summary(
+        db,
+        creator_id,
+    )
+
+
+# ============================================================
+# MONTHLY REVENUE
+# GET /revenue/analytics/monthly
+# ============================================================
 
 @router.get(
     "/analytics/monthly",
@@ -98,22 +190,61 @@ def monthly_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return revenue_service.get_monthly_revenue(db, current_user.id)
+    """
+    Creator:
+        Monthly revenue for themselves.
 
+    Administrator:
+        Monthly revenue across all creators.
+    """
+
+    creator_id = (
+        None
+        if is_admin(current_user)
+        else current_user.id
+    )
+
+    return revenue_service.get_monthly_revenue(
+        db,
+        creator_id,
+    )
+
+
+# ============================================================
+# REVENUE TREND
+# GET /revenue/analytics/trend
+# ============================================================
 
 @router.get(
     "/analytics/trend",
-    response_model=RevenueTrendPoint,
 )
 def revenue_trend(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return revenue_service.get_revenue_trend(db, current_user.id)
+    """
+    Creator:
+        Own revenue trend.
+
+    Administrator:
+        Revenue trend across all creators.
+    """
+
+    creator_id = (
+        None
+        if is_admin(current_user)
+        else current_user.id
+    )
+
+    return revenue_service.get_revenue_trend(
+        db,
+        creator_id,
+    )
 
 
 # ============================================================
 # GET REVENUE BY ID
+# GET /revenue/{revenue_id}
 # ============================================================
 
 @router.get(
@@ -125,22 +256,34 @@ def get_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    revenue = (
+    """
+    Administrator:
+        Can view any revenue record.
+
+    Creator:
+        Can view only their own revenue record.
+    """
+
+    query = (
         db.query(Revenue)
-        .filter(Revenue.id == revenue_id)
-        .first()
+        .filter(
+            Revenue.id == revenue_id
+        )
     )
 
+    if not is_admin(current_user):
+
+        query = query.filter(
+            Revenue.creator_id == current_user.id
+        )
+
+    revenue = query.first()
+
     if not revenue:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Revenue record not found",
-        )
-
-    if revenue.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this revenue record",
         )
 
     return revenue
@@ -148,6 +291,7 @@ def get_revenue(
 
 # ============================================================
 # UPDATE REVENUE
+# PUT /revenue/{revenue_id}
 # ============================================================
 
 @router.put(
@@ -160,35 +304,80 @@ def update_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only the creator who owns the record can update it.
+
+    Administrator is read-only.
+    """
+
+    if is_admin(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Administrators can view revenue "
+                "but cannot modify creator revenue."
+            ),
+        )
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can update revenue."
+            ),
+        )
+
     revenue = (
         db.query(Revenue)
-        .filter(Revenue.id == revenue_id)
+        .filter(
+            Revenue.id == revenue_id,
+            Revenue.creator_id == current_user.id,
+        )
         .first()
     )
 
     if not revenue:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Revenue record not found",
         )
 
-    if revenue.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this revenue record",
+    update_data = revenue_data.model_dump(
+        exclude_unset=True
+    )
+
+    # Never allow ownership to change.
+    update_data.pop(
+        "creator_id",
+        None,
+    )
+
+    if (
+        "source" in update_data
+        and update_data["source"] is not None
+    ):
+
+        value = update_data["source"]
+
+        update_data["source"] = (
+            value.value
+            if hasattr(value, "value")
+            else value
         )
 
-    update_data = revenue_data.model_dump(exclude_unset=True)
-
-    if "source" in update_data and update_data["source"] is not None:
-        update_data["source"] = update_data["source"].value if hasattr(
-            update_data["source"], "value"
-        ) else update_data["source"]
-
     for field, value in update_data.items():
-        setattr(revenue, field, value)
+
+        setattr(
+            revenue,
+            field,
+            value,
+        )
 
     db.commit()
+
     db.refresh(revenue)
 
     return revenue
@@ -196,6 +385,7 @@ def update_revenue(
 
 # ============================================================
 # DELETE REVENUE
+# DELETE /revenue/{revenue_id}
 # ============================================================
 
 @router.delete(
@@ -206,28 +396,52 @@ def delete_revenue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only the creator who owns the record can delete it.
+
+    Administrator is read-only.
+    """
+
+    if is_admin(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Administrators can view revenue "
+                "but cannot delete creator revenue."
+            ),
+        )
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can delete revenue."
+            ),
+        )
+
     revenue = (
         db.query(Revenue)
-        .filter(Revenue.id == revenue_id)
+        .filter(
+            Revenue.id == revenue_id,
+            Revenue.creator_id == current_user.id,
+        )
         .first()
     )
 
     if not revenue:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Revenue record not found",
         )
 
-    if revenue.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this revenue record",
-        )
-
     db.delete(revenue)
+
     db.commit()
 
     return {
-        "message": "Revenue record deleted successfully",
+        "message": "Revenue deleted successfully",
         "revenue_id": revenue_id,
     }

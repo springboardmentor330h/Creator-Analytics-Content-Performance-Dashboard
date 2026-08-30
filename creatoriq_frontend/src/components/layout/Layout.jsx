@@ -2,7 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, Film, Users, TrendingUp, DollarSign, Handshake,
-  Bell, FileText, Settings, LogOut, Menu, X,
+  Bell, FileText, Settings, LogOut, Menu, X, GitCompare,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { notificationAPI } from '../../services/api'
@@ -12,6 +12,7 @@ const nav = [
   { to: '/content', label: 'Content', icon: Film },
   { to: '/audience', label: 'Audience', icon: Users },
   { to: '/growth', label: 'Growth', icon: TrendingUp },
+  { to: '/platform-comparison', label: 'Compare Platforms', icon: GitCompare },
   { to: '/revenue', label: 'Revenue', icon: DollarSign },
   { to: '/sponsorships', label: 'Sponsorships', icon: Handshake },
   { to: '/notifications', label: 'Notifications', icon: Bell },

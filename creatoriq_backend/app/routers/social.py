@@ -1,311 +1,331 @@
+from datetime import datetime
+
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    Query
+    Query,
 )
 
 from sqlalchemy.orm import Session
 
-from pydantic import BaseModel
+from app.core.auth import get_current_user
+from app.core.config import settings
 
 from app.db.database import get_db
 
 from app.models.content import Content
+from app.models.user import User
 
 from app.services.social_media import (
     connect_platform,
     get_connected_platforms,
-    get_platform_data,
-    is_platform_connected,
     normalize_platform,
     SUPPORTED_PLATFORMS,
 )
 
 from app.services.youtube_service import (
-    get_youtube_channel_videos
+    get_youtube_channel_videos,
 )
 
-# CREATE ROUTER
-router = APIRouter(
-    prefix="/social",
-    tags=["Social Media"]
+from app.services.instagram_service import (
+    discover_instagram_user,
+    transform_instagram_media,
+    MetaGraphError,
 )
-
-# REQUEST SCHEMA
-class PlatformConnection(BaseModel):
-
-    platform: str
-
-    account_name: str
-
-
-# CONNECT PLATFORM
-# POST /social/connect
-
-@router.post("/connect")
-def connect_social_platform(
-    request: PlatformConnection
-):
-
-    result = connect_platform(
-        request.platform,
-        request.account_name
-    )
-
-    if not result:
-
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Unsupported platform. "
-                "Available platforms: "
-                + ", ".join(SUPPORTED_PLATFORMS)
-                + " (Twitter is accepted as X)"
-            )
-        )
-
-    return {
-        "message": (
-            f"{result['platform']} "
-            "account connected successfully"
-        ),
-        "platform": result["platform"],
-        "account_name": request.account_name,
-    }
-
-
-# GET CONNECTED PLATFORMS
-# GET /social/platforms
-
-@router.get("/platforms")
-def connected_social_platforms():
-
-    return get_connected_platforms()
 
 
 # ============================================================
-# GENERIC PLATFORM SYNCHRONIZATION
-#
-# POST /social/sync
+# ROUTER
+# ============================================================
 
-@router.post("/sync")
-def synchronize_platform_data(
+router = APIRouter(
+    prefix="/social",
+    tags=["Social Media"],
+)
 
-    platform: str = Query(
-        ...,
-        description="Platform name"
-    ),
 
-    db: Session = Depends(get_db)
-):
+# ============================================================
+# HELPER
+# ============================================================
 
-    # --------------------------------------------------------
-    # NORMALIZE PLATFORM NAME (case / alias insensitive)
-    # Accepts: instagram, Instagram, twitter, Twitter, X, etc.
-    # --------------------------------------------------------
+def validate_creator(
+    db: Session,
+    creator_id: int,
+) -> User:
+    """
+    Validate that the supplied ID belongs to a Creator.
+    """
 
-    platform_name = normalize_platform(platform)
-
-    if not platform_name:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Unsupported platform. "
-                "Available platforms: "
-                + ", ".join(SUPPORTED_PLATFORMS)
-                + " (Twitter is accepted as X)"
-            ),
-        )
-
-    # --------------------------------------------------------
-    # CHECK PLATFORM CONNECTION
-    # --------------------------------------------------------
-
-    if not is_platform_connected(platform_name):
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"{platform_name} is not connected. "
-                "Call POST /social/connect first."
-            ),
-        )
-
-    # --------------------------------------------------------
-    # YOUTUBE → real API endpoint
-    # --------------------------------------------------------
-
-    if platform_name == "YouTube":
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Use POST /social/youtube/sync "
-                "for real YouTube API synchronization. "
-                "Provide creator_id and channel_id."
-            ),
-        )
-
-    # --------------------------------------------------------
-    # OTHER PLATFORMS — mock sync into PostgreSQL
-    # (Sprint 4 multi-platform workflow)
-    # Real platform APIs can replace this later.
-    # --------------------------------------------------------
-
-    mock_data = get_platform_data(platform_name)
-
-    if not mock_data:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                f"No mock data available for {platform_name}. "
-                "Supported: YouTube, Instagram, Facebook, "
-                "LinkedIn, TikTok, X"
-            )
-        )
-
-    external_id = (
-        f"mock-{platform_name.lower()}-"
-        f"{mock_data.get('content_title', 'content')}"
-        .replace(" ", "-")
-        .lower()
-    )
-
-    existing = (
-        db.query(Content)
+    creator = (
+        db.query(User)
         .filter(
-            Content.platform == mock_data["platform"],
-            Content.external_content_id == external_id,
+            User.id == creator_id
         )
         .first()
     )
 
-    if existing:
-        existing.views = mock_data.get("views", 0)
-        existing.likes = mock_data.get("likes", 0)
-        existing.comments = mock_data.get("comments", 0)
-        existing.shares = mock_data.get("shares", 0)
-        existing.saves = mock_data.get("saves", 0)
-        existing.watch_time = mock_data.get("watch_time", 0)
-        existing.reach = mock_data.get("reach", 0)
-        existing.content_title = mock_data.get(
-            "content_title", existing.content_title
+    if not creator:
+        raise HTTPException(
+            status_code=404,
+            detail="Creator not found",
         )
-        existing.published_date = mock_data.get(
-            "published_date", existing.published_date
+
+    if (
+        not creator.role
+        or creator.role.lower() != "creator"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "The supplied creator_id does not "
+                "belong to a Creator account"
+            ),
         )
-        db.commit()
-        db.refresh(existing)
-        content_row = existing
-        action = "updated"
-    else:
-        content_row = Content(
-            creator_id=mock_data.get("creator_id", 1),
-            platform=mock_data["platform"],
-            external_content_id=external_id,
-            content_title=mock_data.get("content_title", "Untitled"),
-            views=mock_data.get("views", 0),
-            likes=mock_data.get("likes", 0),
-            comments=mock_data.get("comments", 0),
-            shares=mock_data.get("shares", 0),
-            saves=mock_data.get("saves", 0),
-            watch_time=mock_data.get("watch_time", 0),
-            reach=mock_data.get("reach", 0),
-            published_date=mock_data.get("published_date"),
+
+    return creator
+
+
+# ============================================================
+# HELPER
+# ============================================================
+
+def check_creator_access(
+    current_user: User,
+    creator_id: int,
+):
+    """
+    Creator can only synchronize their own data.
+    Admin can synchronize any creator.
+    """
+
+    role = (
+        current_user.role.lower()
+        if current_user.role
+        else ""
+    )
+
+    if (
+        role == "creator"
+        and current_user.id != creator_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "Creators can only synchronize "
+                "their own data."
+            ),
         )
-        db.add(content_row)
-        db.commit()
-        db.refresh(content_row)
-        action = "created"
+
+
+# ============================================================
+# CONNECT PLATFORM
+# ============================================================
+
+@router.post("/connect")
+def connect_social_platform(
+    platform: str = Query(
+        ...,
+        description=(
+            "Platform name: YouTube or Instagram"
+        ),
+    ),
+
+    account_name: str = Query(
+        ...,
+        min_length=1,
+        description="Connected account name or username",
+    ),
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    """
+    Register a social platform for the
+    authenticated creator.
+
+    No social-media data is fetched here.
+
+    Actual synchronization happens through:
+
+        POST /social/youtube/sync
+        POST /social/instagram/sync
+    """
+
+    canonical = normalize_platform(
+        platform
+    )
+
+    if canonical not in {
+        "YouTube",
+        "Instagram",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Only YouTube and Instagram are "
+                "supported for this sprint."
+            ),
+        )
+
+    if (
+        not account_name
+        or not account_name.strip()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Account name is required.",
+        )
+
+    # --------------------------------------------------------
+    # Creator connection
+    # --------------------------------------------------------
+
+    creator_id = current_user.id
+
+    result = connect_platform(
+        creator_id=creator_id,
+        platform=canonical,
+        account_name=account_name.strip(),
+    )
+
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to connect platform.",
+        )
 
     return {
-        "platform": platform_name,
-        "status": "success",
-        "action": action,
-        "content_id": content_row.id,
         "message": (
-            f"{platform_name} mock data synchronized "
-            f"and stored in PostgreSQL"
+            f"{canonical} account connected successfully"
         ),
+        "creator_id": creator_id,
+        "platform": canonical,
+        "account_name": account_name.strip(),
+        "connected_by": current_user.id,
     }
 
 
-# REAL YOUTUBE SYNCHRONIZATION
-#
-# POST /social/youtube/sync
+# ============================================================
+# GET CONNECTED PLATFORMS
+# ============================================================
 
+@router.get("/platforms")
+def connected_social_platforms(
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    """
+    Return connected platforms for
+    the authenticated creator.
+    """
+
+    return get_connected_platforms(
+        creator_id=current_user.id
+    )
+
+
+# ============================================================
+# YOUTUBE SYNCHRONIZATION
+# ============================================================
 
 @router.post("/youtube/sync")
 def synchronize_youtube_data(
-
     creator_id: int = Query(
         ...,
         gt=0,
-        description="CreatorIQ creator ID"
+        description=(
+            "CreatorIQ creator ID. "
+            "All synchronized YouTube records are "
+            "stored against this creator."
+        ),
     ),
 
     channel_id: str = Query(
         ...,
         min_length=1,
-        description="YouTube channel ID"
+        description="YouTube channel ID",
     ),
 
     max_results: int = Query(
         10,
         ge=1,
         le=50,
-        description="Number of YouTube videos to synchronize"
+        description=(
+            "Number of YouTube videos to synchronize"
+        ),
     ),
 
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    ),
+
+    current_user: User = Depends(
+        get_current_user
+    ),
 ):
+    """
+    Synchronize YouTube content.
 
-    # ========================================================
-    # VALIDATE CREATOR ID
-    # ========================================================
+    YouTube API
+        ↓
+    Fetch
+        ↓
+    Transform
+        ↓
+    PostgreSQL
+        ↓
+    creator_id
+    """
 
-    if creator_id <= 0:
+    # --------------------------------------------------------
+    # Validate creator
+    # --------------------------------------------------------
+
+    creator = validate_creator(
+        db,
+        creator_id,
+    )
+
+    check_creator_access(
+        current_user,
+        creator_id,
+    )
+
+    # --------------------------------------------------------
+    # Channel ID
+    # --------------------------------------------------------
+
+    channel_id = channel_id.strip()
+
+    if not channel_id:
 
         raise HTTPException(
             status_code=400,
-            detail="creator_id must be greater than 0"
+            detail="YouTube channel ID is required.",
         )
 
-    # ========================================================
-    # VALIDATE CHANNEL ID
-    # ========================================================
-
-    if not channel_id.strip():
-
-        raise HTTPException(
-            status_code=400,
-            detail="YouTube channel ID is required"
-        )
-
-    # ========================================================
-    # CALL REAL YOUTUBE API
-    # ========================================================
+    # --------------------------------------------------------
+    # Fetch YouTube
+    # --------------------------------------------------------
 
     try:
 
-        youtube_data = get_youtube_channel_videos(
-            channel_id=channel_id,
-            max_results=max_results
+        youtube_data = (
+            get_youtube_channel_videos(
+                channel_id=channel_id,
+                max_results=max_results,
+            )
         )
-
-    # --------------------------------------------------------
-    # YOUTUBE/API ERROR
-    # --------------------------------------------------------
 
     except ValueError as error:
 
         raise HTTPException(
             status_code=400,
-            detail=str(error)
+            detail=str(error),
         )
-
-    # --------------------------------------------------------
-    # UNEXPECTED ERROR
-    # --------------------------------------------------------
 
     except Exception as error:
 
@@ -313,19 +333,21 @@ def synchronize_youtube_data(
             status_code=500,
             detail=(
                 "Unexpected error while fetching "
-                f"YouTube data: {str(error)}"
-            )
+                f"YouTube data: {error}"
+            ),
         )
 
-    # ========================================================
-    # HANDLE EMPTY RESPONSE
-    # ========================================================
+    # --------------------------------------------------------
+    # Empty
+    # --------------------------------------------------------
 
     if not youtube_data:
 
         return {
             "platform": "YouTube",
             "status": "success",
+            "creator_id": creator_id,
+            "creator_name": creator.full_name,
             "records_synced": 0,
             "records_created": 0,
             "records_updated": 0,
@@ -333,30 +355,20 @@ def synchronize_youtube_data(
             "message": (
                 "No YouTube videos were found "
                 "for the specified channel."
-            )
+            ),
         }
 
-    # ========================================================
-    # COUNTERS
-    # ========================================================
-
     records_created = 0
-
     records_updated = 0
-
     records_skipped = 0
 
-    # ========================================================
-    # PROCESS YOUTUBE RECORDS
-    # ========================================================
+    # --------------------------------------------------------
+    # Process
+    # --------------------------------------------------------
 
     try:
 
         for video_data in youtube_data:
-
-            # =================================================
-            # GET EXTERNAL CONTENT ID
-            # =================================================
 
             external_content_id = (
                 video_data.get(
@@ -364,19 +376,10 @@ def synchronize_youtube_data(
                 )
             )
 
-            # -------------------------------------------------
-            # INVALID EXTERNAL ID
-            # -------------------------------------------------
-
             if not external_content_id:
 
                 records_skipped += 1
-
                 continue
-
-            # =================================================
-            # GET PUBLISHED DATE
-            # =================================================
 
             published_date = (
                 video_data.get(
@@ -384,112 +387,69 @@ def synchronize_youtube_data(
                 )
             )
 
-            # -------------------------------------------------
-            # INVALID PUBLISHED DATE
-            # -------------------------------------------------
-
             if not published_date:
 
                 records_skipped += 1
-
                 continue
 
-            # =================================================
-            # FIND EXISTING RECORD
-            #
-            # Duplicate identification:
-            #
-            # platform + external_content_id
-            # =================================================
-
             existing_content = (
-
                 db.query(Content)
-
                 .filter(
-
+                    Content.creator_id == creator_id,
                     Content.platform == "YouTube",
-
                     Content.external_content_id
-                    == external_content_id
-
+                    == str(
+                        external_content_id
+                    ),
                 )
-
                 .first()
             )
 
             # =================================================
-            # UPDATE EXISTING CONTENT
+            # UPDATE
             # =================================================
 
             if existing_content:
 
-                existing_content.creator_id = (
-                    creator_id
-                )
-
                 existing_content.content_title = (
-
                     video_data.get(
                         "content_title"
                     )
-
                     or existing_content.content_title
                 )
 
                 existing_content.views = (
-
-                    video_data.get(
-                        "views"
-                    )
+                    video_data.get("views")
                     or 0
                 )
 
                 existing_content.likes = (
-
-                    video_data.get(
-                        "likes"
-                    )
+                    video_data.get("likes")
                     or 0
                 )
 
                 existing_content.comments = (
-
-                    video_data.get(
-                        "comments"
-                    )
+                    video_data.get("comments")
                     or 0
                 )
 
                 existing_content.shares = (
-
-                    video_data.get(
-                        "shares"
-                    )
+                    video_data.get("shares")
                     or 0
                 )
 
                 existing_content.saves = (
-
-                    video_data.get(
-                        "saves"
-                    )
+                    video_data.get("saves")
                     or 0
                 )
 
                 existing_content.watch_time = (
-
-                    video_data.get(
-                        "watch_time"
-                    )
+                    video_data.get("watch_time")
                     or 0
                 )
 
                 existing_content.reach = (
-
-                    video_data.get(
-                        "reach"
-                    )
+                    video_data.get("reach")
                     or 0
                 )
 
@@ -500,89 +460,54 @@ def synchronize_youtube_data(
                 records_updated += 1
 
             # =================================================
-            # CREATE NEW CONTENT
+            # CREATE
             # =================================================
 
             else:
 
                 new_content = Content(
-
                     creator_id=creator_id,
-
                     platform="YouTube",
-
-                    external_content_id=(
+                    external_content_id=str(
                         external_content_id
                     ),
-
                     content_title=(
-
                         video_data.get(
                             "content_title"
                         )
-
                         or "Untitled YouTube Video"
                     ),
-
                     views=(
-
-                        video_data.get(
-                            "views"
-                        )
+                        video_data.get("views")
                         or 0
                     ),
-
                     likes=(
-
-                        video_data.get(
-                            "likes"
-                        )
+                        video_data.get("likes")
                         or 0
                     ),
-
                     comments=(
-
-                        video_data.get(
-                            "comments"
-                        )
+                        video_data.get("comments")
                         or 0
                     ),
-
                     shares=(
-
-                        video_data.get(
-                            "shares"
-                        )
+                        video_data.get("shares")
                         or 0
                     ),
-
                     saves=(
-
-                        video_data.get(
-                            "saves"
-                        )
+                        video_data.get("saves")
                         or 0
                     ),
-
                     watch_time=(
-
-                        video_data.get(
-                            "watch_time"
-                        )
+                        video_data.get("watch_time")
                         or 0
                     ),
-
                     reach=(
-
-                        video_data.get(
-                            "reach"
-                        )
+                        video_data.get("reach")
                         or 0
                     ),
-
                     published_date=(
                         published_date
-                    )
+                    ),
                 )
 
                 db.add(
@@ -591,15 +516,7 @@ def synchronize_youtube_data(
 
                 records_created += 1
 
-        # ====================================================
-        # COMMIT DATABASE CHANGES
-        # ====================================================
-
         db.commit()
-
-    # ========================================================
-    # DATABASE ERROR
-    # ========================================================
 
     except Exception as error:
 
@@ -609,31 +526,641 @@ def synchronize_youtube_data(
             status_code=500,
             detail=(
                 "Failed to store YouTube data "
-                "in PostgreSQL: "
-                f"{str(error)}"
-            )
+                f"in PostgreSQL: {error}"
+            ),
         )
 
+    return {
+        "platform": "YouTube",
+        "status": "success",
+        "creator_id": creator_id,
+        "creator_name": creator.full_name,
+        "channel_id": channel_id,
+        "records_synced": (
+            records_created
+            + records_updated
+        ),
+        "records_created": records_created,
+        "records_updated": records_updated,
+        "records_skipped": records_skipped,
+        "message": (
+            "YouTube data synchronized "
+            "successfully."
+        ),
+    }
+
+
+# ============================================================
+# INSTAGRAM SYNCHRONIZATION
+# ============================================================
+
+@router.post("/instagram/sync")
+def synchronize_instagram_data(
+    creator_id: int = Query(
+        ...,
+        gt=0,
+        description=(
+            "CreatorIQ creator ID. "
+            "All synchronized Instagram records "
+            "are stored against this creator."
+        ),
+    ),
+
+    instagram_username: str = Query(
+        ...,
+        min_length=1,
+        description=(
+            "Instagram Business/Creator username "
+            "to retrieve through Meta Business Discovery."
+        ),
+    ),
+
+    media_limit: int = Query(
+        10,
+        ge=1,
+        le=25,
+        description=(
+            "Maximum number of Instagram media "
+            "records to synchronize."
+        ),
+    ),
+
+    db: Session = Depends(
+        get_db
+    ),
+
+    current_user: User = Depends(
+        get_current_user
+    ),
+):
+    """
+    Synchronize Instagram Business Discovery data.
+
+    IMPORTANT:
+
+    The creator_id supplied here is the CreatorIQ
+    database creator.
+
+    instagram_username is the Instagram account
+    being discovered.
+
+    Example:
+
+        creator_id = 4
+        instagram_username = madhu_0006
+
+    The records are stored as:
+
+        creator_id = 4
+        platform = Instagram
+
+    Meta:
+
+        Business Discovery
+                ↓
+        username
+                ↓
+        media
+                ↓
+        view_count
+                ↓
+        CreatorIQ views
+                ↓
+        PostgreSQL
+    """
+
     # ========================================================
-    # CALCULATE TOTAL
+    # CREATOR VALIDATION
     # ========================================================
 
-    records_synced = (
-        records_created
-        + records_updated
+    creator = validate_creator(
+        db,
+        creator_id,
+    )
+
+    check_creator_access(
+        current_user,
+        creator_id,
     )
 
     # ========================================================
-    # FINAL RESPONSE
+    # USERNAME
+    # ========================================================
+
+    instagram_username = (
+        instagram_username
+        .strip()
+        .lstrip("@")
+    )
+
+    if not instagram_username:
+
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Instagram username is required."
+            ),
+        )
+
+    # ========================================================
+    # SETTINGS
+    # ========================================================
+
+    ig_user_id = getattr(
+        settings,
+        "INSTAGRAM_USER_ID",
+        None,
+    )
+
+    access_token = getattr(
+        settings,
+        "INSTAGRAM_ACCESS_TOKEN",
+        None,
+    )
+
+    if not ig_user_id:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Instagram user ID is not configured. "
+                "Set INSTAGRAM_USER_ID in .env."
+            ),
+        )
+
+    if not access_token:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Instagram access token is not configured. "
+                "Set INSTAGRAM_ACCESS_TOKEN in .env."
+            ),
+        )
+
+    # ========================================================
+    # META BUSINESS DISCOVERY
+    # ========================================================
+
+    try:
+
+        discovery = (
+            discover_instagram_user(
+                ig_user_id=ig_user_id,
+                access_token=access_token,
+                username=instagram_username,
+                media_limit=media_limit,
+            )
+        )
+
+    except MetaGraphError as error:
+
+        raise HTTPException(
+            status_code=400,
+            detail=error.message,
+        )
+
+    except Exception as error:
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Unexpected error while accessing "
+                f"Instagram: {error}"
+            ),
+        )
+
+    # ========================================================
+    # GET MEDIA
+    # ========================================================
+
+    media_container = (
+        discovery.get("media")
+        or {}
+    )
+
+    if isinstance(
+        media_container,
+        dict,
+    ):
+
+        media_items = (
+            media_container.get(
+                "data"
+            )
+            or []
+        )
+
+    elif isinstance(
+        media_container,
+        list,
+    ):
+
+        media_items = media_container
+
+    else:
+
+        media_items = []
+
+    # ========================================================
+    # NO MEDIA
+    # ========================================================
+
+    if not media_items:
+
+        return {
+            "platform": "Instagram",
+            "status": "success",
+            "creator_id": creator_id,
+            "creator_name": creator.full_name,
+            "instagram_username": (
+                instagram_username
+            ),
+            "records_synced": 0,
+            "records_created": 0,
+            "records_updated": 0,
+            "records_skipped": 0,
+            "message": (
+                "No Instagram media was found."
+            ),
+        }
+
+    records_created = 0
+    records_updated = 0
+    records_skipped = 0
+
+    # ========================================================
+    # PROCESS MEDIA
+    # ========================================================
+
+    try:
+
+        for item in media_items:
+
+            if not isinstance(
+                item,
+                dict,
+            ):
+                records_skipped += 1
+                continue
+
+            # ------------------------------------------------
+            # TRANSFORM USING INSTAGRAM SERVICE
+            #
+            # THIS IS THE IMPORTANT FIX.
+            #
+            # transform_instagram_media()
+            # reads:
+            #
+            #     item["view_count"]
+            #
+            # and converts it to:
+            #
+            #     data["views"]
+            # ------------------------------------------------
+
+            instagram_data = (
+                transform_instagram_media(
+                    item
+                )
+            )
+
+            external_content_id = (
+                instagram_data.get(
+                    "external_content_id"
+                )
+            )
+
+            if not external_content_id:
+
+                records_skipped += 1
+                continue
+
+            published_date = (
+                instagram_data.get(
+                    "published_date"
+                )
+            )
+
+            # ------------------------------------------------
+            # DEBUG
+            # ------------------------------------------------
+
+            print(
+                "========================================"
+            )
+
+            print(
+                "INSTAGRAM SYNC"
+            )
+
+            print(
+                "CreatorIQ creator_id:",
+                creator_id,
+            )
+
+            print(
+                "Instagram username:",
+                instagram_username,
+            )
+
+            print(
+                "Media ID:",
+                external_content_id,
+            )
+
+            print(
+                "Meta view_count:",
+                item.get(
+                    "view_count"
+                ),
+            )
+
+            print(
+                "CreatorIQ views:",
+                instagram_data.get(
+                    "views"
+                ),
+            )
+
+            print(
+                "Likes:",
+                instagram_data.get(
+                    "likes"
+                ),
+            )
+
+            print(
+                "Comments:",
+                instagram_data.get(
+                    "comments"
+                ),
+            )
+
+            print(
+                "Reach:",
+                instagram_data.get(
+                    "reach"
+                ),
+            )
+
+            print(
+                "========================================"
+            )
+
+            # ------------------------------------------------
+            # FIND EXISTING
+            # ------------------------------------------------
+
+            existing_content = (
+                db.query(Content)
+                .filter(
+                    Content.creator_id == creator_id,
+                    Content.platform == "Instagram",
+                    Content.external_content_id
+                    == str(
+                        external_content_id
+                    ),
+                )
+                .first()
+            )
+
+            # =================================================
+            # UPDATE EXISTING
+            # =================================================
+
+            if existing_content:
+
+                existing_content.content_title = (
+                    instagram_data.get(
+                        "content_title"
+                    )
+                    or existing_content.content_title
+                )
+
+                # --------------------------------------------
+                # IMPORTANT
+                #
+                # Do NOT use:
+                #
+                #     views = 0
+                #
+                # --------------------------------------------
+
+                new_views = instagram_data.get(
+                    "views"
+                )
+
+                if new_views is not None:
+
+                    existing_content.views = (
+                        new_views
+                    )
+
+                new_likes = instagram_data.get(
+                    "likes"
+                )
+
+                if new_likes is not None:
+
+                    existing_content.likes = (
+                        new_likes
+                    )
+
+                new_comments = instagram_data.get(
+                    "comments"
+                )
+
+                if new_comments is not None:
+
+                    existing_content.comments = (
+                        new_comments
+                    )
+
+                new_shares = instagram_data.get(
+                    "shares"
+                )
+
+                if new_shares is not None:
+
+                    existing_content.shares = (
+                        new_shares
+                    )
+
+                new_saves = instagram_data.get(
+                    "saves"
+                )
+
+                if new_saves is not None:
+
+                    existing_content.saves = (
+                        new_saves
+                    )
+
+                new_watch_time = (
+                    instagram_data.get(
+                        "watch_time"
+                    )
+                )
+
+                if new_watch_time is not None:
+
+                    existing_content.watch_time = (
+                        new_watch_time
+                    )
+
+                new_reach = instagram_data.get(
+                    "reach"
+                )
+
+                if new_reach is not None:
+
+                    existing_content.reach = (
+                        new_reach
+                    )
+
+                if published_date:
+
+                    existing_content.published_date = (
+                        published_date
+                    )
+
+                records_updated += 1
+
+            # =================================================
+            # CREATE NEW
+            # =================================================
+
+            else:
+
+                new_content = Content(
+                    creator_id=creator_id,
+
+                    platform="Instagram",
+
+                    external_content_id=str(
+                        external_content_id
+                    ),
+
+                    content_title=(
+                        instagram_data.get(
+                            "content_title"
+                        )
+                        or "Instagram content"
+                    ),
+
+                    # ----------------------------------------
+                    # REAL VIEW COUNT
+                    # ----------------------------------------
+
+                    views=(
+                        instagram_data.get(
+                            "views"
+                        )
+                    ),
+
+                    likes=(
+                        instagram_data.get(
+                            "likes"
+                        )
+                    ),
+
+                    comments=(
+                        instagram_data.get(
+                            "comments"
+                        )
+                    ),
+
+                    shares=(
+                        instagram_data.get(
+                            "shares"
+                        )
+                    ),
+
+                    saves=(
+                        instagram_data.get(
+                            "saves"
+                        )
+                    ),
+
+                    watch_time=(
+                        instagram_data.get(
+                            "watch_time"
+                        )
+                    ),
+
+                    reach=(
+                        instagram_data.get(
+                            "reach"
+                        )
+                    ),
+
+                    published_date=(
+                        published_date
+                    ),
+                )
+
+                db.add(
+                    new_content
+                )
+
+                records_created += 1
+
+        # ----------------------------------------------------
+        # COMMIT
+        # ----------------------------------------------------
+
+        db.commit()
+
+    except Exception as error:
+
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Failed to store Instagram data "
+                f"in PostgreSQL: {error}"
+            ),
+        )
+
+    # ========================================================
+    # RESPONSE
     # ========================================================
 
     return {
-
-        "platform": "YouTube",
+        "platform": "Instagram",
 
         "status": "success",
 
-        "records_synced": records_synced,
+        "creator_id": creator_id,
+
+        "creator_name": creator.full_name,
+
+        "instagram_username": (
+            instagram_username
+        ),
+
+        "instagram_user_id": (
+            discovery.get("id")
+        ),
+
+        "instagram_followers": (
+            discovery.get(
+                "followers_count"
+            )
+        ),
+
+        "instagram_media_count": (
+            discovery.get(
+                "media_count"
+            )
+        ),
+
+        "records_synced": (
+            records_created
+            + records_updated
+        ),
 
         "records_created": records_created,
 
@@ -641,10 +1168,8 @@ def synchronize_youtube_data(
 
         "records_skipped": records_skipped,
 
-        "channel_id": channel_id,
-
         "message": (
-            "YouTube data synchronized "
-            "successfully"
-        )
+            "Instagram data synchronized "
+            "successfully."
+        ),
     }

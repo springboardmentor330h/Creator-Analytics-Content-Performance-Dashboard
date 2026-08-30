@@ -6,9 +6,11 @@ from app.db.database import Base
 
 
 class RoleEnum(str, Enum):
-    ADMIN = "admin"
-    CREATOR = "creator"
-    USER = "user"
+    CREATOR = "Creator"
+    AGENCY = "Agency"
+    MARKETING_TEAM = "Marketing Team"
+    ADMINISTRATOR = "Administrator"
+    ADMIN = "Administrator"
 
 
 class User(Base):
@@ -17,27 +19,27 @@ class User(Base):
     id = Column(
         Integer,
         primary_key=True,
-        index=True
+        index=True,
     )
 
     full_name = Column(
         String(100),
-        nullable=False
+        nullable=False,
     )
 
     email = Column(
         String(255),
         unique=True,
         nullable=False,
-        index=True
+        index=True,
     )
 
     role = Column(
         String(50),
-        nullable=False
+        nullable=False,
     )
 
     hashed_password = Column(
         String(255),
-        nullable=False
+        nullable=False,
     )

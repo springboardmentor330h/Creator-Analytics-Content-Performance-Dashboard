@@ -13,9 +13,13 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
+# ============================================================
+# GET CURRENT USER
+# ============================================================
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
     Validate JWT and return the authenticated user.
@@ -26,14 +30,14 @@ def get_current_user(
         detail="Could not validate credentials",
         headers={
             "WWW-Authenticate": "Bearer"
-        }
+        },
     )
 
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM]
+            algorithms=[settings.ALGORITHM],
         )
 
         user_id = payload.get("sub")
@@ -59,3 +63,75 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+
+# ============================================================
+# REQUIRE CREATOR
+# ============================================================
+
+def require_creator(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Allow only Creator accounts.
+    """
+
+    if current_user.role != "Creator":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Creator access required",
+        )
+
+    return current_user
+
+
+# ============================================================
+# REQUIRE ADMINISTRATOR
+# ============================================================
+
+def require_admin(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    """
+    Allow only Administrator accounts.
+    """
+
+    if current_user.role != "Administrator":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access required",
+        )
+
+    return current_user
+
+
+# ============================================================
+# CREATOR DATA SCOPE
+# ============================================================
+
+def get_creator_scope(
+    current_user: User = Depends(get_current_user),
+) -> int | None:
+    """
+    Determine which creator's data the user can access.
+
+    Creator:
+        Returns their own user ID.
+
+    Administrator:
+        Returns None, meaning all creators.
+
+    Other roles:
+        Access denied.
+    """
+
+    if current_user.role == "Creator":
+        return current_user.id
+
+    if current_user.role == "Administrator":
+        return None
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You do not have access to creator analytics",
+    )

@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard'
 import Content from './pages/Content'
 import Audience from './pages/Audience'
 import Growth from './pages/Growth'
+import PlatformComparison from './pages/PlatformComparison'
 import Revenue from './pages/Revenue'
 import Sponsorships from './pages/Sponsorships'
 import Notifications from './pages/Notifications'
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="content" element={<Content />} />
         <Route path="audience" element={<Audience />} />
         <Route path="growth" element={<Growth />} />
+        <Route path="platform-comparison" element={<PlatformComparison />} />
         <Route path="revenue" element={<Revenue />} />
         <Route path="sponsorships" element={<Sponsorships />} />
         <Route path="notifications" element={<Notifications />} />

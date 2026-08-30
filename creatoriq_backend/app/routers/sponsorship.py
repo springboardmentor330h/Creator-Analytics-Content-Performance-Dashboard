@@ -1,10 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
+
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_db
+
 from app.models.sponsorship import Sponsorship
 from app.models.user import User
+
 from app.schemas.sponsorship import (
     SponsorshipCreate,
     SponsorshipUpdate,
@@ -19,7 +27,24 @@ router = APIRouter(
 
 
 # ============================================================
+# ROLE HELPERS
+# ============================================================
+
+def is_admin(
+    current_user: User,
+) -> bool:
+    return current_user.role == "Administrator"
+
+
+def is_creator(
+    current_user: User,
+) -> bool:
+    return current_user.role == "Creator"
+
+
+# ============================================================
 # CREATE SPONSORSHIP
+# POST /sponsorships
 # ============================================================
 
 @router.post(
@@ -32,6 +57,34 @@ def create_sponsorship(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only creators can create sponsorships.
+
+    creator_id is always taken from JWT.
+    """
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can create sponsorships."
+            ),
+        )
+
+    if (
+        sponsorship_data.end_date
+        and sponsorship_data.end_date
+        < sponsorship_data.start_date
+    ):
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "end_date cannot be before start_date"
+            ),
+        )
+
     new_sponsorship = Sponsorship(
         creator_id=current_user.id,
         brand_name=sponsorship_data.brand_name,
@@ -39,19 +92,36 @@ def create_sponsorship(
         contract_value=sponsorship_data.contract_value,
         start_date=sponsorship_data.start_date,
         end_date=sponsorship_data.end_date,
-        status=sponsorship_data.status.value,
-        payment_status=sponsorship_data.payment_status.value,
+        status=(
+            sponsorship_data.status.value
+            if hasattr(
+                sponsorship_data.status,
+                "value",
+            )
+            else sponsorship_data.status
+        ),
+        payment_status=(
+            sponsorship_data.payment_status.value
+            if hasattr(
+                sponsorship_data.payment_status,
+                "value",
+            )
+            else sponsorship_data.payment_status
+        ),
     )
 
     db.add(new_sponsorship)
+
     db.commit()
+
     db.refresh(new_sponsorship)
 
     return new_sponsorship
 
 
 # ============================================================
-# GET ALL SPONSORSHIPS (current creator only)
+# GET ALL SPONSORSHIPS
+# GET /sponsorships
 # ============================================================
 
 @router.get(
@@ -62,18 +132,38 @@ def get_all_sponsorships(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    sponsorships = (
-        db.query(Sponsorship)
-        .filter(Sponsorship.creator_id == current_user.id)
-        .order_by(Sponsorship.start_date.desc())
-        .all()
+    """
+    Creator:
+        Own sponsorships.
+
+    Administrator:
+        All sponsorships.
+    """
+
+    query = db.query(
+        Sponsorship
     )
 
-    return sponsorships
+    if not is_admin(current_user):
+
+        query = query.filter(
+            Sponsorship.creator_id
+            == current_user.id
+        )
+
+    return (
+        query
+        .order_by(
+            Sponsorship.start_date.desc(),
+            Sponsorship.id.desc(),
+        )
+        .all()
+    )
 
 
 # ============================================================
 # GET SPONSORSHIP BY ID
+# GET /sponsorships/{sponsorship_id}
 # ============================================================
 
 @router.get(
@@ -85,22 +175,28 @@ def get_sponsorship(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    sponsorship = (
+    query = (
         db.query(Sponsorship)
-        .filter(Sponsorship.id == sponsorship_id)
-        .first()
+        .filter(
+            Sponsorship.id
+            == sponsorship_id
+        )
     )
 
+    if not is_admin(current_user):
+
+        query = query.filter(
+            Sponsorship.creator_id
+            == current_user.id
+        )
+
+    sponsorship = query.first()
+
     if not sponsorship:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sponsorship not found",
-        )
-
-    if sponsorship.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this sponsorship",
         )
 
     return sponsorship
@@ -108,6 +204,7 @@ def get_sponsorship(
 
 # ============================================================
 # UPDATE SPONSORSHIP
+# PUT /sponsorships/{sponsorship_id}
 # ============================================================
 
 @router.put(
@@ -120,41 +217,115 @@ def update_sponsorship(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only the owning creator can update.
+
+    Administrator is read-only.
+    """
+
+    if is_admin(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Administrators can view sponsorships "
+                "but cannot modify them."
+            ),
+        )
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can update sponsorships."
+            ),
+        )
+
     sponsorship = (
         db.query(Sponsorship)
-        .filter(Sponsorship.id == sponsorship_id)
+        .filter(
+            Sponsorship.id
+            == sponsorship_id,
+            Sponsorship.creator_id
+            == current_user.id,
+        )
         .first()
     )
 
     if not sponsorship:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sponsorship not found",
         )
 
-    if sponsorship.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this sponsorship",
+    update_data = (
+        sponsorship_data.model_dump(
+            exclude_unset=True
         )
+    )
 
-    update_data = sponsorship_data.model_dump(exclude_unset=True)
+    update_data.pop(
+        "creator_id",
+        None,
+    )
 
-    for field in ("status", "payment_status"):
-        if field in update_data and update_data[field] is not None:
+    for field in (
+        "status",
+        "payment_status",
+    ):
+
+        if (
+            field in update_data
+            and update_data[field]
+            is not None
+        ):
+
             value = update_data[field]
-            update_data[field] = value.value if hasattr(value, "value") else value
 
-    for field, value in update_data.items():
-        setattr(sponsorship, field, value)
+            update_data[field] = (
+                value.value
+                if hasattr(
+                    value,
+                    "value",
+                )
+                else value
+            )
 
-    if sponsorship.end_date and sponsorship.end_date < sponsorship.start_date:
+    new_start_date = update_data.get(
+        "start_date",
+        sponsorship.start_date,
+    )
+
+    new_end_date = update_data.get(
+        "end_date",
+        sponsorship.end_date,
+    )
+
+    if (
+        new_end_date
+        and new_start_date
+        and new_end_date < new_start_date
+    ):
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="end_date cannot be before start_date",
+            detail=(
+                "end_date cannot be before start_date"
+            ),
+        )
+
+    for field, value in update_data.items():
+
+        setattr(
+            sponsorship,
+            field,
+            value,
         )
 
     db.commit()
+
     db.refresh(sponsorship)
 
     return sponsorship
@@ -162,6 +333,7 @@ def update_sponsorship(
 
 # ============================================================
 # DELETE SPONSORSHIP
+# DELETE /sponsorships/{sponsorship_id}
 # ============================================================
 
 @router.delete(
@@ -172,28 +344,56 @@ def delete_sponsorship(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Only owning creator can delete.
+
+    Administrator is read-only.
+    """
+
+    if is_admin(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Administrators can view sponsorships "
+                "but cannot delete them."
+            ),
+        )
+
+    if not is_creator(current_user):
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Only creators can delete sponsorships."
+            ),
+        )
+
     sponsorship = (
         db.query(Sponsorship)
-        .filter(Sponsorship.id == sponsorship_id)
+        .filter(
+            Sponsorship.id
+            == sponsorship_id,
+            Sponsorship.creator_id
+            == current_user.id,
+        )
         .first()
     )
 
     if not sponsorship:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Sponsorship not found",
         )
 
-    if sponsorship.creator_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You do not have access to this sponsorship",
-        )
-
     db.delete(sponsorship)
+
     db.commit()
 
     return {
-        "message": "Sponsorship deleted successfully",
+        "message": (
+            "Sponsorship deleted successfully"
+        ),
         "sponsorship_id": sponsorship_id,
     }

@@ -105,9 +105,22 @@ export const reportsAPI = {
 
 export const socialAPI = {
   platforms: () => api.get('/social/platforms'),
+
   connect: (platform, account_name) =>
     api.post('/social/connect', { platform, account_name }),
-  sync: (platform) => api.post('/social/sync', null, { params: { platform } }),
+
+  syncYoutube: (creatorId, channelId, maxResults = 10) =>
+    api.post(
+      '/social/youtube/sync',
+      null,
+      {
+        params: {
+          creator_id: creatorId,
+          channel_id: channelId,
+          max_results: maxResults,
+        },
+      }
+    ),
 }
 
 export function downloadBlob(blob, filename) {
