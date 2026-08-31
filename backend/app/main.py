@@ -24,6 +24,16 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CreatorIQ API")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(user_router, tags=["User Management"])
 app.include_router(auth_router, tags=["Authentication"])
 app.include_router(content_router, tags=["Content Analytics"])
