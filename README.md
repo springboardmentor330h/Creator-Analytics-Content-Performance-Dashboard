@@ -4,6 +4,31 @@ A high-performance FastAPI backend designed for content creators, agencies, and 
 
 ---
 
+## 🧭 Platform Architecture Summary
+
+The project follows a reusable social-sync architecture:
+
+- YouTube-specific logic lives in the YouTube API client and transformation code in `app/services/youtube_service.py`. It handles Google-specific auth, search parameters, video metadata, and public metrics parsing.
+- Shared platform-agnostic logic stays in the central data model (`app/models/content.py`), the analytics layer (`app/services/analytics_service.py`), and the dashboard APIs (`app/routers/analytics.py`). These components operate on the common content contract, not on YouTube-only fields.
+- The additional platform implemented for this sprint is Instagram, represented by `app/services/instagram_service.py`. It follows the same pipeline as YouTube: fetch -> transform -> validate -> store -> analytics.
+- Generic pieces that must not be duplicated for a third platform are the SQLAlchemy content table, KPI aggregation, platform filtering, and the React dashboard’s shared selector/comparison logic.
+
+### Common CreatorIQ content record contract
+
+Every platform sync writes to the same shared record shape used by the dashboard and analytics layer:
+
+- `platform`
+- `content_id`
+- `content_title`
+- `views`
+- `likes`
+- `comments`
+- `shares`
+- `reach`
+- `published_date`
+
+When a platform does not expose a metric, the service stores `null`/`None` instead of fabricating a value or silently defaulting to zero.
+
 ## 🌟 Key Features
 
 ### 📦 1. Content Analytics Engine
@@ -26,10 +51,35 @@ A high-performance FastAPI backend designed for content creators, agencies, and 
 
 ### 🌐 4. Multi-Platform Social Sync
 
-* **Reusable Common Data Model**: Content records are standardized around shared fields such as `platform`, `content_title`, `views`, `likes`, `comments`, `shares`, `reach`, and `published_date`.
+* **Reusable Common Data Model**: Content records are standardized around shared fields such as `platform`, `content_id`, `content_title`, `views`, `likes`, `comments`, `shares`, `reach`, and `published_date`.
 * **Instagram Integration**: Adds an additional platform service alongside YouTube using the same CreatorIQ data pipeline.
 * **Platform-Aware Analytics**: KPI and comparison endpoints support filtering by `All`, `YouTube`, and `Instagram` without duplicating analytics code.
 * **Duplicate Protection**: Synchronization checks existing creator + platform + content records before inserting duplicates.
+* **Unavailable metrics**: metrics missing from the source API are stored as `None` instead of synthetic values.
+
+### 📸 5. Instagram Sprint Integration
+
+This repository uses Instagram as the additional platform for the first multi-platform expansion. The sync path is:
+
+`Instagram Graph API -> fetch -> normalize -> validate -> PostgreSQL -> analytics -> dashboard`
+
+Required setup:
+
+1. Create a Facebook developer app and an Instagram business account with Graph API access.
+2. Generate a long-lived access token with `instagram_basic` and `instagram_manage_insights` permissions.
+3. Set the account ID and access token in your environment or request payload.
+4. Trigger the sync endpoint for `Instagram` to import recent media and statistics.
+
+### 🔁 Adding a future third platform
+
+To add another provider such as TikTok or Facebook, follow the same pattern:
+
+1. Create a service module under `app/services/` for the new platform.
+2. Add a dedicated API client/auth layer for that provider.
+3. Transform responses into the shared CreatorIQ content record shape.
+4. Validate metric availability; use `None` when a field is not exposed.
+5. Upsert records by `creator_id + platform + content_id`.
+6. Reuse the existing analytics service and dashboard filters; only the platform selector and API auth are platform-specific.
 
 ---
 

@@ -47,7 +47,6 @@ class AnalyticsService:
 
         content_stats = query.first()
 
-        # Get latest growth record safely
         latest_growth = (
             db.query(Growth)
             .filter(Growth.creator_id == creator_id)
@@ -56,22 +55,21 @@ class AnalyticsService:
         )
         total_followers = AnalyticsService._get_follower_count(latest_growth)
 
-        # Calculate Average Engagement Rate safely
-        total_reach = content_stats.total_reach or 1
+        total_reach = int(content_stats.total_reach or 0)
         total_interactions = (
-            content_stats.total_likes
-            + content_stats.total_comments
-            + content_stats.total_shares
+            int(content_stats.total_likes or 0)
+            + int(content_stats.total_comments or 0)
+            + int(content_stats.total_shares or 0)
         )
-        avg_engagement = round((total_interactions / total_reach) * 100, 2)
+        avg_engagement = round((total_interactions / total_reach) * 100, 2) if total_reach else 0.0
 
         return {
             "platform": platform or "All",
-            "total_views": int(content_stats.total_views),
-            "total_likes": int(content_stats.total_likes),
-            "total_comments": int(content_stats.total_comments),
-            "total_shares": int(content_stats.total_shares),
-            "total_reach": int(content_stats.total_reach),
+            "total_views": int(content_stats.total_views or 0),
+            "total_likes": int(content_stats.total_likes or 0),
+            "total_comments": int(content_stats.total_comments or 0),
+            "total_shares": int(content_stats.total_shares or 0),
+            "total_reach": total_reach,
             "total_followers": int(total_followers),
             "average_engagement_rate": avg_engagement,
         }
@@ -125,17 +123,20 @@ class AnalyticsService:
 
         comparison = {}
         for row in platform_stats:
-            reach = row.reach if row.reach > 0 else 1
-            saves_val = getattr(row, "saves", 0)
-            interactions = row.likes + row.comments + row.shares + saves_val
-            engagement_rate = round((interactions / reach) * 100, 2)
+            reach = int(row.reach or 0)
+            saves_val = int(getattr(row, "saves", 0) or 0)
+            likes = int(row.likes or 0)
+            comments = int(row.comments or 0)
+            shares = int(row.shares or 0)
+            interactions = likes + comments + shares + saves_val
+            engagement_rate = round((interactions / reach) * 100, 2) if reach else 0.0
             platform_name = AnalyticsService._normalize_platform_name(row.platform_key)
 
             comparison[platform_name] = {
-                "views": int(row.views),
-                "reach": int(row.reach),
-                "likes": int(row.likes),
-                "comments": int(row.comments),
+                "views": int(row.views or 0),
+                "reach": reach,
+                "likes": likes,
+                "comments": comments,
                 "engagement_rate": engagement_rate,
             }
 

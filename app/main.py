@@ -2,10 +2,17 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from fastapi import FastAPI
+import random
+from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from app.db.database import Base, engine
-from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from app.db.database import Base, engine, get_db
+from app.models.content import Content
+from app.models.user import User
+from app.services.analytics_service import AnalyticsService
+from app.services.social_media import SocialMediaService
 
 # Import the models module to ensure all ORM relationships register with Base.metadata
 import app.models
@@ -67,6 +74,95 @@ app.include_router(revenue.router)  # Registered revenue router
 app.include_router(notification.router)  # Registered notification router
 app.include_router(report.router)  # Registered report router
 app.include_router(auth.router)  # Registered authentication router
+
+
+def ensure_demo_creator_and_content(db: Session, creator_id: int = 1) -> None:
+    user = db.query(User).filter(User.id == creator_id).first()
+    if not user:
+        user = User(
+            id=creator_id,
+            email=f"demo{creator_id}@creatoriq.com",
+            full_name="Demo Creator",
+            hashed_password="placeholder",
+            role="creator",
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    if db.query(Content).filter(Content.creator_id == creator_id).first():
+        return
+
+    for platform in ["YouTube", "Instagram"]:
+        for item in SocialMediaService.generate_mock_platform_data(platform):
+            title = item["content_title"]
+            db.add(
+                Content(
+                    creator_id=creator_id,
+                    platform=platform,
+                    external_content_id=f"{platform.lower()}_{title.lower().replace(' ', '_')}_{random.randint(1000, 9999)}",
+                    content_title=title,
+                    views=item["views"],
+                    likes=item["likes"],
+                    comments=item["comments"],
+                    shares=item["shares"],
+                    saves=item.get("saves", 0),
+                    watch_time=item.get("watch_time", 0.0),
+                    reach=item["reach"],
+                    published_date=item["published_date"],
+                )
+            )
+    db.commit()
+
+
+@app.get("/content-analytics/overview")
+def content_analytics_overview(
+    creator_id: int = Query(1),
+    db: Session = Depends(get_db),
+):
+    ensure_demo_creator_and_content(db, creator_id=creator_id)
+    summary = AnalyticsService.get_kpi_summary(db, creator_id=creator_id, platform="All")
+    latest = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .order_by(Content.views.desc())
+        .first()
+    )
+    return {
+        "total_views": summary["total_views"],
+        "total_likes": summary["total_likes"],
+        "total_comments": summary["total_comments"],
+        "top_performing_video": latest.content_title if latest else None,
+        "average_engagement_rate": summary["average_engagement_rate"],
+    }
+
+
+@app.get("/youtube/dashboard")
+def youtube_dashboard(
+    creator_id: int = Query(1),
+    db: Session = Depends(get_db),
+):
+    ensure_demo_creator_and_content(db, creator_id=creator_id)
+    records = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id, func.lower(Content.platform) == "youtube")
+        .order_by(Content.views.desc())
+        .limit(10)
+        .all()
+    )
+    return {
+        "videos": [
+            {
+                "title": item.content_title,
+                "views": item.views,
+                "likes": item.likes,
+                "comments": item.comments,
+                "published_date": item.published_date.isoformat() if item.published_date else None,
+            }
+            for item in records
+        ]
+    }
 
 
 @app.get("/")

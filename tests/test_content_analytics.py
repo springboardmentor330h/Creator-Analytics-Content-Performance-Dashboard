@@ -38,6 +38,8 @@ def test_instagram_summary_is_case_insensitive_for_platform_filter():
             db.commit()
             db.refresh(user)
 
+        db.query(Content).filter(Content.creator_id == user.id).delete()
+
         row = Content(
             creator_id=user.id,
             platform="instagram",

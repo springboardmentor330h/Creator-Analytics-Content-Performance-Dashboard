@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import math
-import os
-from datetime import date, timedelta
-from typing import Any, Dict, List
+import logging
+from datetime import date
+from typing import Any, Dict, List, Optional
 
 import requests
 from fastapi import HTTPException, status
@@ -13,40 +12,89 @@ from sqlalchemy.orm import Session
 from app.models.content import Content
 from app.models.user import User
 
+logger = logging.getLogger(__name__)
+
 
 class InstagramService:
     BASE_URL = "https://graph.facebook.com/v19.0"
 
     @staticmethod
-    def _build_demo_metrics(account_id: str, max_results: int) -> List[Dict[str, Any]]:
-        """Generate deterministic demo metrics when real API access is unavailable.
+    def _safe_int(value: Any) -> Optional[int]:
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        if isinstance(value, str):
+            cleaned = value.strip()
+            if not cleaned or cleaned.lower() in {"null", "none", "n/a", "unavailable"}:
+                return None
+            try:
+                return int(float(cleaned))
+            except ValueError:
+                return None
+        return None
 
-        This keeps the integration reusable without hard-coding a fixed dataset for one user.
-        """
-        items: List[Dict[str, Any]] = []
-        for index in range(min(max_results, 6)):
-            days_ago = index * 5 + 2
-            views = 18000 + (index * 6500) + (len(account_id) * 120)
-            likes = int(views * 0.12)
-            comments = int(views * 0.03)
-            shares = int(views * 0.025)
-            reach = int(views * 1.35)
-            items.append(
-                {
-                    "platform": "Instagram",
-                    "external_content_id": f"ig_{account_id}_{index + 1}",
-                    "content_title": f"Instagram Reel {index + 1}",
-                    "views": views,
-                    "likes": likes,
-                    "comments": comments,
-                    "shares": shares,
-                    "saves": int(views * 0.08),
-                    "reach": reach,
-                    "watch_time": round(float(reach) / 25.0, 2),
-                    "published_date": date.today() - timedelta(days=days_ago),
-                }
-            )
-        return items
+    @classmethod
+    def _normalize_metrics(cls, metric_values: Dict[str, Any]) -> Dict[str, Optional[int]]:
+        return {
+            "views": cls._safe_int(metric_values.get("views")),
+            "likes": cls._safe_int(metric_values.get("likes")),
+            "comments": cls._safe_int(metric_values.get("comments")),
+            "shares": cls._safe_int(metric_values.get("shares")),
+            "reach": cls._safe_int(metric_values.get("reach")),
+        }
+
+    @classmethod
+    def transform_media_item(cls, item: Dict[str, Any], account_id: Optional[str] = None) -> Dict[str, Any]:
+        if not isinstance(item, dict):
+            raise ValueError("Instagram media record must be a dictionary.")
+
+        media_id = item.get("id") or item.get("media_id") or f"ig_{account_id}_{date.today().strftime('%Y%m%d')}"
+        caption = item.get("caption") or item.get("title") or "Instagram media"
+        caption = str(caption).strip() or "Instagram media"
+
+        published_value = item.get("timestamp") or item.get("published_time") or item.get("created_time")
+        if published_value:
+            try:
+                published_date = date.fromisoformat(str(published_value)[:10])
+            except ValueError:
+                published_date = date.today()
+        else:
+            published_date = date.today()
+
+        insight_values = item.get("insights", {}) if isinstance(item.get("insights"), dict) else {}
+        metric_map: Dict[str, Any] = {}
+        for metric in insight_values.get("data", []):
+            if isinstance(metric, dict):
+                metric_name = str(metric.get("name") or "").lower()
+                if metric_name:
+                    metric_map[metric_name] = metric.get("total") if metric.get("total") is not None else metric.get("value")
+
+        raw_metric_values = {
+            "views": item.get("views") or metric_map.get("views") or item.get("media_views"),
+            "likes": item.get("like_count") or metric_map.get("likes") or item.get("likes"),
+            "comments": item.get("comments_count") or metric_map.get("comments") or item.get("comments"),
+            "shares": item.get("shares_count") or item.get("share_count") or metric_map.get("shares") or item.get("shares"),
+            "reach": item.get("reach") or metric_map.get("reach") or item.get("reach_count"),
+        }
+        normalized = cls._normalize_metrics(raw_metric_values)
+
+        return {
+            "platform": "Instagram",
+            "content_id": media_id,
+            "external_content_id": media_id,
+            "content_title": caption[:120],
+            "views": normalized["views"],
+            "likes": normalized["likes"],
+            "comments": normalized["comments"],
+            "shares": normalized["shares"],
+            "reach": normalized["reach"],
+            "published_date": published_date,
+        }
 
     @classmethod
     def fetch_creator_media(cls, account_id: str, access_token: str, max_results: int = 10) -> List[Dict[str, Any]]:
@@ -70,6 +118,11 @@ class InstagramService:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Instagram API authentication failed. Check the access token and account id.",
                 )
+            if response.status_code == 429:
+                raise HTTPException(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    detail="Instagram API rate limit reached. Please retry later.",
+                )
             response.raise_for_status()
             payload = response.json()
         except requests.RequestException as exc:
@@ -79,41 +132,15 @@ class InstagramService:
             ) from exc
 
         items = payload.get("data", [])
+        if not items:
+            return []
+
         transformed: List[Dict[str, Any]] = []
-
         for item in items:
-            media_id = item.get("id")
-            metrics = item.get("insights", {}).get("data", []) if isinstance(item.get("insights"), dict) else []
-            metric_map: Dict[str, Any] = {}
-            for metric in metrics:
-                if isinstance(metric, dict):
-                    metric_map[str(metric.get("name"))] = metric.get("total") or metric.get("value") or 0
-
-            caption = item.get("caption") or "Instagram media"
-            views = int(metric_map.get("views", 0) or 0)
-            likes = int(metric_map.get("likes", 0) or 0)
-            comments = int(metric_map.get("comments", 0) or 0)
-            shares = int(metric_map.get("shares", 0) or 0)
-            reach = int(metric_map.get("reach", max(views, likes, comments, shares)) or 0)
-
-            transformed.append(
-                {
-                    "platform": "Instagram",
-                    "external_content_id": media_id,
-                    "content_title": caption[:120] if caption else "Instagram media",
-                    "views": views,
-                    "likes": likes,
-                    "comments": comments,
-                    "shares": shares,
-                    "saves": 0,
-                    "reach": reach,
-                    "watch_time": round(float(reach) / 30.0, 2),
-                    "published_date": date.fromisoformat((item.get("timestamp") or "2024-01-01")[:10]) if item.get("timestamp") else date.today(),
-                }
-            )
-
-        if not transformed:
-            return cls._build_demo_metrics(account_id, max_results)
+            try:
+                transformed.append(cls.transform_media_item(item, account_id=account_id))
+            except ValueError as exc:
+                logger.warning("Skipping invalid Instagram media payload: %s", exc)
 
         return transformed
 
@@ -135,35 +162,70 @@ class InstagramService:
 
         try:
             raw_items = cls.fetch_creator_media(account_id, access_token, max_results=max_results)
-        except HTTPException:
-            raw_items = cls._build_demo_metrics(account_id, max_results)
+        except HTTPException as exc:
+            logger.warning("Instagram sync failed for creator %s: %s", creator_id, exc.detail)
+            return {
+                "platform": "Instagram",
+                "status": "error",
+                "records_synced": 0,
+                "records_updated": 0,
+                "total_processed": 0,
+                "message": exc.detail,
+            }
 
         synced_count = 0
         updated_count = 0
+        skipped_invalid = 0
 
         for item in raw_items:
+            content_id = item.get("content_id") or item.get("external_content_id")
+            if not content_id:
+                skipped_invalid += 1
+                logger.warning("Ignoring Instagram record without content_id for creator %s", creator_id)
+                continue
+
             existing_record = (
                 db.query(Content)
                 .filter(
                     Content.creator_id == creator_id,
                     func.lower(Content.platform) == "instagram",
-                    Content.external_content_id == item["external_content_id"],
+                    Content.external_content_id == content_id,
                 )
                 .first()
             )
 
+            values = {
+                "content_title": item["content_title"],
+                "views": item["views"],
+                "likes": item["likes"],
+                "comments": item["comments"],
+                "shares": item["shares"],
+                "reach": item["reach"],
+                "published_date": item["published_date"],
+            }
+
             if existing_record:
-                existing_record.content_title = item["content_title"]
-                existing_record.views = item["views"]
-                existing_record.likes = item["likes"]
-                existing_record.comments = item["comments"]
-                existing_record.shares = item["shares"]
-                existing_record.reach = item["reach"]
-                existing_record.saves = item["saves"]
-                existing_record.published_date = item["published_date"]
+                for field_name, field_value in values.items():
+                    if field_name == "content_title":
+                        existing_record.content_title = field_value
+                    elif field_name == "published_date":
+                        existing_record.published_date = field_value
+                    else:
+                        setattr(existing_record, field_name, field_value if field_value is not None else getattr(existing_record, field_name))
                 updated_count += 1
             else:
-                new_record = Content(creator_id=creator_id, **item)
+                new_record = Content(
+                    creator_id=creator_id,
+                    platform="Instagram",
+                    external_content_id=content_id,
+                    content_title=item["content_title"],
+                    views=item["views"] if item["views"] is not None else 0,
+                    likes=item["likes"] if item["likes"] is not None else 0,
+                    comments=item["comments"] if item["comments"] is not None else 0,
+                    shares=item["shares"] if item["shares"] is not None else 0,
+                    reach=item["reach"] if item["reach"] is not None else 0,
+                    published_date=item["published_date"],
+                )
                 db.add(new_record)
                 synced_count += 1
 
@@ -174,6 +236,6 @@ class InstagramService:
             "status": "success",
             "records_synced": synced_count,
             "records_updated": updated_count,
+            "invalid_records": skipped_invalid,
             "total_processed": len(raw_items),
-            "source": "live_api" if raw_items and raw_items[0].get("external_content_id", "").startswith("ig_") is False else "demo_seed",
         }
