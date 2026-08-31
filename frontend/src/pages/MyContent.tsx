@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext'
 import contentService, { ContentItem, ContentPayload } from '../services/contentService'
 import { formatNumber, formatPercent } from '../utils/format'
 import { canManageContent } from '../utils/roles'
+import PlatformIcon from '../components/PlatformIcon'
 
 const platforms = ['YouTube', 'Instagram', 'TikTok', 'Facebook', 'X', 'LinkedIn']
 const contentTypes = ['Video', 'Post', 'Reel', 'Short', 'Article', 'Live']
@@ -184,9 +185,8 @@ export default function MyContent() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-bold ${PLATFORM_BADGES[item.platform] || 'bg-slate-100 text-slate-700'}`}>
-                        {item.platform}
-                      </span>
+                      <PlatformIcon platform={item.platform} size={20} />
+                      <span className="text-xs font-semibold text-slate-600">{item.platform}</span>
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">{item.content_type}</span>
                     </div>
                     <h3 className="mt-2 text-xl font-extrabold text-slate-900">{item.title}</h3>

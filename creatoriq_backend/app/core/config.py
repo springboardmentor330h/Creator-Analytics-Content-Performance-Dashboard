@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     JWT_EXPIRE_MINUTES: int = 1440
     FRONTEND_URL: AnyHttpUrl = 'http://localhost:5173'
     YOUTUBE_API_KEY: str | None = None
+    INSTAGRAM_ACCESS_TOKEN: str | None = None
+    INSTAGRAM_ACCOUNT_ID: str | None = None
 
     # Social Token Encryption Key
     SOCIAL_TOKEN_ENCRYPTION_KEY: str | None = None

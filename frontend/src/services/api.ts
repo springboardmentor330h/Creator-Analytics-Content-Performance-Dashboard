@@ -34,12 +34,12 @@ export const authApi = {
 
 // --- Analytics ---
 export const analyticsApi = {
-  summary: () => api.get('/analytics/summary'),
-  engagementChart: () => api.get('/analytics/chart/engagement'),
+  summary: (platform?: string) => api.get('/analytics/summary', { params: { platform } }),
+  engagementChart: (platform?: string) => api.get('/analytics/chart/engagement', { params: { platform } }),
   followersChart: () => api.get('/analytics/chart/followers'),
   platformComparison: () => api.get('/analytics/platform-comparison'),
-  platformPerformance: () => api.get('/analytics/platform-performance'),
-  topContent: () => api.get('/analytics/top-content'),
+  platformPerformance: (platform?: string) => api.get('/analytics/platform-performance', { params: { platform } }),
+  topContent: (platform?: string) => api.get('/analytics/top-content', { params: { platform } }),
   revenueSummary: () => api.get('/analytics/revenue/summary'),
   revenueBySource: () => api.get('/analytics/revenue/by-source'),
   revenueMonthly: () => api.get('/analytics/revenue/monthly'),

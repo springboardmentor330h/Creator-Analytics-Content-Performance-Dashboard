@@ -23,6 +23,7 @@ const features = [
     description: 'Understand your audience demographics, behavior and growth.',
     icon: Users,
     color: 'bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white',
+    path: '/audience-analytics',
   },
   {
     id: 'growth-tracking',
@@ -30,6 +31,7 @@ const features = [
     description: 'Monitor growth trends and track your performance over time.',
     icon: TrendingUp,
     color: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+    path: '/growth-trends',
   },
   {
     id: 'revenue-analytics',
@@ -37,6 +39,7 @@ const features = [
     description: 'Track earnings, monetization and revenue performance.',
     icon: DollarSign,
     color: 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white',
+    path: '/revenue',
   },
   {
     id: 'export-reports',
@@ -44,6 +47,7 @@ const features = [
     description: 'Download professional reports in PDF and Excel formats.',
     icon: FileSpreadsheet,
     color: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
+    path: '/reports',
   },
 ]
 

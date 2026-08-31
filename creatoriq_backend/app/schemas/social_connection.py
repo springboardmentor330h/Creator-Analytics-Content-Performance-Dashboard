@@ -93,3 +93,14 @@ class YouTubeSyncResponse(BaseModel):
     status: str = "success"
     records_synced: int
 
+
+class InstagramSyncRequest(BaseModel):
+    account_id: Optional[str] = None
+    max_results: Optional[int] = 10
+
+
+class InstagramSyncResponse(BaseModel):
+    platform: str = "Instagram"
+    status: str = "success"
+    records_synced: int
+

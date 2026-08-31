@@ -1,4 +1,4 @@
-# CreatorIQ – Real YouTube API Integration & End-to-End Analytics (Sprint 5)
+# CreatorIQ – Multi-Platform Social Media Integration & Analytics (Sprint 8: Instagram Integration)
 
 CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with FastAPI, PostgreSQL, SQLAlchemy, and OAuth / Social Data Integrations.
 
@@ -6,61 +6,22 @@ CreatorIQ is an enterprise-grade creator analytics and multi-platform content pe
 
 ## 1. Project Overview
 
-CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. Sprint 5 extends the platform to support **Real YouTube Data API v3 integration**, enabling creators and agencies to seamlessly synchronize YouTube video metadata and performance metrics into PostgreSQL, transform them into a normalized cross-platform format, and power aggregated dashboard KPIs without duplicating analytics business logic.
+CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. Sprint 8 extends the platform architecture to support **Instagram Graph API Integration alongside YouTube Data API v3**, standardizing all social media ingestion through a unified Common Platform Format into PostgreSQL, enabling cross-platform comparison and granular per-platform KPI filtering without code duplication.
 
 ---
 
 ## 2. System Architecture
 
 ```
-                                  +-----------------------------+
-                                  |     YouTube Data API v3     |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |    app/services/            |
-                                  |    youtube_service.py       |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     Data Transformation     |
-                                  |  (CreatorIQ Common Format)  |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |       Data Validation       |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     Duplicate Detection     |
-                                  | (platform + ext_content_id) |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |      PostgreSQL Database    |
-                                  |       (content table)       |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |    app/services/            |
-                                  |    analytics_service.py     |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     FastAPI Analytics APIs  |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |      Creator Dashboard      |
-                                  +-----------------------------+
+YouTube API ────────┐
+                    ├──> Common Platform Format ──> Duplicate Detection ──> PostgreSQL (Content Table)
+Instagram API ──────┘                                                             │
+                                                                                  ▼
+                                                                     Shared Analytics Service
+                                                                                  │
+                                                                                  ▼
+                                                                     Aggregated Dashboard APIs
+                                                                      (?platform= filterable)
 ```
 
 ---
@@ -83,7 +44,7 @@ CreatorIQ provides multi-tenant and role-based performance analytics for digital
 - `POST /auth/login` – Authenticate user and receive JWT access token.
 - `GET /users/me` – Retrieve current user profile.
 
-### Social & YouTube Integration (Sprint 5)
+### Social & Platform Integrations (YouTube + Instagram)
 - `POST /social/youtube/sync` – Synchronize YouTube videos and metrics into PostgreSQL.
   - **Request Body (Optional)**:
     ```json
@@ -101,6 +62,29 @@ CreatorIQ provides multi-tenant and role-based performance analytics for digital
       "records_synced": 10
     }
     ```
+
+- `POST /social/instagram/sync` – Synchronize Instagram media and insights into PostgreSQL.
+  - **Request Body (Optional)**:
+    ```json
+    {
+      "account_id": "17841405309211844",
+      "max_results": 10
+    }
+    ```
+  - **Response (200 OK)**:
+    ```json
+    {
+      "platform": "Instagram",
+      "status": "success",
+      "records_synced": 10
+    }
+    ```
+
+### Analytics Endpoints (Platform Filter Supported)
+- `GET /analytics/summary?platform=YouTube|Instagram` – KPI summary metrics filtered by platform.
+- `GET /analytics/top-content?platform=YouTube|Instagram` – Top-performing content filtered by platform.
+- `GET /analytics/chart/engagement?platform=YouTube|Instagram` – Engagement rate trends over time.
+- `GET /analytics/platform-comparison` – Multi-platform performance breakdown and comparison.
 - `POST /social/connect` – Connect a social media platform account.
 - `GET /social/platforms` – List connected social platforms.
 - `POST /social/sync` – Synchronize simulated social platform data.

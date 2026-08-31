@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { analyticsApi, revenueApi } from '../services/api'
 import {
-  BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+  BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import PieChartCard from '../components/PieChartCard'
 import { DollarSign, Plus, Pencil, Trash2, X, Check } from 'lucide-react'
 
 const COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6']
@@ -71,7 +72,20 @@ export default function Revenue() {
     await revenueApi.delete(id); load()
   }
 
-  const sourceChartData = Object.entries(bySource).map(([name, value]) => ({ name, value }))
+  // Short display labels for pie chart to prevent overflow; fullName is used in tooltip
+  const SHORT_NAMES: Record<string, string> = {
+    'Sponsorship': 'Sponsorship',
+    'Ad Revenue': 'Ad Revenue',
+    'Affiliate Marketing': 'Affiliate',
+    'Brand Collaboration': 'Brand Collab',
+    'Subscription Revenue': 'Subscription',
+  }
+
+  const sourceChartData = Object.entries(bySource).map(([name, value]) => ({
+    name: SHORT_NAMES[name] || name,
+    fullName: name,
+    value,
+  }))
   const currency = total?.currency || 'INR'
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" /></div>
@@ -99,19 +113,12 @@ export default function Revenue() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue by Source Pie */}
         {sourceChartData.some(d => d.value > 0) && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue by Source</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={sourceChartData.filter(d => d.value > 0)} cx="50%" cy="50%" outerRadius={80} dataKey="value"
-                  label={({ name, value }) => `${name.split(' ')[0]}: ${currency} ${value.toLocaleString()}`} labelLine={false}>
-                  {sourceChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => `${currency} ${v.toLocaleString()}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <PieChartCard
+            title="Revenue by Source"
+            data={sourceChartData}
+            colors={COLORS}
+            tooltipFormatter={(v, fullName) => `${fullName}: ${currency} ${v.toLocaleString()}`}
+          />
         )}
 
         {/* Monthly Revenue Chart */}
@@ -135,12 +142,23 @@ export default function Revenue() {
       {sourceChartData.some(d => d.value > 0) && (
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
           <h3 className="text-sm font-bold text-slate-700 mb-4">Revenue Source Breakdown</h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={sourceChartData}>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={sourceChartData} margin={{ top: 4, right: 8, left: 0, bottom: 48 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v: number) => `${currency} ${v.toLocaleString()}`} />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 10, fill: '#64748b' }}
+                angle={-30}
+                textAnchor="end"
+                interval={0}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
+                formatter={(v: number, _name: string, props: any) => [`${currency} ${v.toLocaleString()}`, props.payload.fullName || props.payload.name]}
+              />
               <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} name="Revenue" />
             </BarChart>
           </ResponsiveContainer>

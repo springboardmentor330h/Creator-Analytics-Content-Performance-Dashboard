@@ -30,5 +30,10 @@ export const socialService = {
   syncYoutube: async (payload?: { channel_id?: string; query?: string; max_results?: number }): Promise<any> => {
     const { data } = await api.post('/social/youtube/sync', payload || {})
     return data
+  },
+
+  syncInstagram: async (payload?: { account_id?: string; max_results?: number }): Promise<any> => {
+    const { data } = await api.post('/social/instagram/sync', payload || {})
+    return data
   }
 }

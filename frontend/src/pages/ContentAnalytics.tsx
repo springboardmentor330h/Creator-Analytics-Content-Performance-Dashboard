@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import PlatformIcon from '../components/PlatformIcon'
 import {
   ArrowUpDown,
   BarChart3,
@@ -317,9 +318,10 @@ export default function ContentAnalytics() {
                           </Link>
                         </td>
                         <td className="py-3.5 px-3">
-                          <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-bold ${PLATFORM_BADGES[item.platform] || 'bg-slate-100 text-slate-700'}`}>
-                            {item.platform}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <PlatformIcon platform={item.platform} size={20} />
+                            <span className="text-xs font-semibold text-slate-600">{item.platform}</span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-3 text-slate-600 font-medium">{item.content_type}</td>
                         <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.views)}</td>
@@ -414,7 +416,10 @@ export default function ContentAnalytics() {
                       className="block rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 transition-all hover:border-brand-300 hover:bg-white hover:shadow-sm"
                     >
                       <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                        <span>{item.platform}</span>
+                        <div className="flex items-center gap-1.5">
+                          <PlatformIcon platform={item.platform} size={16} />
+                          <span>{item.platform}</span>
+                        </div>
                         <span>{item.content_type}</span>
                       </div>
                       <p className="mt-1 font-bold text-slate-900 text-sm truncate">{item.title}</p>

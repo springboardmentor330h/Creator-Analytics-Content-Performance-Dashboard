@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { ArrowLeftRight, BarChart3, CheckCircle2, Layers, Sparkles, Zap } from 'lucide-react'
+import PlatformIcon from '../components/PlatformIcon'
 import contentService, { ContentItem } from '../services/contentService'
 import { formatNumber, formatPercent } from '../utils/format'
 
@@ -122,9 +123,10 @@ export default function ContentComparison() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`inline-block rounded-full border px-2 py-0.5 text-[11px] font-bold ${PLATFORM_BADGES[item.platform] || 'bg-slate-100 text-slate-700'}`}>
-                        {item.platform}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <PlatformIcon platform={item.platform} size={20} />
+                        <span className="text-xs font-semibold text-slate-600">{item.platform}</span>
+                      </div>
                       {isSelected && <CheckCircle2 className="h-4 w-4 text-brand-600" />}
                     </div>
                     <p className="mt-2 font-bold text-slate-900 text-sm truncate">{item.title}</p>
@@ -169,9 +171,10 @@ export default function ContentComparison() {
                   <div key={row.id} className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
                     <div className="flex items-center justify-between">
                       <p className="font-bold text-slate-900 text-sm truncate">{row.title}</p>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${PLATFORM_BADGES[row.platform] || 'bg-slate-100 text-slate-700'}`}>
-                        {row.platform}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <PlatformIcon platform={row.platform} size={18} />
+                        <span className="text-[10px] font-bold text-slate-500">{row.platform}</span>
+                      </div>
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-3 text-xs">
                       <div>

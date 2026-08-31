@@ -1,6 +1,6 @@
 """Router for dashboard analytics and performance reporting."""
-from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
@@ -32,21 +32,23 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 @router.get("/summary")
 @router.get("/api/analytics/summary", include_in_schema=False)
 def dashboard_summary(
+    platform: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Retrieve high-level dashboard KPI summary metrics."""
-    return get_dashboard_summary(db, current_user)
+    """Retrieve high-level dashboard KPI summary metrics with optional platform filter."""
+    return get_dashboard_summary(db, current_user, platform=platform)
 
 
 @router.get("/chart/engagement")
 @router.get("/api/analytics/chart/engagement", include_in_schema=False)
 def chart_engagement(
+    platform: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Retrieve chronological chart-ready engagement rate trend data."""
-    return get_engagement_chart_data(db, current_user)
+    """Retrieve chronological chart-ready engagement rate trend data with optional platform filter."""
+    return get_engagement_chart_data(db, current_user, platform=platform)
 
 
 @router.get("/chart/followers")
@@ -84,20 +86,22 @@ def get_engagement(
 
 @router.get("/top-content")
 def top_content(
+    platform: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    """Retrieve top performing content items."""
-    return get_top_content(db, current_user)
+    """Retrieve top performing content items with optional platform filter."""
+    return get_top_content(db, current_user, platform=platform)
 
 
 @router.get("/platform-performance")
 def platform_performance(
+    platform: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    """Retrieve platform performance summaries as a list."""
-    return get_platform_performance(db, current_user)
+    """Retrieve platform performance summaries as a list with optional platform filter."""
+    return get_platform_performance(db, current_user, platform=platform)
 
 
 # =========================================================

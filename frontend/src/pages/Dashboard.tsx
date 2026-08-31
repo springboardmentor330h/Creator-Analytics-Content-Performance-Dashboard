@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { analyticsApi } from '../services/api'
 import { formatNumber, formatPercent } from '../utils/format'
+import PlatformIcon from '../components/PlatformIcon'
 
 const PIE_COLORS = ['#ef4444', '#e1306c', '#0a66c2', '#1877f2', '#0f172a', '#06b6d4', '#8b5cf6']
 
@@ -90,6 +91,7 @@ export default function Dashboard() {
   const [platformMetricTab, setPlatformMetricTab] = useState<'views' | 'reach' | 'engagement_rate'>('reach')
   const [platformData, setPlatformData] = useState<{ name: string; views: number; reach: number; engagement_rate: number }[]>([])
   const [topContent, setTopContent] = useState<TopContentItem[]>([])
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('All')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -99,12 +101,13 @@ export default function Dashboard() {
       setLoading(true)
       setError('')
       try {
+        const platformParam = selectedPlatform === 'All' ? undefined : selectedPlatform
         const [summaryRes, engChartRes, folChartRes, platformRes, topContentRes] = await Promise.all([
-          analyticsApi.summary(),
-          analyticsApi.engagementChart(),
+          analyticsApi.summary(platformParam),
+          analyticsApi.engagementChart(platformParam),
           analyticsApi.followersChart(),
           analyticsApi.platformComparison(),
-          analyticsApi.topContent(),
+          analyticsApi.topContent(platformParam),
         ])
 
         if (!isMounted) return
@@ -154,7 +157,7 @@ export default function Dashboard() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [selectedPlatform])
 
   const cards = summary
     ? [
@@ -217,10 +220,25 @@ export default function Dashboard() {
             Active Scope: <span className="font-bold text-slate-700">{user?.role || 'Creator'}</span> · Real-time analytics tracking.
           </p>
         </div>
-        <Link to="/content-analytics" className="ciq-btn-primary self-start sm:self-auto">
-          <BarChart3 className="h-4 w-4" />
-          <span>Content Analytics</span>
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 self-start sm:self-auto">
+          <select
+            value={selectedPlatform}
+            onChange={(e) => setSelectedPlatform(e.target.value)}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          >
+            <option value="All">All Platforms</option>
+            <option value="YouTube">YouTube</option>
+            <option value="Instagram">Instagram</option>
+            <option value="TikTok">TikTok</option>
+            <option value="Facebook">Facebook</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="X">X (Twitter)</option>
+          </select>
+          <Link to="/content-analytics" className="ciq-btn-primary">
+            <BarChart3 className="h-4 w-4" />
+            <span>Content Analytics</span>
+          </Link>
+        </div>
       </div>
 
       {/* KPI Cards Grid */}
@@ -472,9 +490,10 @@ export default function Dashboard() {
                       <span>{item.content_title}</span>
                     </td>
                     <td className="py-3.5 px-3">
-                      <span className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-bold ${PLATFORM_BADGES[item.platform] || 'bg-slate-100 text-slate-700'}`}>
-                        {item.platform}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <PlatformIcon platform={item.platform} size={20} />
+                        <span className="text-xs font-semibold text-slate-600">{item.platform}</span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 font-semibold text-slate-700">{formatNumber(item.views)}</td>
                     <td className="py-3.5 px-3 font-semibold text-slate-700">{formatNumber(item.reach)}</td>

@@ -86,4 +86,11 @@ class InstagramIntegration(BaseSocialIntegration):
         return {"id": "ig_user", "username": "instagram_user", "display_name": "Instagram Professional", "profile_url": "https://instagram.com"}
 
     async def sync_data(self, db_session: Any, user_id: int, access_token: str) -> int:
-        return 0
+        from app.models.user import User
+        from app.services.instagram_service import fetch_instagram_data, sync_instagram_data
+        user = db_session.get(User, user_id)
+        if not user:
+            return 0
+        raw_items = fetch_instagram_data(access_token=access_token, max_results=25)
+        res = sync_instagram_data(db=db_session, user=user, custom_items=raw_items)
+        return int(res.get("records_synced", 0))

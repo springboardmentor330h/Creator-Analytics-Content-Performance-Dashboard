@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { audienceApi } from '../services/api'
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer
 } from 'recharts'
+import PieChartCard from '../components/PieChartCard'
 import { Users, Globe, Smartphone, TrendingUp } from 'lucide-react'
 
 interface AudienceData {
@@ -74,17 +75,12 @@ export default function AudienceAnalytics() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gender Distribution */}
         {genderData.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-700 mb-4">Gender Distribution</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={genderData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}>
-                  {genderData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <PieChartCard
+            title="Gender Distribution"
+            data={genderData}
+            colors={COLORS}
+            isPercent
+          />
         )}
 
         {/* Age Distribution */}
@@ -105,18 +101,12 @@ export default function AudienceAnalytics() {
 
         {/* Device Distribution */}
         {deviceData.length > 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-700 mb-4">Device Usage</h3>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={deviceData} cx="50%" cy="50%" outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}%`}>
-                  {deviceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+          <PieChartCard
+            title="Device Usage"
+            data={deviceData}
+            colors={COLORS}
+            isPercent
+          />
         )}
 
         {/* Top Countries & Cities */}

@@ -4,6 +4,7 @@ import {
   FileText, Download, BarChart3, Users, TrendingUp, DollarSign,
   Globe, Loader2, CheckCircle2, AlertCircle
 } from 'lucide-react'
+import PlatformIcon from '../components/PlatformIcon'
 
 interface ReportCard {
   id: string; title: string; description: string; icon: any; color: string
@@ -213,7 +214,12 @@ export default function Reports() {
                   <tbody className="divide-y divide-slate-100">
                     {summary.platform_performance.map((p: any) => (
                       <tr key={p.platform} className="hover:bg-slate-50">
-                        <td className="px-4 py-2.5 font-bold text-slate-800">{p.platform}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <PlatformIcon platform={p.platform} size={20} />
+                            <span className="font-bold text-slate-800">{p.platform}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-2.5">{p.total_views?.toLocaleString()}</td>
                         <td className="px-4 py-2.5">{p.total_reach?.toLocaleString()}</td>
                         <td className="px-4 py-2.5">{p.total_likes?.toLocaleString()}</td>

@@ -9,6 +9,8 @@ from typing import Optional
 
 from app.schemas.social_connection import (
     ConnectedPlatformsResponse,
+    InstagramSyncRequest,
+    InstagramSyncResponse,
     PlatformConnectRequest,
     PlatformConnectResponse,
     PlatformSyncRequest,
@@ -16,6 +18,7 @@ from app.schemas.social_connection import (
     YouTubeSyncRequest,
     YouTubeSyncResponse,
 )
+from app.services.instagram_service import sync_instagram_data
 from app.services.social_media import (
     connect_platform,
     get_connected_platforms,
@@ -87,5 +90,23 @@ def sync_youtube(
         user=current_user,
         channel_id=channel_id,
         query=query,
+        max_results=max_results,
+    )
+
+
+@router.post("/instagram/sync", response_model=InstagramSyncResponse)
+@router.post("/api/social/instagram/sync", response_model=InstagramSyncResponse, include_in_schema=False)
+def sync_instagram(
+    payload: Optional[InstagramSyncRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize Instagram Graph API content into PostgreSQL with duplicate handling."""
+    account_id = payload.account_id if payload else None
+    max_results = payload.max_results if payload and payload.max_results else 10
+    return sync_instagram_data(
+        db=db,
+        user=current_user,
+        account_id=account_id,
         max_results=max_results,
     )

@@ -105,9 +105,11 @@ def get_content_engagement(db: Session, user: User, content_id: int) -> Optional
     }
 
 
-def get_top_content(db: Session, user: User) -> List[Dict[str, Any]]:
-    """Retrieve top-performing content items by engagement rate."""
+def get_top_content(db: Session, user: User, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Retrieve top-performing content items by engagement rate, optionally filtered by platform."""
     stmt = _apply_scope(select(Content), user)
+    if platform and platform.strip().lower() not in {"all", "all platforms"}:
+        stmt = stmt.where(func.lower(Content.platform) == platform.strip().lower())
     records = db.scalars(stmt).all()
 
     results = []
@@ -126,9 +128,11 @@ def get_top_content(db: Session, user: User) -> List[Dict[str, Any]]:
     return results[:5]
 
 
-def get_platform_performance(db: Session, user: User) -> List[Dict[str, Any]]:
+def get_platform_performance(db: Session, user: User, platform: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieve aggregated performance metrics grouped by platform (list format)."""
     stmt = _apply_scope(select(Content), user)
+    if platform and platform.strip().lower() not in {"all", "all platforms"}:
+        stmt = stmt.where(func.lower(Content.platform) == platform.strip().lower())
     records = db.scalars(stmt).all()
 
     platforms: Dict[str, Dict[str, Any]] = {}
@@ -167,9 +171,11 @@ def get_platform_performance(db: Session, user: User) -> List[Dict[str, Any]]:
     return results
 
 
-def get_dashboard_summary(db: Session, user: User) -> Dict[str, Any]:
-    """Calculate KPI summary metrics across Content and Growth/Audience data."""
+def get_dashboard_summary(db: Session, user: User, platform: Optional[str] = None) -> Dict[str, Any]:
+    """Calculate KPI summary metrics across Content and Growth/Audience data with optional platform filter."""
     stmt = _apply_scope(select(Content), user)
+    if platform and platform.strip().lower() not in {"all", "all platforms"}:
+        stmt = stmt.where(func.lower(Content.platform) == platform.strip().lower())
     records = db.scalars(stmt).all()
 
     total_views = sum(item.views for item in records)
@@ -197,9 +203,11 @@ def get_dashboard_summary(db: Session, user: User) -> Dict[str, Any]:
     }
 
 
-def get_engagement_chart_data(db: Session, user: User) -> Dict[str, Any]:
-    """Retrieve chart-ready engagement rate trend sorted chronologically."""
+def get_engagement_chart_data(db: Session, user: User, platform: Optional[str] = None) -> Dict[str, Any]:
+    """Retrieve chart-ready engagement rate trend sorted chronologically, optionally filtered by platform."""
     stmt = _apply_scope(select(Content), user).order_by(Content.published_at.asc())
+    if platform and platform.strip().lower() not in {"all", "all platforms"}:
+        stmt = stmt.where(func.lower(Content.platform) == platform.strip().lower())
     records = db.scalars(stmt).all()
 
     if records:
