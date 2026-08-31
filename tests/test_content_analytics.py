@@ -64,3 +64,34 @@ def test_instagram_summary_is_case_insensitive_for_platform_filter():
         db.query(Content).filter(Content.content_title == "Case-Insensitive Instagram Content").delete()
         db.commit()
         db.close()
+
+
+def test_dynamic_channel_summary_uses_user_entered_video_data():
+    payload = {
+        "channel_name": "Creator Corner",
+        "platform": "YouTube",
+        "videos": [
+            {"title": "Intro video", "views": 125000, "likes": 15000, "comments": 1100, "shares": 900, "reach": 220000},
+            {"title": "Growth tips", "views": 95000, "likes": 12000, "comments": 800, "shares": 700, "reach": 180000},
+        ],
+    }
+
+    response = client.post("/analytics/dynamic", json=payload)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["channel_name"] == "Creator Corner"
+    assert data["total_views"] == 220000
+    assert data["total_likes"] == 27000
+    assert data["total_comments"] == 1900
+    assert data["total_shares"] == 1600
+    assert data["average_engagement_rate"] > 0
+
+
+def test_youtube_channel_endpoint_accepts_api_key_and_channel_name():
+    response = client.get("/social/youtube/channel?channel_name=Creator%20Corner&api_key=test-key")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["platform"] == "YouTube"
+    assert data["channel_name"] == "Creator Corner"

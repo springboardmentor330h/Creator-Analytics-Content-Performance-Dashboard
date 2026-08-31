@@ -1,6 +1,16 @@
 // src/utils/exportHelpers.js
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { api } from '../services/api';
+
+export const exportCompanyReport = async (type = 'pdf', filename) => {
+  const reportType = type === 'excel' ? 'excel' : 'pdf';
+  const defaultName = reportType === 'excel'
+    ? `creatoriq_report_${new Date().toISOString().slice(0, 10)}.xlsx`
+    : `creatoriq_report_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+  return api.downloadFile(`/reports/export/${reportType}/1`, filename || defaultName);
+};
 
 /**
  * Export tabular content array to a downloadable CSV file.

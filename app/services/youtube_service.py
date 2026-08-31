@@ -13,31 +13,43 @@ from app.models.user import User
 class YouTubeService:
     BASE_URL = "https://www.googleapis.com/youtube/v3"
 
-    @classmethod
-    def fetch_channel_videos(
-        cls, channel_id: str, max_results: int = 10
-    ) -> List[Dict[str, Any]]:
-        if not settings.YOUTUBE_API_KEY:
+    @staticmethod
+    def _resolve_api_key(api_key: str | None = None) -> str:
+        resolved = (api_key or settings.YOUTUBE_API_KEY or "").strip()
+        if not resolved:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="YouTube API key is missing in environment configuration.",
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="YouTube API key is required.",
             )
+        return resolved
 
-        # 1. Fetch video IDs from channel
+    @classmethod
+    def _fetch_search_results(
+        cls,
+        query: str | None = None,
+        channel_id: str | None = None,
+        max_results: int = 10,
+        api_key: str | None = None,
+    ) -> List[Dict[str, Any]]:
+        final_api_key = cls._resolve_api_key(api_key)
+
         search_url = f"{cls.BASE_URL}/search"
         search_params = {
-            "key": settings.YOUTUBE_API_KEY,
-            "channelId": channel_id,
+            "key": final_api_key,
             "part": "snippet",
-            "order": "date",
+            "order": "relevance",
             "type": "video",
             "maxResults": max_results,
         }
 
+        if channel_id:
+            search_params["channelId"] = channel_id
+            search_params["order"] = "date"
+        if query:
+            search_params["q"] = query
+
         try:
-            search_response = requests.get(
-                search_url, params=search_params, timeout=10
-            )
+            search_response = requests.get(search_url, params=search_params, timeout=10)
             if search_response.status_code == 400:
                 raise HTTPException(
                     status_code=400,
@@ -51,7 +63,6 @@ class YouTubeService:
 
             search_response.raise_for_status()
             search_data = search_response.json()
-
         except requests.RequestException as e:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -70,27 +81,21 @@ class YouTubeService:
         if not video_ids:
             return []
 
-        # 2. Fetch video metrics
         videos_url = f"{cls.BASE_URL}/videos"
         videos_params = {
-            "key": settings.YOUTUBE_API_KEY,
+            "key": final_api_key,
             "id": ",".join(video_ids),
             "part": "snippet,statistics",
         }
 
-        videos_response = requests.get(
-            videos_url, params=videos_params, timeout=10
-        )
+        videos_response = requests.get(videos_url, params=videos_params, timeout=10)
         videos_response.raise_for_status()
         videos_data = videos_response.json()
 
-        # 3. Transform to CreatorIQ Common Format
         transformed_records = []
         for video in videos_data.get("items", []):
             snippet = video.get("snippet", {})
             stats = video.get("statistics", {})
-
-            # Parse ISO date string
             pub_date_raw = snippet.get("publishedAt", "")
             pub_date = (
                 datetime.strptime(pub_date_raw[:10], "%Y-%m-%d").date()
@@ -99,7 +104,6 @@ class YouTubeService:
             )
 
             views = int(stats.get("viewCount", 0))
-
             transformed_records.append(
                 {
                     "platform": "YouTube",
@@ -108,17 +112,158 @@ class YouTubeService:
                     "views": views,
                     "likes": int(stats.get("likeCount", 0)),
                     "comments": int(stats.get("commentCount", 0)),
-                    "shares": 0,  # YouTube API v3 does not expose share counts publicly
+                    "shares": 0,
                     "saves": 0,
-                    "reach": int(
-                        views * 1.25
-                    ),  # Estimated total reach multiplier
+                    "reach": max(views, 1),
                     "watch_time": 0.0,
                     "published_date": pub_date,
                 }
             )
 
         return transformed_records
+
+    @classmethod
+    def fetch_channel_videos(
+        cls, channel_id: str, max_results: int = 10
+    ) -> List[Dict[str, Any]]:
+        return cls._fetch_search_results(channel_id=channel_id, max_results=max_results)
+
+    @classmethod
+    def fetch_channel_by_name(
+        cls, channel_name: str, api_key: str | None = None, max_results: int = 10
+    ) -> List[Dict[str, Any]]:
+        if not channel_name or not channel_name.strip():
+            raise HTTPException(status_code=400, detail="Channel name is required.")
+
+        final_api_key = cls._resolve_api_key(api_key)
+
+        search_url = f"{cls.BASE_URL}/search"
+        search_params = {
+            "key": final_api_key,
+            "part": "snippet",
+            "type": "channel",
+            "q": channel_name.strip(),
+            "maxResults": max_results,
+        }
+
+        try:
+            search_response = requests.get(search_url, params=search_params, timeout=10)
+            if search_response.status_code == 400:
+                raise HTTPException(status_code=400, detail="Invalid YouTube channel parameters.")
+            elif search_response.status_code == 403:
+                raise HTTPException(status_code=403, detail="YouTube API key is invalid or quota has been exceeded.")
+            search_response.raise_for_status()
+            search_data = search_response.json()
+        except requests.RequestException as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to communicate with YouTube API: {str(e)}",
+            )
+
+        matches = search_data.get("items", [])
+        if not matches:
+            return []
+
+        channel_ids = [
+            item["id"].get("channelId")
+            for item in matches
+            if item.get("id", {}).get("channelId")
+        ]
+        if not channel_ids:
+            return []
+
+        channels_url = f"{cls.BASE_URL}/channels"
+        channels_params = {
+            "key": final_api_key,
+            "id": ",".join(channel_ids),
+            "part": "snippet,statistics",
+        }
+
+        channels_response = requests.get(channels_url, params=channels_params, timeout=10)
+        channels_response.raise_for_status()
+        channels_data = channels_response.json()
+
+        video_search_url = f"{cls.BASE_URL}/search"
+        video_search_params = {
+            "key": final_api_key,
+            "channelId": channel_ids[0],
+            "part": "snippet",
+            "type": "video",
+            "order": "viewCount",
+            "maxResults": max_results,
+        }
+
+        video_search_response = requests.get(video_search_url, params=video_search_params, timeout=10)
+        video_search_response.raise_for_status()
+        recent_videos = video_search_response.json().get("items", [])
+
+        video_ids = [
+            item["id"]["videoId"]
+            for item in recent_videos
+            if item.get("id", {}).get("videoId")
+        ]
+        if not video_ids:
+            return []
+
+        videos_url = f"{cls.BASE_URL}/videos"
+        videos_params = {
+            "key": final_api_key,
+            "id": ",".join(video_ids),
+            "part": "snippet,statistics",
+        }
+
+        videos_response = requests.get(videos_url, params=videos_params, timeout=10)
+        videos_response.raise_for_status()
+        videos_data = videos_response.json().get("items", [])
+
+        video_metrics = []
+        for video in videos_data:
+            snippet = video.get("snippet", {})
+            stats = video.get("statistics", {})
+            video_metrics.append(
+                {
+                    "title": snippet.get("title", "Untitled Video"),
+                    "views": int(stats.get("viewCount", 0)),
+                    "likes": int(stats.get("likeCount", 0)),
+                    "comments": int(stats.get("commentCount", 0)),
+                    "shares": 0,
+                }
+            )
+
+        top_video = max(video_metrics, key=lambda item: item["views"], default={"title": channel_name.strip(), "views": 0, "likes": 0, "comments": 0, "shares": 0})
+        total_views = sum(item["views"] for item in video_metrics)
+        total_likes = sum(item["likes"] for item in video_metrics)
+        total_comments = sum(item["comments"] for item in video_metrics)
+        total_shares = sum(item["shares"] for item in video_metrics)
+        total_reach = max(total_views, 1)
+
+        channel = channels_data.get("items", [])[0]
+        stats = channel.get("statistics", {})
+        snippet = channel.get("snippet", {})
+
+        top_video_title = top_video.get("title", channel_name.strip())
+        return [{
+            "platform": "YouTube",
+            "channel_id": channel.get("id"),
+            "channel_title": snippet.get("title", channel_name.strip()),
+            "title": top_video_title,
+            "views": total_views,
+            "likes": total_likes,
+            "comments": total_comments,
+            "shares": total_shares,
+            "reach": total_reach,
+            "subscribers": int(stats.get("subscriberCount", 0)),
+            "videos": int(stats.get("videoCount", 0)),
+            "top_video": top_video_title,
+        }]
+
+    @classmethod
+    def fetch_video_by_name(
+        cls, video_name: str, max_results: int = 5, api_key: str | None = None
+    ) -> List[Dict[str, Any]]:
+        if not video_name or not video_name.strip():
+            raise HTTPException(status_code=400, detail="Video name is required.")
+        return cls._fetch_search_results(query=video_name.strip(), max_results=max_results, api_key=api_key)
 
     @classmethod
     def sync_youtube_data(
