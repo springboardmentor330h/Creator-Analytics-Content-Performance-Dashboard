@@ -10,11 +10,11 @@ class Content(Base):
     platform = Column(String, nullable=False)
     external_content_id = Column(String, nullable=True, index=True)
     content_title = Column(String, nullable=False)
-    views = Column(Integer, default=0)
+    views = Column(Integer, nullable=True)      # CHANGED: nullable (was default=0)
     likes = Column(Integer, default=0)
     comments = Column(Integer, default=0)
-    shares = Column(Integer, default=0)
+    shares = Column(Integer, nullable=True)     # CHANGED: nullable
     saves = Column(Integer, default=0)
     watch_time = Column(Integer, default=0)
-    reach = Column(Integer, default=0)
+    reach = Column(Integer, nullable=True)      # CHANGED: nullable
     published_date = Column(Date, nullable=False)

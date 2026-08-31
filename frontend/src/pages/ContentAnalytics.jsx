@@ -10,11 +10,19 @@ export default function ContentAnalytics() {
   const [summary, setSummary] = useState(null);
   const [topContent, setTopContent] = useState([]);
   const [platformPerf, setPlatformPerf] = useState([]);
+  const [platformFilter, setPlatformFilter] = useState("All");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    platform: "YouTube", content_title: "", views: 0, likes: 0,
-    comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0,
+    platform: "YouTube",
+    content_title: "",
+    views: 0,
+    likes: 0,
+    comments: 0,
+    shares: 0,
+    saves: 0,
+    watch_time: 0,
+    reach: 0,
     published_date: new Date().toISOString().slice(0, 10),
   });
 
@@ -23,7 +31,6 @@ export default function ContentAnalytics() {
     setLoading(true);
     try {
       const contentRes = await api.get("/content");
-      console.log("content response:", contentRes.data); // TEMP debug line
       setContent(Array.isArray(contentRes.data) ? contentRes.data : []);
 
       const summaryRes = await api.get("/analytics/summary");
@@ -42,7 +49,9 @@ export default function ContentAnalytics() {
     }
   };
 
-  useEffect(() => { loadData(); }, [creatorId]);
+  useEffect(() => {
+    loadData();
+  }, [creatorId]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -52,8 +61,12 @@ export default function ContentAnalytics() {
       await api.post("/content", {
         ...form,
         creator_id: creatorId,
-        views: Number(form.views), likes: Number(form.likes), comments: Number(form.comments),
-        shares: Number(form.shares), saves: Number(form.saves), watch_time: Number(form.watch_time),
+        views: Number(form.views),
+        likes: Number(form.likes),
+        comments: Number(form.comments),
+        shares: Number(form.shares),
+        saves: Number(form.saves),
+        watch_time: Number(form.watch_time),
         reach: Number(form.reach),
       });
       await loadData();
@@ -63,13 +76,28 @@ export default function ContentAnalytics() {
     }
   };
 
+  const uniquePlatforms = ["All", ...new Set(content.map((c) => c.platform))];
+  const filteredContent = platformFilter === "All" ? content : content.filter((c) => c.platform === platformFilter);
+
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
       <Sidebar />
       <div className="flex-1 overflow-y-auto">
         <Navbar />
         <main className="p-4 sm:p-6">
-          <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Content Analytics</h1>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-xl font-semibold sm:text-2xl">Content Analytics</h1>
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="rounded border px-3 py-2 text-sm"
+            >
+              {uniquePlatforms.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
           {loading && <p className="mb-4 text-sm text-gray-500">Loading...</p>}
 
@@ -85,15 +113,28 @@ export default function ContentAnalytics() {
             )}
           </div>
 
-          <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-8">
-            <input name="content_title" placeholder="Title" value={form.content_title} onChange={handleChange} className="col-span-2 rounded border px-2 py-1 text-sm" required minLength={3} />
+          <form
+            onSubmit={handleSubmit}
+            className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-8"
+          >
+            <input
+              name="content_title"
+              placeholder="Title"
+              value={form.content_title}
+              onChange={handleChange}
+              className="col-span-2 rounded border px-2 py-1 text-sm"
+              required
+              minLength={3}
+            />
             <input name="platform" placeholder="Platform" value={form.platform} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
             <input name="views" type="number" placeholder="Views" value={form.views} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
             <input name="likes" type="number" placeholder="Likes" value={form.likes} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
             <input name="comments" type="number" placeholder="Comments" value={form.comments} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
             <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
             <input name="published_date" type="date" value={form.published_date} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <button type="submit" className="col-span-2 rounded bg-indigo-600 px-3 py-1 text-sm text-white sm:col-span-1">Add</button>
+            <button type="submit" className="col-span-2 rounded bg-indigo-600 px-3 py-1 text-sm text-white sm:col-span-1">
+              Add
+            </button>
           </form>
 
           <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -113,7 +154,9 @@ export default function ContentAnalytics() {
               {platformPerf.map((p) => (
                 <div key={p.platform} className="flex justify-between border-b py-1 text-sm">
                   <span>{p.platform}</span>
-                  <span>{p.views?.toLocaleString()} views · {p.engagement_rate}%</span>
+                  <span>
+                    {p.views != null ? p.views.toLocaleString() : "N/A"} views · {p.engagement_rate}%
+                  </span>
                 </div>
               ))}
               {platformPerf.length === 0 && <p className="text-sm text-gray-500">No data yet.</p>}
@@ -121,17 +164,20 @@ export default function ContentAnalytics() {
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {content.map((c) => (
+            {filteredContent.map((c) => (
               <div key={c.id} className="rounded-xl bg-white p-4 shadow">
                 <p className="font-medium">{c.content_title}</p>
                 <p className="text-sm text-gray-500">{c.platform}</p>
                 <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-gray-600 sm:text-sm">
-                  <span>👁 {c.views.toLocaleString()}</span>
+                  <span>👁 {c.views != null ? c.views.toLocaleString() : "N/A"}</span>
                   <span>👍 {c.likes.toLocaleString()}</span>
                   <span>💬 {c.comments.toLocaleString()}</span>
                 </div>
               </div>
             ))}
+            {filteredContent.length === 0 && (
+              <p className="text-sm text-gray-500">No content for this platform yet.</p>
+            )}
           </div>
         </main>
       </div>

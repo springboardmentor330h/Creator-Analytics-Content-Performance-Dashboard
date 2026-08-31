@@ -4,11 +4,12 @@ from collections import defaultdict
 from app.models.growth import Growth
 
 def calculate_engagement_rate(content: Content) -> float:
-    """Engagement Rate = (Likes + Comments + Shares + Saves) / Reach * 100"""
-    total_engagement = content.likes + content.comments + content.shares + content.saves
-    if content.reach == 0:
+    reach = content.reach or 0
+    if reach == 0:
         return 0.0
-    return round((total_engagement / content.reach) * 100, 2)
+    shares = content.shares or 0
+    total_engagement = content.likes + content.comments + shares
+    return round((total_engagement / reach) * 100, 2)
 
 
 def get_total_engagement(content: Content) -> int:

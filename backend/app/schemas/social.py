@@ -19,3 +19,7 @@ class SyncResult(BaseModel):
     platform: str
     status: str
     records_synced: int
+
+class InstagramSyncRequest(BaseModel):
+    creator_id: int
+    max_results: int = 10

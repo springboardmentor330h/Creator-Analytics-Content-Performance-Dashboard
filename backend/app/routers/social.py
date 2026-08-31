@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.social_connection import SocialConnection
 from app.models.content import Content
-from app.schemas.social import ConnectRequest, YouTubeSyncRequest, SyncResult
+from app.schemas.social import ConnectRequest, YouTubeSyncRequest, SyncResult,InstagramSyncRequest
 from app.services import social_media, youtube_service
+from app.services import instagram_service
+
 
 router = APIRouter(prefix="/social", tags=["social-media-integration"])
 
@@ -117,3 +119,49 @@ def sync_youtube_data(payload: YouTubeSyncRequest, db: Session = Depends(get_db)
         synced_count += 1
 
     return SyncResult(platform="YouTube", status="success", records_synced=synced_count)
+
+
+
+@router.post("/instagram/sync", response_model=SyncResult)
+def sync_instagram_data(payload: InstagramSyncRequest, db: Session = Depends(get_db)):
+    transformed_items = instagram_service.get_transformed_instagram_content(payload.max_results)
+
+    synced_count = 0
+    for item in transformed_items:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == item["platform"],
+                Content.external_content_id == item["external_content_id"],
+            )
+            .first()
+        )
+
+        if existing:
+            existing.content_title = item["content_title"]
+            existing.likes = item["likes"]
+            existing.comments = item["comments"]
+            existing.views = item["views"]
+            existing.shares = item["shares"]
+            existing.reach = item["reach"]
+            db.commit()
+        else:
+            new_content = Content(
+                creator_id=payload.creator_id,
+                platform=item["platform"],
+                external_content_id=item["external_content_id"],
+                content_title=item["content_title"],
+                views=item["views"],
+                likes=item["likes"],
+                comments=item["comments"],
+                shares=item["shares"],
+                saves=0,
+                watch_time=0,
+                reach=item["reach"],
+                published_date=item["published_date"],
+            )
+            db.add(new_content)
+            db.commit()
+        synced_count += 1
+
+    return SyncResult(platform="Instagram", status="success", records_synced=synced_count)

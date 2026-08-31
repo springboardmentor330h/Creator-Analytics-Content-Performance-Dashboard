@@ -20,6 +20,9 @@ export default function SocialMedia() {
   const [ytSearchQuery, setYtSearchQuery] = useState("");
   const [ytSyncing, setYtSyncing] = useState(false);
 
+  // Instagram mock sync state
+  const [igSyncing, setIgSyncing] = useState(false);
+
   const loadConnections = async () => {
     try {
       const res = await api.get("/social/platforms");
@@ -29,11 +32,14 @@ export default function SocialMedia() {
     }
   };
 
-  useEffect(() => { loadConnections(); }, []);
+  useEffect(() => {
+    loadConnections();
+  }, []);
 
   const handleConnect = async (e) => {
     e.preventDefault();
-    setError(""); setMessage("");
+    setError("");
+    setMessage("");
     try {
       const res = await api.post("/social/connect", {
         platform: selectedPlatform,
@@ -48,7 +54,9 @@ export default function SocialMedia() {
   };
 
   const handleMockSync = async (platform) => {
-    setSyncing(true); setError(""); setMessage("");
+    setSyncing(true);
+    setError("");
+    setMessage("");
     try {
       const res = await api.post("/social/sync", { creator_id: creatorId, platform });
       setMessage(res.data.message);
@@ -61,7 +69,9 @@ export default function SocialMedia() {
 
   const handleYouTubeSync = async (e) => {
     e.preventDefault();
-    setYtSyncing(true); setError(""); setMessage("");
+    setYtSyncing(true);
+    setError("");
+    setMessage("");
     try {
       const res = await api.post("/social/youtube/sync", {
         creator_id: creatorId,
@@ -74,6 +84,23 @@ export default function SocialMedia() {
       setError(err.response?.data?.detail || "YouTube sync failed");
     } finally {
       setYtSyncing(false);
+    }
+  };
+
+  const handleInstagramSync = async () => {
+    setIgSyncing(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await api.post("/social/instagram/sync", {
+        creator_id: creatorId,
+        max_results: 10,
+      });
+      setMessage(`Instagram sync successful: ${res.data.records_synced} records synced (mock data).`);
+    } catch (err) {
+      setError(err.response?.data?.detail || "Instagram sync failed");
+    } finally {
+      setIgSyncing(false);
     }
   };
 
@@ -103,7 +130,7 @@ export default function SocialMedia() {
                 placeholder="Or search query (e.g. react tutorial)"
                 value={ytSearchQuery}
                 onChange={(e) => setYtSearchQuery(e.target.value)}
-                className="flex-1 min-w-[200px] rounded border px-3 py-2 text-sm"
+                className="min-w-[200px] flex-1 rounded border px-3 py-2 text-sm"
               />
               <button
                 type="submit"
@@ -116,14 +143,31 @@ export default function SocialMedia() {
             <p className="mt-2 text-xs text-gray-500">Provide either a Channel ID or a search query, not both.</p>
           </div>
 
-          {/* Connect platforms (mock) */}
+          {/* Instagram Mock Sync */}
+          <div className="mb-6 rounded-xl bg-white p-4 shadow">
+            <p className="mb-2 font-medium">Instagram — Mock Sync (real API pending approval)</p>
+            <button
+              onClick={handleInstagramSync}
+              disabled={igSyncing}
+              className="rounded bg-pink-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+            >
+              {igSyncing ? "Syncing..." : "Sync Mock Instagram Data"}
+            </button>
+            <p className="mt-2 text-xs text-gray-500">
+              Uses realistic sample data until Instagram Business API credentials are approved.
+            </p>
+          </div>
+
+          {/* Connect platforms (mock connection tracking) */}
           <form onSubmit={handleConnect} className="mb-6 flex flex-wrap gap-2 rounded-xl bg-white p-4 shadow">
             <select
               value={selectedPlatform}
               onChange={(e) => setSelectedPlatform(e.target.value)}
               className="rounded border px-3 py-2 text-sm"
             >
-              {AVAILABLE_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {AVAILABLE_PLATFORMS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
             </select>
             <input
               type="text"
@@ -144,11 +188,16 @@ export default function SocialMedia() {
                 <div key={platform} className="rounded-xl bg-white p-4 shadow">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="font-medium">{platform}</p>
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${isConnected ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs ${
+                        isConnected ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
                       {isConnected ? "Connected" : "Not connected"}
                     </span>
                   </div>
-                  {platform !== "YouTube" && (
+
+                  {platform !== "YouTube" && platform !== "Instagram" && (
                     <button
                       onClick={() => handleMockSync(platform)}
                       disabled={!isConnected || syncing}
@@ -159,6 +208,9 @@ export default function SocialMedia() {
                   )}
                   {platform === "YouTube" && (
                     <p className="text-xs text-gray-500">Use the real sync form above ↑</p>
+                  )}
+                  {platform === "Instagram" && (
+                    <p className="text-xs text-gray-500">Use the mock sync button above ↑</p>
                   )}
                 </div>
               );
