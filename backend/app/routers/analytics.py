@@ -12,7 +12,16 @@ from app.services.analytics_service import (
     get_follower_growth_chart,
     get_platform_comparison
 )
-
+from app.services.analytics_service import (
+    get_content_engagement,
+    get_top_content,
+    get_platform_performance,
+    get_dashboard_summary,
+    get_kpi_summary,
+    get_engagement_chart,
+    get_follower_growth_chart,
+    get_platform_comparison
+)
 router = APIRouter(
     prefix="/analytics",
     tags=["Analytics"]
@@ -82,6 +91,33 @@ def follower_growth_chart(db: Session = Depends(get_db)):
     result = get_follower_growth_chart(db)
 
     return result
+# Platform Comparison
+@router.get("/platform-comparison")
+def platform_comparison(db: Session = Depends(get_db)):
+    result = get_platform_comparison(db)
+
+    return {
+        "message": "Platform comparison fetched successfully",
+        "data": result
+    }
+# Engagement Chart
+@router.get("/chart/engagement")
+def engagement_chart(db: Session = Depends(get_db)):
+    result = get_engagement_chart(db)
+
+    return {
+        "message": "Engagement chart data fetched successfully",
+        "data": result
+    }
+# Follower Growth Chart
+@router.get("/chart/followers")
+def follower_growth_chart(db: Session = Depends(get_db)):
+    result = get_follower_growth_chart(db)
+
+    return {
+        "message": "Follower growth chart data fetched successfully",
+        "data": result
+    }
 # Platform Comparison
 @router.get("/platform-comparison")
 def platform_comparison(db: Session = Depends(get_db)):

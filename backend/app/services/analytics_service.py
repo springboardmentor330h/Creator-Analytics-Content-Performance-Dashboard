@@ -365,3 +365,116 @@ def get_platform_comparison(db: Session):
         }
 
     return result
+def get_engagement_chart(db: Session):
+    contents = (
+        db.query(Content)
+        .order_by(Content.published_date)
+        .all()
+    )
+
+    labels = []
+    values = []
+
+    for content in contents:
+        total_engagement = (
+            content.likes
+            + content.comments
+            + content.shares
+            + content.saves
+        )
+
+        if content.reach > 0:
+            engagement_rate = (
+                total_engagement / content.reach
+            ) * 100
+        else:
+            engagement_rate = 0
+
+        labels.append(str(content.published_date))
+        values.append(round(engagement_rate, 2))
+
+    return {
+        "labels": labels,
+        "values": values
+    }
+def get_follower_growth_chart(db: Session):
+    growth_data = (
+        db.query(Growth)
+        .order_by(Growth.date)
+        .all()
+    )
+
+    labels = []
+    values = []
+
+    for record in growth_data:
+        labels.append(str(record.date))
+        values.append(record.followers)
+
+    return {
+        "labels": labels,
+        "values": values
+    }
+def get_platform_comparison(db: Session):
+    contents = db.query(Content).all()
+
+    platforms = {}
+
+    for content in contents:
+
+        platform = content.platform
+
+        if platform not in platforms:
+            platforms[platform] = {
+                "views": 0,
+                "reach": 0,
+                "likes": 0,
+                "comments": 0,
+                "engagement_rates": []
+            }
+
+        platforms[platform]["views"] += content.views
+        platforms[platform]["reach"] += content.reach
+        platforms[platform]["likes"] += content.likes
+        platforms[platform]["comments"] += content.comments
+
+        total_engagement = (
+            content.likes
+            + content.comments
+            + content.shares
+            + content.saves
+        )
+
+        if content.reach > 0:
+            engagement_rate = (
+                total_engagement / content.reach
+            ) * 100
+        else:
+            engagement_rate = 0
+
+        platforms[platform]["engagement_rates"].append(
+            engagement_rate
+        )
+
+    result = {}
+
+    for platform, data in platforms.items():
+
+        rates = data["engagement_rates"]
+
+        if rates:
+            average_engagement_rate = sum(rates) / len(rates)
+        else:
+            average_engagement_rate = 0
+
+        result[platform] = {
+            "views": data["views"],
+            "reach": data["reach"],
+            "likes": data["likes"],
+            "comments": data["comments"],
+            "engagement_rate": round(
+                average_engagement_rate, 2
+            )
+        }
+
+    return result

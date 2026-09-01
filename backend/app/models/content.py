@@ -1,3 +1,4 @@
+
 from sqlalchemy import Column, Integer, String, Date
 from app.db.database import Base
 
@@ -6,8 +7,15 @@ class Content(Base):
     __tablename__ = "content"
 
     id = Column(Integer, primary_key=True, index=True)
+
     creator_id = Column(Integer, nullable=False)
+
     platform = Column(String, nullable=False)
+
+    # YouTube video ID / Instagram post ID etc.
+    # Used to prevent duplicate content during synchronization
+    external_content_id = Column(String, nullable=True, index=True)
+
     content_title = Column(String, nullable=False)
 
     views = Column(Integer, default=0, nullable=False)
@@ -20,3 +28,4 @@ class Content(Base):
     reach = Column(Integer, default=0, nullable=False)
 
     published_date = Column(Date, nullable=False)
+
