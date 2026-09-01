@@ -57,11 +57,20 @@ export default function SocialMedia() {
     setSyncing(true);
     setError("");
     setMessage("");
+
+    const endpointMap = {
+      Instagram: "/social/instagram/sync",
+      TikTok: "/social/tiktok/sync",
+      Facebook: "/social/facebook/sync",
+      LinkedIn: "/social/linkedin/sync",
+      X: "/social/x/sync",
+    };
+
     try {
-      const res = await api.post("/social/sync", { creator_id: creatorId, platform });
-      setMessage(res.data.message);
+      const res = await api.post(endpointMap[platform], { creator_id: creatorId, max_results: 10 });
+      setMessage(`${platform} sync successful: ${res.data.records_synced} records synced (mock data).`);
     } catch (err) {
-      setError(err.response?.data?.detail || "Sync failed");
+      setError(err.response?.data?.detail || `${platform} sync failed`);
     } finally {
       setSyncing(false);
     }
@@ -188,29 +197,21 @@ export default function SocialMedia() {
                 <div key={platform} className="rounded-xl bg-white p-4 shadow">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="font-medium">{platform}</p>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs ${
-                        isConnected ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${isConnected ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {isConnected ? "Connected" : "Not connected"}
                     </span>
                   </div>
 
-                  {platform !== "YouTube" && platform !== "Instagram" && (
+                  {platform === "YouTube" ? (
+                    <p className="text-xs text-gray-500">Use the real sync form above ↑</p>
+                  ) : (
                     <button
                       onClick={() => handleMockSync(platform)}
                       disabled={!isConnected || syncing}
                       className="w-full rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-40"
                     >
-                      {syncing ? "Syncing..." : "Sync Mock Data"}
+                      {syncing ? "Syncing..." : `Sync ${platform} (Mock)`}
                     </button>
-                  )}
-                  {platform === "YouTube" && (
-                    <p className="text-xs text-gray-500">Use the real sync form above ↑</p>
-                  )}
-                  {platform === "Instagram" && (
-                    <p className="text-xs text-gray-500">Use the mock sync button above ↑</p>
                   )}
                 </div>
               );

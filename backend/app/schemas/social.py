@@ -23,3 +23,23 @@ class SyncResult(BaseModel):
 class InstagramSyncRequest(BaseModel):
     creator_id: int
     max_results: int = 10
+
+
+class TikTokSyncRequest(BaseModel):
+    creator_id: int
+    max_results: int = 10
+
+
+class FacebookSyncRequest(BaseModel):
+    creator_id: int
+    max_results: int = 10
+
+
+class XSyncRequest(BaseModel):
+    creator_id: int
+    max_results: int = 10
+
+
+class LinkedInSyncRequest(BaseModel):
+    creator_id: int
+    max_results: int = 10

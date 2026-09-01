@@ -7,6 +7,8 @@ from app.models.content import Content
 from app.schemas.social import ConnectRequest, YouTubeSyncRequest, SyncResult,InstagramSyncRequest
 from app.services import social_media, youtube_service
 from app.services import instagram_service
+from app.services import tiktok_service, facebook_service, x_service, linkedin_service
+from app.schemas.social import TikTokSyncRequest, FacebookSyncRequest, XSyncRequest, LinkedInSyncRequest
 
 
 router = APIRouter(prefix="/social", tags=["social-media-integration"])
@@ -165,3 +167,70 @@ def sync_instagram_data(payload: InstagramSyncRequest, db: Session = Depends(get
         synced_count += 1
 
     return SyncResult(platform="Instagram", status="success", records_synced=synced_count)
+
+
+
+def _sync_generic(db: Session, creator_id: int, platform: str, transformed_items: list[dict]) -> int:
+    """Shared duplicate-check + create/update logic for all mock platforms."""
+    synced_count = 0
+    for item in transformed_items:
+        existing = (
+            db.query(Content)
+            .filter(Content.platform == item["platform"], Content.external_content_id == item["external_content_id"])
+            .first()
+        )
+        if existing:
+            existing.content_title = item["content_title"]
+            existing.likes = item["likes"]
+            existing.comments = item["comments"]
+            existing.views = item["views"]
+            existing.shares = item["shares"]
+            existing.reach = item["reach"]
+            db.commit()
+        else:
+            new_content = Content(
+                creator_id=creator_id,
+                platform=item["platform"],
+                external_content_id=item["external_content_id"],
+                content_title=item["content_title"],
+                views=item["views"],
+                likes=item["likes"],
+                comments=item["comments"],
+                shares=item["shares"],
+                saves=0,
+                watch_time=0,
+                reach=item["reach"],
+                published_date=item["published_date"],
+            )
+            db.add(new_content)
+            db.commit()
+        synced_count += 1
+    return synced_count
+
+
+@router.post("/tiktok/sync", response_model=SyncResult)
+def sync_tiktok_data(payload: TikTokSyncRequest, db: Session = Depends(get_db)):
+    items = tiktok_service.get_transformed_tiktok_content(payload.max_results)
+    count = _sync_generic(db, payload.creator_id, "TikTok", items)
+    return SyncResult(platform="TikTok", status="success", records_synced=count)
+
+
+@router.post("/facebook/sync", response_model=SyncResult)
+def sync_facebook_data(payload: FacebookSyncRequest, db: Session = Depends(get_db)):
+    items = facebook_service.get_transformed_facebook_content(payload.max_results)
+    count = _sync_generic(db, payload.creator_id, "Facebook", items)
+    return SyncResult(platform="Facebook", status="success", records_synced=count)
+
+
+@router.post("/x/sync", response_model=SyncResult)
+def sync_x_data(payload: XSyncRequest, db: Session = Depends(get_db)):
+    items = x_service.get_transformed_x_content(payload.max_results)
+    count = _sync_generic(db, payload.creator_id, "X", items)
+    return SyncResult(platform="X", status="success", records_synced=count)
+
+
+@router.post("/linkedin/sync", response_model=SyncResult)
+def sync_linkedin_data(payload: LinkedInSyncRequest, db: Session = Depends(get_db)):
+    items = linkedin_service.get_transformed_linkedin_content(payload.max_results)
+    count = _sync_generic(db, payload.creator_id, "LinkedIn", items)
+    return SyncResult(platform="LinkedIn", status="success", records_synced=count)
