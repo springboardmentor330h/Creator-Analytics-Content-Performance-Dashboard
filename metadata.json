@@ -1,0 +1,8 @@
+{
+  "name": "CreatorIQ",
+  "description": "Creator analytics and performance dashboard tracking content, audience, revenue, sponsorships, and growth.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
