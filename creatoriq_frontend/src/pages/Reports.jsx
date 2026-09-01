@@ -48,24 +48,24 @@ export default function Reports() {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold">Reports</h1>
-        <p className="text-sm text-slate-400">Generate summaries and download PDF or Excel</p>
+        <p className="text-sm text-slate-500">Generate summaries and download PDF or Excel</p>
       </div>
       {error && <ErrorBox message={String(error)} />}
 
       <div className="flex flex-wrap gap-3 items-end">
         <div>
-          <label className="text-xs text-slate-400">Report type</label>
+          <label className="text-xs text-slate-500">Report type</label>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="block mt-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm"
+            className="block mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm"
           >
             {TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
           </select>
         </div>
-        <button onClick={generate} disabled={loading} className="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-sm disabled:opacity-50">
+        <button onClick={generate} disabled={loading} className="px-4 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-500 text-sm disabled:opacity-50">
           {loading ? 'Generating...' : 'Generate'}
         </button>
         <button onClick={() => download('excel')} className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-sm">
@@ -77,12 +77,12 @@ export default function Reports() {
       </div>
 
       {report && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
             {Object.entries(summary)
               .filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object')
               .map(([k, v]) => (
-                <div key={k} className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2">
+                <div key={k} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                   <p className="text-xs text-slate-500 capitalize">{k.replaceAll('_', ' ')}</p>
                   <p className="font-medium mt-0.5">{String(v)}</p>
                 </div>

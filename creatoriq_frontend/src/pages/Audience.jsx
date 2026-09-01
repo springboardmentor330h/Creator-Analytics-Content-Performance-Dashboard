@@ -39,19 +39,19 @@ export default function Audience() {
         <KPICard title="Impressions" value={data?.total_impressions} />
       </div>
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">Gender</h2>
           <Donut data={toChart(data?.gender_distribution)} />
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">Age</h2>
           <SimpleBar data={toChart(data?.age_distribution)} />
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">Top Countries</h2>
           <SimpleBar data={toChart(data?.top_countries || data?.top_country)} color="#8b5cf6" />
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">Devices</h2>
           <Donut data={toChart(data?.device_usage)} />
         </div>

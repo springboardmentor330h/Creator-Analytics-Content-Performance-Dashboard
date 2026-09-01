@@ -24,6 +24,8 @@ from app.services.social_media import (
     SUPPORTED_PLATFORMS,
 )
 
+from app.services.mock_platform_service import build_mock_content_items
+
 from app.services.youtube_service import (
     get_youtube_channel_videos,
 )
@@ -157,15 +159,12 @@ def connect_social_platform(
         platform
     )
 
-    if canonical not in {
-        "YouTube",
-        "Instagram",
-    }:
+    if not canonical or canonical not in set(SUPPORTED_PLATFORMS):
         raise HTTPException(
             status_code=400,
             detail=(
-                "Only YouTube and Instagram are "
-                "supported for this sprint."
+                "Unsupported platform. Use: "
+                + ", ".join(SUPPORTED_PLATFORMS)
             ),
         )
 
@@ -1171,5 +1170,113 @@ def synchronize_instagram_data(
         "message": (
             "Instagram data synchronized "
             "successfully."
+        ),
+    }
+
+
+# ============================================================
+# MOCK / MANUAL SYNC — platforms without live API
+# Facebook, LinkedIn, TikTok, Twitter/X
+# POST /social/mock/sync
+# ============================================================
+
+@router.post("/mock/sync")
+def synchronize_mock_platform_data(
+    creator_id: int = Query(..., gt=0, description="CreatorIQ user id"),
+    platform: str = Query(
+        ...,
+        description="Facebook | LinkedIn | TikTok | Twitter | X",
+    ),
+    count: int = Query(3, ge=1, le=10, description="How many sample posts to upsert"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Insert mock/manual analytics rows for platforms that do not
+    have a live API integration yet (mentor multi-platform requirement).
+
+    YouTube and Instagram should use their real sync endpoints instead.
+    """
+    canonical = normalize_platform(platform)
+    if not canonical:
+        raise HTTPException(status_code=400, detail="Unsupported platform")
+
+    if canonical in {"YouTube", "Instagram"}:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Use real sync for {canonical}: "
+                "POST /social/youtube/sync or POST /social/instagram/sync"
+            ),
+        )
+
+    # creators can only sync for themselves unless admin
+    check_creator_access(current_user, creator_id)
+
+    items = build_mock_content_items(canonical, count=count)
+    created = updated = 0
+    content_ids = []
+
+    for payload in items:
+        external_id = payload["external_content_id"]
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == canonical,
+                Content.external_content_id == external_id,
+                Content.creator_id == creator_id,
+            )
+            .first()
+        )
+        if existing:
+            existing.content_title = payload["content_title"]
+            existing.views = payload["views"]
+            existing.likes = payload["likes"]
+            existing.comments = payload["comments"]
+            existing.shares = payload["shares"]
+            existing.saves = payload["saves"]
+            existing.watch_time = payload["watch_time"]
+            existing.reach = payload["reach"]
+            existing.published_date = payload["published_date"]
+            updated += 1
+            content_ids.append(existing.id)
+        else:
+            row = Content(
+                creator_id=creator_id,
+                platform=canonical,
+                external_content_id=external_id,
+                content_title=payload["content_title"],
+                views=payload["views"],
+                likes=payload["likes"],
+                comments=payload["comments"],
+                shares=payload["shares"],
+                saves=payload["saves"],
+                watch_time=payload["watch_time"],
+                reach=payload["reach"],
+                published_date=payload["published_date"],
+            )
+            db.add(row)
+            db.flush()
+            created += 1
+            content_ids.append(row.id)
+
+    # Also register connection for UI
+    connect_platform(
+        creator_id=creator_id,
+        platform=canonical,
+        account_name=f"mock_{canonical.lower()}",
+    )
+
+    db.commit()
+    return {
+        "platform": canonical,
+        "status": "success",
+        "source": "mock_manual",
+        "creator_id": creator_id,
+        "records_created": created,
+        "records_updated": updated,
+        "content_ids": content_ids,
+        "message": (
+            f"{canonical} mock data synchronized for creator {creator_id}"
         ),
     }

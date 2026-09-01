@@ -20,9 +20,9 @@ export default function Sponsorships() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Sponsorships</h1>
       {error && <ErrorBox message={String(error)} />}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-slate-400 border-b border-slate-800">
+          <thead className="text-slate-500 border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3">Brand</th>
               <th className="text-left px-4 py-3">Campaign</th>
@@ -33,7 +33,7 @@ export default function Sponsorships() {
           </thead>
           <tbody>
             {rows.map((s) => (
-              <tr key={s.id} className="border-b border-slate-800/50">
+              <tr key={s.id} className="border-b border-slate-200/50">
                 <td className="px-4 py-2">{s.brand_name}</td>
                 <td className="px-4 py-2">{s.campaign_name}</td>
                 <td className="px-4 py-2 text-right">${Number(s.contract_value || 0).toLocaleString()}</td>

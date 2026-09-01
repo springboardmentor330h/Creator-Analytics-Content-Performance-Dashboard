@@ -7,7 +7,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const auth = useAuth()
   const navigate = useNavigate()
 
   const onSubmit = async (e) => {
@@ -15,67 +15,142 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(email, password)
-      navigate('/')
+      await auth.login(email, password)
+      navigate('/', { replace: true })
     } catch (err) {
-      const detail = err.response?.data?.detail
-      if (!err.response) {
-        setError('Cannot connect to server. Please try again later.')
-      } else if (typeof detail === 'string') {
-        setError(detail)
-      } else if (Array.isArray(detail)) {
-        setError(detail.map((d) => d.msg || JSON.stringify(d)).join(', '))
-      } else {
-        setError('Invalid email or password')
-      }
+      const detail = err?.response?.data?.detail
+      if (!err?.response) setError('Cannot connect to server. Is the backend on port 8000?')
+      else if (typeof detail === 'string') setError(detail)
+      else if (Array.isArray(detail)) setError(detail.map((d) => d.msg || JSON.stringify(d)).join(', '))
+      else setError('Invalid email or password')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <form onSubmit={onSubmit} className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-        <div className="text-center mb-2">
-          <div className="inline-flex w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 items-center justify-center font-bold mb-3">
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        background: '#f8fafc',
+      }}
+    >
+      <form
+        onSubmit={onSubmit}
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          background: '#fff',
+          border: '1px solid #e2e8f0',
+          borderRadius: 16,
+          padding: 24,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              width: 48,
+              height: 48,
+              borderRadius: 12,
+              background: 'linear-gradient(135deg,#0ea5e9,#6366f1)',
+              color: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 700,
+              marginBottom: 12,
+            }}
+          >
             CIQ
           </div>
-          <h1 className="text-xl font-bold">Sign in to CreatorIQ</h1>
-          <p className="text-sm text-slate-400">Creator analytics dashboard</p>
+          <h1 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+            Sign in to CreatorIQ
+          </h1>
+          <p style={{ fontSize: 14, color: '#64748b', marginTop: 4 }}>
+            Creator analytics dashboard
+          </p>
         </div>
-        {error && (
-          <div className="text-sm text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2">
+
+        {error ? (
+          <div
+            style={{
+              fontSize: 14,
+              color: '#b91c1c',
+              background: '#fff1f2',
+              border: '1px solid #fecdd3',
+              borderRadius: 8,
+              padding: '8px 12px',
+              marginBottom: 12,
+            }}
+          >
             {error}
           </div>
-        )}
-        <div>
-          <label className="text-sm text-slate-400">Email</label>
-          <input
-            className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label className="text-sm text-slate-400">Password</label>
-          <input
-            className="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        ) : null}
+
+        <label style={{ fontSize: 14, color: '#475569', display: 'block' }}>Email</label>
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={{
+            marginTop: 4,
+            marginBottom: 12,
+            width: '100%',
+            boxSizing: 'border-box',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '10px 12px',
+            fontSize: 14,
+          }}
+        />
+
+        <label style={{ fontSize: 14, color: '#475569', display: 'block' }}>Password</label>
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{
+            marginTop: 4,
+            marginBottom: 16,
+            width: '100%',
+            boxSizing: 'border-box',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            padding: '10px 12px',
+            fontSize: 14,
+          }}
+        />
+
         <button
+          type="submit"
           disabled={loading}
-          className="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 rounded-lg py-2.5 font-medium"
+          style={{
+            width: '100%',
+            background: loading ? '#7dd3fc' : '#0284c7',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            padding: '10px 12px',
+            fontWeight: 600,
+            fontSize: 14,
+            cursor: loading ? 'default' : 'pointer',
+          }}
         >
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
-        <p className="text-center text-sm text-slate-500">
-          No account? <Link className="text-sky-400" to="/register">Register</Link>
+
+        <p style={{ textAlign: 'center', fontSize: 14, color: '#64748b', marginTop: 16 }}>
+          No account?{' '}
+          <Link to="/register" style={{ color: '#0284c7' }}>
+            Register
+          </Link>
         </p>
       </form>
     </div>

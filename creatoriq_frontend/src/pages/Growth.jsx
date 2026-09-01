@@ -42,14 +42,14 @@ export default function Growth() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Growth & Trends</h1>
       {error && <ErrorBox message={error} />}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4">
         <h2 className="text-sm mb-3">Followers over time</h2>
         <AreaTrend data={chart} height={280} />
       </div>
       {growth.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-slate-400 border-b border-slate-800">
+            <thead className="text-slate-500 border-b border-slate-200">
               <tr>
                 <th className="text-left px-4 py-3">Date</th>
                 <th className="text-right px-4 py-3">Followers</th>
@@ -59,7 +59,7 @@ export default function Growth() {
             </thead>
             <tbody>
               {growth.map((r, i) => (
-                <tr key={i} className="border-b border-slate-800/50">
+                <tr key={i} className="border-b border-slate-200/50">
                   <td className="px-4 py-2">{r.date}</td>
                   <td className="px-4 py-2 text-right">{r.value?.toLocaleString?.() ?? r.value}</td>
                   <td className="px-4 py-2 text-right">{r.growth ?? '—'}</td>

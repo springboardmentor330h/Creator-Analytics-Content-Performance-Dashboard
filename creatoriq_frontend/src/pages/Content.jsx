@@ -32,9 +32,9 @@ export default function Content() {
         <PlatformSelect platforms={platforms} value={platform} onChange={setPlatform} />
       </div>
       {error && <ErrorBox message={String(error)} />}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-slate-400 border-b border-slate-800">
+          <thead className="text-slate-500 border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3">Title</th>
               <th className="text-left px-4 py-3">Platform</th>
@@ -46,7 +46,7 @@ export default function Content() {
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id} className="border-b border-slate-800/50">
+              <tr key={c.id} className="border-b border-slate-200/50">
                 <td className="px-4 py-3 max-w-xs truncate">{c.content_title}</td>
                 <td className="px-4 py-3 capitalize">{c.platform}</td>
                 <td className="px-4 py-3 text-right">{(c.views || 0).toLocaleString()}</td>

@@ -26,7 +26,6 @@ api.interceptors.response.use(
   }
 )
 
-/** OAuth2 password form login used by your FastAPI /auth/login */
 export async function loginRequest(email, password) {
   const body = new URLSearchParams()
   body.append('username', email)
@@ -49,16 +48,13 @@ export const analyticsAPI = {
   platformComparison: () => api.get('/analytics/platform-comparison'),
   engagementChart: () => api.get('/analytics/chart/engagement'),
   followersChart: () => api.get('/analytics/chart/followers'),
-  contentEngagement: (id) => api.get(`/analytics/content/${id}/engagement`),
 }
 
 export const contentAPI = {
   list: () => api.get('/content'),
-  get: (id) => api.get(`/content/${id}`),
 }
 
 export const audienceAPI = {
-  list: () => api.get('/audience'),
   report: () => api.get('/analytics/audience'),
   growth: () => api.get('/analytics/growth'),
   trends: () => api.get('/analytics/audience-trends'),
@@ -68,7 +64,6 @@ export const revenueAPI = {
   list: () => api.get('/revenue'),
   summary: () => api.get('/revenue/analytics/summary'),
   monthly: () => api.get('/revenue/analytics/monthly'),
-  trend: () => api.get('/revenue/analytics/trend'),
 }
 
 export const sponsorshipAPI = {
@@ -86,7 +81,9 @@ export const notificationAPI = {
 
 export const reportsAPI = {
   generate: (reportType = 'full') =>
-    api.get('/reports/generate', { params: { report_type: reportType, format: 'json' } }),
+    api.get('/reports/generate', {
+      params: { report_type: reportType, format: 'json' },
+    }),
   downloadExcel: async (reportType = 'full') => {
     const res = await api.get('/reports/export/excel', {
       params: { report_type: reportType },
@@ -105,22 +102,22 @@ export const reportsAPI = {
 
 export const socialAPI = {
   platforms: () => api.get('/social/platforms'),
-
   connect: (platform, account_name) =>
-    api.post('/social/connect', { platform, account_name }),
-
-  syncYoutube: (creatorId, channelId, maxResults = 10) =>
-    api.post(
-      '/social/youtube/sync',
-      null,
-      {
-        params: {
-          creator_id: creatorId,
-          channel_id: channelId,
-          max_results: maxResults,
-        },
-      }
-    ),
+    api.post('/social/connect', null, {
+      params: { platform, account_name },
+    }),
+  youtubeSync: (creator_id, channel_id, max_results = 10) =>
+    api.post('/social/youtube/sync', null, {
+      params: { creator_id, channel_id, max_results },
+    }),
+  instagramSync: (creator_id, instagram_username, media_limit = 12) =>
+    api.post('/social/instagram/sync', null, {
+      params: { creator_id, instagram_username, media_limit },
+    }),
+  mockSync: (creator_id, platform, count = 3) =>
+    api.post('/social/mock/sync', null, {
+      params: { creator_id, platform, count },
+    }),
 }
 
 export function downloadBlob(blob, filename) {

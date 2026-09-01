@@ -52,18 +52,18 @@ export default function Revenue() {
         <KPICard title="Sources" value={bySource.length} />
       </div>
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">Monthly revenue</h2>
           <AreaTrend data={monthly} color="#10b981" />
         </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="text-sm mb-3">By source</h2>
           <Donut data={bySource} />
         </div>
       </div>
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="text-slate-400 border-b border-slate-800">
+          <thead className="text-slate-500 border-b border-slate-200">
             <tr>
               <th className="text-left px-4 py-3">Source</th>
               <th className="text-left px-4 py-3">Date</th>
@@ -72,7 +72,7 @@ export default function Revenue() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-slate-800/50">
+              <tr key={r.id} className="border-b border-slate-200/50">
                 <td className="px-4 py-2 capitalize">{r.source}</td>
                 <td className="px-4 py-2">{r.date}</td>
                 <td className="px-4 py-2 text-right text-emerald-400">${Number(r.amount || 0).toLocaleString()}</td>
