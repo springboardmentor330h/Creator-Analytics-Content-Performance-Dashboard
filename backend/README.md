@@ -1,4 +1,4 @@
-## Sprint 7 – Notifications, Reporting & Exportable Reports
+## Sprint 7 – Notifications, Reporting & Exportable Report
 
 ### Sprint Objective
 
