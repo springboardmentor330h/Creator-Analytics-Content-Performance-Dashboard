@@ -85,6 +85,60 @@ export default function GrowthView({ growthTrends, selectedPlatform, onSelectPla
       {/* Main Growth Trend Line Chart */}
       <LineChart title={`Audience Growth & Organic Reach Trends (${selectedPlatform || 'All Platforms'})`} data={filteredTrends} />
 
+      {/* Hashtag Performance & Reach Prediction Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {/* Hashtag Performance Card */}
+        <div className="section-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>#️⃣ Top Performing Hashtags & Virality Topics</span>
+            </h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[
+              { tag: '#FullStackDev', reach: '1.2M', engagement: '6.4%', trend: '+28%' },
+              { tag: '#ReactJS', reach: '950K', engagement: '5.8%', trend: '+22%' },
+              { tag: '#FastAPI', reach: '780K', engagement: '7.1%', trend: '+34%' },
+              { tag: '#WebDevelopment', reach: '1.8M', engagement: '4.9%', trend: '+15%' },
+              { tag: '#AIApps', reach: '1.5M', engagement: '8.2%', trend: '+45%' },
+            ].map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '13px', color: '#1e293b' }}>{item.tag}</div>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Organic Reach: {item.reach}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 800, fontSize: '13px', color: '#059669' }}>{item.trend}</div>
+                  <div style={{ fontSize: '11px', color: '#475569', fontWeight: 700 }}>{item.engagement} Eng.</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Growth Forecasting & Reach Prediction Card */}
+        <div className="section-card">
+          <div className="section-header" style={{ marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🔮 30-Day Reach Prediction & Growth Forecast</span>
+            </h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+              <div style={{ fontSize: '12px', color: '#1e40af', fontWeight: 800, textTransform: 'uppercase' }}>Projected Follower Gain (Next 30 Days)</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>+12,450 Subscribers</div>
+              <div style={{ fontSize: '11px', color: '#3b82f6', marginTop: '4px' }}>Based on 94/100 Growth Momentum Score</div>
+            </div>
+
+            <div style={{ backgroundColor: '#f0fdf4', padding: '16px', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: '12px', color: '#166534', fontWeight: 800, textTransform: 'uppercase' }}>Estimated Organic Impressions</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: '#14532d', marginTop: '2px' }}>3.45 Million Reach</div>
+              <div style={{ fontSize: '11px', color: '#15803d', marginTop: '4px' }}>High virality trajectory detected</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Historical Growth Table with Up/Down Arrow Column Sorting */}
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.06)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>

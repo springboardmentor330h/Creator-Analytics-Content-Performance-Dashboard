@@ -146,8 +146,9 @@ export default function AuthView({ onLoginSuccess }) {
                 onChange={(e) => setRole(e.target.value)}
               >
                 <option value="creator">Content Creator</option>
-                <option value="brand">Brand Manager</option>
-                <option value="admin">Administrator</option>
+                <option value="agency">Influencer Agency</option>
+                <option value="marketing">Marketing Team</option>
+                <option value="administrator">Administrator</option>
               </select>
             </div>
           )}
