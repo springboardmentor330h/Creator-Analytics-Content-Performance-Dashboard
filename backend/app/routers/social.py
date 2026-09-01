@@ -8,6 +8,8 @@ from app.models.content import Content
 from app.services.social_media import get_platform_mock_data, MOCK_PLATFORM_DATA
 from app.services import youtube_service
 from app.services.youtube_service import YouTubeAPIError
+from app.services import instagram_service
+from app.services.instagram_service import InstagramAPIError
 
 router = APIRouter()  # <-- THIS MUST COME BEFORE ANY @router.xxx DECORATOR
 
@@ -140,6 +142,58 @@ def sync_youtube_data(request: YouTubeSyncRequest, db: Session = Depends(get_db)
 
     return {
         "platform": "YouTube",
+        "status": "success",
+        "records_synced": records_synced
+    }
+    
+
+class InstagramSyncRequest(BaseModel):
+    ig_user_id: str
+    creator_id: int
+    max_results: int = 10
+
+
+@router.post("/social/instagram/sync")
+def sync_instagram_data(request: InstagramSyncRequest, db: Session = Depends(get_db)):
+    try:
+        transformed_records = instagram_service.get_account_content_in_common_format(
+            ig_user_id=request.ig_user_id,
+            creator_id=request.creator_id,
+            max_results=request.max_results
+        )
+    except InstagramAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error during Instagram sync: {str(e)}")
+
+    records_synced = 0
+
+    for record in transformed_records:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == record["platform"],
+                Content.external_content_id == record["external_content_id"]
+            )
+            .first()
+        )
+
+        if existing:
+            existing.content_title = record["content_title"]
+            existing.likes = record["likes"]
+            existing.comments = record["comments"]
+            existing.reach = record["reach"]
+            existing.published_date = record["published_date"]
+        else:
+            new_content = Content(**record)
+            db.add(new_content)
+
+        records_synced += 1
+
+    db.commit()
+
+    return {
+        "platform": "Instagram",
         "status": "success",
         "records_synced": records_synced
     }

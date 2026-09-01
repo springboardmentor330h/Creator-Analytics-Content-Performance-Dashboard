@@ -19,14 +19,13 @@ def platform_performance(db: Session = Depends(get_db)):
 
 
 @router.get("/analytics/summary")
-def summary(db: Session = Depends(get_db)):
-    return analytics_service.get_kpi_summary(db)
+def summary(platform: str | None = None, db: Session = Depends(get_db)):
+    return analytics_service.get_kpi_summary(db, platform=platform)
 
 
 @router.get("/analytics/chart/engagement")
-def chart_engagement(db: Session = Depends(get_db)):
-    return analytics_service.get_engagement_chart(db)
-
+def chart_engagement(platform: str | None = None, db: Session = Depends(get_db)):
+    return analytics_service.get_engagement_chart(db, platform=platform)
 
 @router.get("/analytics/chart/followers")
 def chart_followers(db: Session = Depends(get_db)):

@@ -129,9 +129,12 @@ def get_dashboard_summary(db: Session):
         "top_content": top_content_title
     }
     
-# ----- Sprint 4: KPI Summary -----
-def get_kpi_summary(db: Session) -> dict:
-    all_content = db.query(Content).all()
+def get_kpi_summary(db: Session, platform: str | None = None) -> dict:
+    query = db.query(Content)
+    if platform:
+        query = query.filter(Content.platform == platform)
+    all_content = query.all()
+
     all_audience = db.query(Audience).all()
 
     total_views = sum(c.views for c in all_content)
@@ -158,9 +161,11 @@ def get_kpi_summary(db: Session) -> dict:
     }
 
 
-# ----- Sprint 4: Engagement Chart -----
-def get_engagement_chart(db: Session) -> dict:
-    all_content = db.query(Content).order_by(Content.published_date.asc()).all()
+def get_engagement_chart(db: Session, platform: str | None = None) -> dict:
+    query = db.query(Content)
+    if platform:
+        query = query.filter(Content.platform == platform)
+    all_content = query.order_by(Content.published_date.asc()).all()
 
     daily_rates = {}
     for c in all_content:

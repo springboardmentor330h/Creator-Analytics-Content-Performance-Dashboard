@@ -34,9 +34,13 @@ def create_content(content: ContentCreate, db: Session = Depends(get_db)):
 
 # Get All Content
 @router.get("/content")
-def get_all_content(db: Session = Depends(get_db)):
-    contents = db.query(Content).all()
+def get_all_content(platform: str | None = None, db: Session = Depends(get_db)):
+    query = db.query(Content)
+    if platform:
+        query = query.filter(Content.platform == platform)
+    contents = query.all()
     return [serialize_content(c) for c in contents]
+
 
 # Get Content by ID
 @router.get("/content/{content_id}")
