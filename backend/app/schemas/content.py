@@ -50,13 +50,13 @@ class ContentOut(BaseModel):
     creator_id: int
     platform: str
     content_title: str
-    views: int
+    views: Optional[int] = None     
     likes: int
     comments: int
-    shares: int
+    shares: Optional[int] = None    
     saves: int
     watch_time: int
-    reach: int
+    reach: Optional[int] = None     
     published_date: date
 
     class Config:

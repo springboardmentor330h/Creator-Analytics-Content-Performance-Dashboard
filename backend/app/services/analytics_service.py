@@ -12,43 +12,31 @@ def calculate_engagement_rate(content: Content) -> float:
     return round((total_engagement / reach) * 100, 2)
 
 
-def get_total_engagement(content: Content) -> int:
-    return content.likes + content.comments + content.shares + content.saves
-
-
 def get_content_engagement(db: Session, content_id: int):
     content = db.query(Content).filter(Content.id == content_id).first()
     if not content:
         return None
-
     return {
         "content_id": content.id,
         "platform": content.platform,
-        "views": content.views,
-        "reach": content.reach,
-        "total_engagement": get_total_engagement(content),
+        "views": content.views or 0,
+        "reach": content.reach or 0,
+        "total_engagement": content.likes + content.comments + (content.shares or 0) + 0,
         "engagement_rate": calculate_engagement_rate(content),
     }
 
 
 def get_top_performing_content(db: Session, limit: int = 5):
     all_content = db.query(Content).all()
-
-    ranked = sorted(
-        all_content,
-        key=lambda c: calculate_engagement_rate(c),
-        reverse=True,
-    )
-
+    ranked = sorted(all_content, key=lambda c: calculate_engagement_rate(c), reverse=True)
     top = ranked[:limit]
-
     return [
         {
             "content_id": c.id,
             "content_title": c.content_title,
             "platform": c.platform,
-            "views": c.views,
-            "reach": c.reach,
+            "views": c.views or 0,
+            "reach": c.reach or 0,
             "watch_time": c.watch_time,
             "engagement_rate": calculate_engagement_rate(c),
         }
@@ -58,18 +46,16 @@ def get_top_performing_content(db: Session, limit: int = 5):
 
 def get_platform_performance(db: Session):
     all_content = db.query(Content).all()
-
     platforms: dict[str, list[Content]] = {}
     for c in all_content:
         platforms.setdefault(c.platform, []).append(c)
 
     result = []
     for platform, items in platforms.items():
-        total_views = sum(i.views for i in items)
+        total_views = sum(i.views or 0 for i in items)
         total_likes = sum(i.likes for i in items)
         total_comments = sum(i.comments for i in items)
-        total_reach = sum(i.reach for i in items)
-
+        total_reach = sum(i.reach or 0 for i in items)
         rates = [calculate_engagement_rate(i) for i in items]
         avg_engagement_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
 
@@ -81,32 +67,24 @@ def get_platform_performance(db: Session):
             "total_reach": total_reach,
             "average_engagement_rate": avg_engagement_rate,
         })
-
     return result
 
 
 def get_dashboard_summary(db: Session):
     all_content = db.query(Content).all()
-
     if not all_content:
         return {
-            "total_content": 0,
-            "total_views": 0,
-            "total_reach": 0,
-            "average_engagement_rate": 0.0,
-            "best_platform": None,
-            "top_content": None,
+            "total_content": 0, "total_views": 0, "total_reach": 0,
+            "average_engagement_rate": 0.0, "best_platform": None, "top_content": None,
         }
 
-    total_views = sum(c.views for c in all_content)
-    total_reach = sum(c.reach for c in all_content)
-
+    total_views = sum(c.views or 0 for c in all_content)
+    total_reach = sum(c.reach or 0 for c in all_content)
     rates = [calculate_engagement_rate(c) for c in all_content]
     average_engagement_rate = round(sum(rates) / len(rates), 2)
 
     platform_stats = get_platform_performance(db)
     best_platform = max(platform_stats, key=lambda p: p["average_engagement_rate"])["platform"] if platform_stats else None
-
     top_content = max(all_content, key=lambda c: calculate_engagement_rate(c))
 
     return {
@@ -121,20 +99,19 @@ def get_dashboard_summary(db: Session):
 
 def get_kpi_summary(db: Session):
     content_items = db.query(Content).all()
-    total_views = sum(c.views for c in content_items)
+    total_views = sum(c.views or 0 for c in content_items)
     total_likes = sum(c.likes for c in content_items)
     total_comments = sum(c.comments for c in content_items)
-    total_shares = sum(c.shares for c in content_items)
-    total_reach = sum(c.reach for c in content_items)
+    total_shares = sum(c.shares or 0 for c in content_items)
+    total_reach = sum(c.reach or 0 for c in content_items)
 
     rates = [calculate_engagement_rate(c) for c in content_items]
     avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
 
-    # total_followers = latest follower count per creator, summed
     growth_rows = db.query(Growth).order_by(Growth.creator_id, Growth.date.asc()).all()
     latest_per_creator = {}
     for g in growth_rows:
-        latest_per_creator[g.creator_id] = g.followers  # keeps overwriting -> ends on latest since sorted asc
+        latest_per_creator[g.creator_id] = g.followers
     total_followers = sum(latest_per_creator.values())
 
     return {
@@ -146,7 +123,6 @@ def get_kpi_summary(db: Session):
         "total_followers": total_followers,
         "average_engagement_rate": avg_rate,
     }
-
 
 def get_engagement_chart(db: Session):
     rows = db.query(Growth).order_by(Growth.date.asc()).all()
@@ -180,8 +156,8 @@ def get_platform_comparison(db: Session):
     for platform, items in grouped.items():
         rates = [calculate_engagement_rate(c) for c in items]
         result[platform] = {
-            "views": sum(i.views for i in items),
-            "reach": sum(i.reach for i in items),
+            "views": sum(i.views or 0 for i in items),
+            "reach": sum(i.reach or 0 for i in items),
             "likes": sum(i.likes for i in items),
             "comments": sum(i.comments for i in items),
             "engagement_rate": round(sum(rates) / len(rates), 2) if rates else 0.0,
