@@ -71,27 +71,28 @@ def fetch_youtube_channel_by_name(channel_name: str, api_key: str | None = None)
 
 
 @router.get("/youtube/video")
-def fetch_youtube_video_by_name(video_name: str, api_key: str | None = None):
-    """Fetch live YouTube video stats by the video name/title."""
+def fetch_youtube_video_by_id(video_id: str, api_key: str | None = None):
+    """Fetch live YouTube video stats by its ID."""
     try:
-        items = YouTubeService.fetch_video_by_name(video_name, max_results=1, api_key=api_key)
+        items = YouTubeService.fetch_video_by_id(video_id, api_key=api_key)
     except HTTPException as exc:
         return {
             "platform": "YouTube",
             "status": "error",
-            "video_name": video_name,
+            "video_id": video_id,
             "video": None,
             "error": exc.detail,
         }
 
     if not items:
-        return {"platform": "YouTube", "status": "not_found", "video_name": video_name, "video": None}
+        return {"platform": "YouTube", "status": "not_found", "video_id": video_id, "video": None}
     video = items[0]
     return {
         "platform": "YouTube",
         "status": "success",
-        "video_name": video_name,
+        "video_id": video_id,
         "video": {
+            "id": video["external_content_id"],
             "title": video["content_title"],
             "views": video["views"],
             "likes": video["likes"],

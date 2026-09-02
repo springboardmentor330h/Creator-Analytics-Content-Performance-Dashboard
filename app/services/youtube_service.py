@@ -266,6 +266,47 @@ class YouTubeService:
         return cls._fetch_search_results(query=video_name.strip(), max_results=max_results, api_key=api_key)
 
     @classmethod
+    def fetch_video_by_id(cls, video_id: str, api_key: str | None = None) -> List[Dict[str, Any]]:
+        if not video_id or not video_id.strip():
+            raise HTTPException(status_code=400, detail="YouTube video ID is required.")
+
+        final_api_key = cls._resolve_api_key(api_key)
+        try:
+            response = requests.get(
+                f"{cls.BASE_URL}/videos",
+                params={"key": final_api_key, "id": video_id.strip(), "part": "snippet,statistics"},
+                timeout=10,
+            )
+            if response.status_code == 403:
+                raise HTTPException(status_code=403, detail="YouTube API Key invalid or Quota exceeded.")
+            response.raise_for_status()
+            items = response.json().get("items", [])
+        except requests.RequestException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to communicate with YouTube API: {str(exc)}",
+            )
+
+        records = []
+        for video in items:
+            snippet = video.get("snippet", {})
+            stats = video.get("statistics", {})
+            published_at = snippet.get("publishedAt", "")
+            views = int(stats.get("viewCount", 0))
+            records.append({
+                "platform": "YouTube",
+                "external_content_id": video.get("id", video_id.strip()),
+                "content_title": snippet.get("title", "Untitled Video"),
+                "views": views,
+                "likes": int(stats.get("likeCount", 0)),
+                "comments": int(stats.get("commentCount", 0)),
+                "shares": 0,
+                "reach": max(views, 1),
+                "published_date": datetime.strptime(published_at[:10], "%Y-%m-%d").date() if published_at else date.today(),
+            })
+        return records
+
+    @classmethod
     def sync_youtube_data(
         cls,
         db: Session,

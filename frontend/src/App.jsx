@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   BrowserRouter as Router,
   Routes,
@@ -18,6 +18,8 @@ import {
   FileText,
   UserRound,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 
 import DashboardOverview from './pages/DashboardOverview.jsx';
@@ -112,12 +114,24 @@ function StructuredSectionPage({ title, subtitle, metrics = [], insights = [], t
 
 // Protected Layout Frame
 function DashboardLayout({ children, onLogout }) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const closeSidebar = () => setIsSidebarOpen(false);
+
   return (
     <div style={styles.appWrapper}>
-      <aside style={styles.sidebar}>
+      {isSidebarOpen && (
+        <button type="button" aria-label="Close navigation" onClick={closeSidebar} style={styles.mobileOverlay} />
+      )}
+      <aside
+        className={`dashboard-sidebar${isSidebarOpen ? ' is-open' : ''}`}
+        style={{ ...styles.sidebar, ...(isSidebarOpen ? styles.sidebarOpen : {}) }}
+      >
         <div>
           <div style={styles.brand}>
             <span style={styles.brandTitle}>CreatorIQ</span>
+            <button type="button" aria-label="Close navigation" onClick={closeSidebar} className="mobile-only" style={styles.mobileCloseButton}>
+              <X size={22} />
+            </button>
           </div>
 
           <nav style={styles.navGroup}>
@@ -130,6 +144,7 @@ function DashboardLayout({ children, onLogout }) {
                   ...styles.navItem,
                   ...(isActive ? styles.navActive : {}),
                 })}
+                onClick={closeSidebar}
               >
                 <Icon size={18} />
                 <span>{label}</span>
@@ -138,13 +153,18 @@ function DashboardLayout({ children, onLogout }) {
           </nav>
         </div>
 
-        <button onClick={onLogout} style={styles.sidebarLogout}>
+        <button type="button" onClick={onLogout} style={styles.sidebarLogout}>
           <LogOut size={18} />
           Sign Out
         </button>
       </aside>
 
-      <main style={styles.mainContent}>{children}</main>
+      <main className="dashboard-main" style={styles.mainContent}>
+        <button type="button" aria-label="Open navigation" onClick={() => setIsSidebarOpen(true)} className="mobile-only" style={styles.mobileMenuButton}>
+          <Menu size={22} />
+        </button>
+        {children}
+      </main>
     </div>
   );
 }
@@ -413,6 +433,14 @@ const styles = {
     flexDirection: 'column',
     justifyContent: 'space-between',
     borderRight: '1px solid #0e2238',
+    position: 'fixed',
+    inset: '0 auto 0 0',
+    zIndex: 20,
+    boxSizing: 'border-box',
+    transition: 'transform 0.2s ease',
+  },
+  sidebarOpen: {
+    transform: 'translateX(0)',
   },
   brand: {
     display: 'flex',
@@ -471,5 +499,36 @@ const styles = {
     flex: 1,
     padding: '2rem',
     overflowY: 'auto',
+    marginLeft: '280px',
+  },
+  mobileOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 15,
+    border: 'none',
+    background: 'rgba(15, 23, 42, 0.45)',
+  },
+  mobileMenuButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '42px',
+    height: '42px',
+    marginBottom: '1rem',
+    border: '1px solid #cbd5e1',
+    borderRadius: '10px',
+    background: '#fff',
+    color: '#0f172a',
+    cursor: 'pointer',
+  },
+  mobileCloseButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 'auto',
+    padding: '0.35rem',
+    border: 'none',
+    borderRadius: '8px',
+    background: 'transparent',
+    color: '#cbd5e1',
+    cursor: 'pointer',
   },
 };

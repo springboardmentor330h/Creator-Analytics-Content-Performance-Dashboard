@@ -14,8 +14,7 @@ const createVideoRow = () => ({
 });
 
 export default function DashboardOverview() {
-  const [channelName, setChannelName] = useState('Creator Corner');
-  const [youtubeApiKey, setYoutubeApiKey] = useState('');
+  const [youtubeVideoId, setYoutubeVideoId] = useState('');
   const [selectedPlatform, setSelectedPlatform] = useState('YouTube');
   const [videos, setVideos] = useState([
     { title: 'Intro video', views: '125000', likes: '15000', comments: '1100', shares: '900', reach: '220000' },
@@ -29,7 +28,6 @@ export default function DashboardOverview() {
     total_reach: 0,
     total_followers: 0,
     average_engagement_rate: 0,
-    top_video: '',
   });
   const [comparison, setComparison] = useState({});
   const [loading, setLoading] = useState(false);
@@ -68,46 +66,38 @@ export default function DashboardOverview() {
       setError(null);
 
       if (selectedPlatform === 'YouTube') {
-        const enteredChannelName = channelName.trim();
-        const enteredApiKey = youtubeApiKey.trim();
-
-        if (!enteredApiKey) {
-          setError('Enter your YouTube Data API key to fetch live channel stats.');
+        const enteredVideoId = youtubeVideoId.trim();
+        if (!enteredVideoId) {
+          setError('Enter a YouTube video ID to fetch its latest stats.');
           return;
         }
 
-        if (!enteredChannelName) {
-          setError('Enter the YouTube channel name to fetch the latest stats.');
+        const youtubeData = await api.get(`/social/youtube/video?video_id=${encodeURIComponent(enteredVideoId)}`);
+        if (!youtubeData || !youtubeData.video) {
+          setError('No YouTube video matched that ID. Check the ID and try again.');
           return;
         }
 
-        const youtubeData = await api.get(`/social/youtube/channel?channel_name=${encodeURIComponent(enteredChannelName)}&api_key=${encodeURIComponent(enteredApiKey)}`);
-        if (!youtubeData || !youtubeData.channel) {
-          setError('No YouTube channel matched that name. Try a different channel name or check the API key.');
-          return;
-        }
-
-        const channel = youtubeData.channel;
-        const totalViews = Number(channel.views || 0);
-        const totalLikes = Number(channel.likes || 0);
-        const totalComments = Number(channel.comments || 0);
-        const totalShares = Number(channel.shares || 0);
-        const totalReach = Number(channel.reach || 0);
+        const video = youtubeData.video;
+        const totalViews = Number(video.views || 0);
+        const totalLikes = Number(video.likes || 0);
+        const totalComments = Number(video.comments || 0);
+        const totalShares = Number(video.shares || 0);
+        const totalReach = Number(video.reach || 0);
         const averageEngagement = totalReach > 0
           ? Math.round(((totalLikes + totalComments + totalShares) / totalReach) * 10000) / 100
           : 0;
 
         const data = {
-          channel_name: enteredChannelName,
+          channel_name: video.title,
           platform: 'YouTube',
           total_views: totalViews,
           total_likes: totalLikes,
           total_comments: totalComments,
           total_shares: totalShares,
           total_reach: totalReach,
-          total_followers: Number(channel.subscribers || 0),
+          total_followers: 0,
           average_engagement_rate: averageEngagement,
-          top_video: channel.top_video || channel.title || enteredChannelName,
         };
 
         setSummary(data);
@@ -138,7 +128,7 @@ export default function DashboardOverview() {
       }
 
       const data = await api.post('/analytics/dynamic', {
-        channel_name: channelName.trim() || 'My Channel',
+        channel_name: 'My Channel',
         platform: selectedPlatform,
         videos: sanitizedVideos,
       });
@@ -192,16 +182,6 @@ export default function DashboardOverview() {
       <div style={styles.inputPanel}>
         <div style={styles.formRow}>
           <label style={styles.fieldGroup}>
-            <span style={styles.fieldLabel}>Channel name</span>
-            <input
-              value={channelName}
-              onChange={(event) => setChannelName(event.target.value)}
-              placeholder="Enter content channel name"
-              style={styles.input}
-            />
-          </label>
-
-          <label style={styles.fieldGroup}>
             <span style={styles.fieldLabel}>Platform</span>
             <select
               value={selectedPlatform}
@@ -222,15 +202,15 @@ export default function DashboardOverview() {
         {selectedPlatform === 'YouTube' ? (
           <div style={{ ...styles.videoEditor, gap: '0.75rem' }}>
             <label style={styles.fieldGroup}>
-              <span style={styles.fieldLabel}>YouTube API key</span>
+              <span style={styles.fieldLabel}>YouTube video ID</span>
               <input
-                value={youtubeApiKey}
-                onChange={(event) => setYoutubeApiKey(event.target.value)}
-                placeholder="Paste your YouTube Data API key"
+                value={youtubeVideoId}
+                onChange={(event) => setYoutubeVideoId(event.target.value)}
+                placeholder="e.g. dQw4w9WgXcQ"
                 style={styles.input}
-                type="password"
               />
             </label>
+            <p style={styles.apiKeyNote}>YouTube data is securely fetched using the server configuration.</p>
           </div>
         ) : (
           <div style={styles.videoEditor}>
@@ -302,12 +282,11 @@ export default function DashboardOverview() {
       {error ? <div style={styles.errorBox}>{error}</div> : null}
 
       <div style={styles.kpiGrid}>
-        <KpiCard label="Channel" value={channelName || 'My Channel'} accent="#2563eb" />
+        <KpiCard label="Video Name" value={summary.channel_name || youtubeVideoId || '—'} accent="#2563eb" />
         <KpiCard label="Total Views" value={summary.total_views?.toLocaleString?.() ?? '0'} accent="#2563eb" />
         <KpiCard label="Total Likes" value={summary.total_likes?.toLocaleString?.() ?? '0'} accent="#10b981" />
         <KpiCard label="Comments" value={summary.total_comments?.toLocaleString?.() ?? '0'} accent="#f59e0b" />
         <KpiCard label="Reach" value={summary.total_reach?.toLocaleString?.() ?? '0'} accent="#8b5cf6" />
-        <KpiCard label="Top Video" value={summary.top_video || '—'} accent="#14b8a6" />
         <KpiCard label="Engagement" value={`${summary.average_engagement_rate ?? 0}%`} accent="#ef4444" />
       </div>
 
@@ -470,6 +449,12 @@ const styles = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.05em'
+  },
+  apiKeyNote: {
+    margin: 0,
+    color: '#64748b',
+    fontSize: '0.85rem',
+    alignSelf: 'center',
   },
   videoRow: {
     display: 'flex',
