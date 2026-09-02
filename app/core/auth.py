@@ -9,7 +9,7 @@ from app.models.user import User
 # 🔥 this enables Authorize button
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-SECRET_KEY = "your-secret-key"
+SECRET_KEY = "YOUR_SUPER_SECRET_KEY_CHANGE_IN_PRODUCTION"
 ALGORITHM = "HS256"
 
 
