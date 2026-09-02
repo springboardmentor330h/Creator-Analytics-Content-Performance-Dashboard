@@ -10,21 +10,9 @@ export default function Growth() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [growthRes, trendsRes] = await Promise.all([
-          api.get("/analytics/growth"),
-          api.get("/analytics/audience-trends"),
-        ]);
-        setGrowthData(growthRes.data);
-        setTrendsData(trendsRes.data);
-      } catch {
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    Promise.all([api.get("/analytics/growth"), api.get("/analytics/audience-trends")])
+      .then(([g, t]) => { setGrowthData(g.data); setTrendsData(t.data); })
+      .catch(() => setError(true)).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <LoadingState />;
@@ -32,34 +20,28 @@ export default function Growth() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold">Growth & Trends</h2>
+      <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">Growth & Trends</h2>
 
-      <div className="p-5 mb-8 bg-white rounded-lg shadow">
-        <h3 className="mb-4 font-semibold">Follower Growth (30 Days)</h3>
-        {growthData.length === 0 ? (
-          <EmptyState />
-        ) : (
+      <div className="p-6 mb-8 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+        <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Follower Growth (30 Days)</h3>
+        {growthData.length === 0 ? <EmptyState /> : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={growthData}>
-              <XAxis dataKey="date" hide />
-              <YAxis />
-              <Tooltip />
+              <XAxis dataKey="date" hide /><YAxis />
+              <Tooltip contentStyle={{ borderRadius: "12px" }} />
               <Line type="monotone" dataKey="followers" stroke="#16a34a" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         )}
       </div>
 
-      <div className="p-5 bg-white rounded-lg shadow">
-        <h3 className="mb-4 font-semibold">Reach Trend</h3>
-        {trendsData.length === 0 ? (
-          <EmptyState />
-        ) : (
+      <div className="p-6 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+        <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Reach Trend</h3>
+        {trendsData.length === 0 ? <EmptyState /> : (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trendsData}>
-              <XAxis dataKey="date" hide />
-              <YAxis />
-              <Tooltip />
+              <XAxis dataKey="date" hide /><YAxis />
+              <Tooltip contentStyle={{ borderRadius: "12px" }} />
               <Line type="monotone" dataKey="reach" stroke="#f97316" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
