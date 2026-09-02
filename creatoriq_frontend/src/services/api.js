@@ -7,6 +7,16 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("creatoriq_access_token");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
 export const getCreatorRevenue = async (creatorId) => {
   const response = await api.get(`/revenue/creator/${creatorId}`);
   return response.data;

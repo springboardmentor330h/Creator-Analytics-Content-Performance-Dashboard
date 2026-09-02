@@ -11,11 +11,15 @@ import Sponsorships from "./pages/Sponsorships";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 function App() {
   return (
     <Routes>
-      <Route element={<DashboardLayout />}>
+      <Route path="/login" element={<Login />} />
+      <Route element={<ProtectedRoute />}>
+        <Route element={<DashboardLayout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/content" element={<ContentAnalytics />} />
         <Route path="/audience" element={<AudienceAnalytics />} />
@@ -26,6 +30,7 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/profile" element={<Profile />} />
+        </Route>
       </Route>
     </Routes>
   );

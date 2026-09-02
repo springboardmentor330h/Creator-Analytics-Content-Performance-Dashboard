@@ -13,10 +13,7 @@ function Reports() {
       setLoading(true);
       setError("");
 
-      const response = await api.get(
-        `/reports/creator/${creatorId}`
-      );
-
+      const response = await api.get(`/reports/creator/${creatorId}`);
       setReport(response.data);
     } catch (err) {
       console.error(err);
@@ -28,24 +25,12 @@ function Reports() {
 
   const downloadPdf = async () => {
     try {
-      const response = await api.get(
-        `/reports/export/pdf/${creatorId}`,
-        {
-          responseType: "blob",
-        }
-      );
-
-      const url = window.URL.createObjectURL(
-        new Blob([response.data], {
-          type: "application/pdf",
-        })
-      );
-
+      const response = await api.get(`/reports/export/pdf/${creatorId}`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
       link.download = `creator_${creatorId}_report.pdf`;
       link.click();
-
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
@@ -55,24 +40,12 @@ function Reports() {
 
   const downloadExcel = async () => {
     try {
-      const response = await api.get(
-        `/reports/export/excel/${creatorId}`,
-        {
-          responseType: "blob",
-        }
-      );
-
-      const url = window.URL.createObjectURL(
-        new Blob([response.data], {
-          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        })
-      );
-
+      const response = await api.get(`/reports/export/excel/${creatorId}`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
       const link = document.createElement("a");
       link.href = url;
       link.download = `creator_${creatorId}_report.xlsx`;
       link.click();
-
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
@@ -81,184 +54,103 @@ function Reports() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <p className="text-sm font-medium text-blue-600">
-          CreatorIQ Reporting
-        </p>
-
-        <h1 className="mt-1 text-3xl font-bold text-slate-900">
-          Reports
-        </h1>
-
-        <p className="mt-2 text-slate-500">
-          Generate and download analytics reports for Creator {creatorId}.
-        </p>
-      </div>
-
-      {/* Report Actions */}
-      <div className="grid gap-5 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">
-            Creator
-          </div>
-
-          <div className="mt-2 text-3xl font-bold text-slate-900">
-            #{creatorId}
-          </div>
-
-          <div className="mt-2 text-sm text-green-600">
-            ● Connected
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">
-            Generate Report
-          </div>
-
-          <button
-            onClick={fetchReport}
-            disabled={loading}
-            className="mt-4 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? "Generating..." : "Generate Report"}
-          </button>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-sm font-medium text-slate-500">
-            Export
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={downloadPdf}
-              className="flex-1 rounded-xl bg-red-600 px-3 py-3 text-sm font-semibold text-white hover:bg-red-700"
-            >
-              PDF
-            </button>
-
-            <button
-              onClick={downloadExcel}
-              className="flex-1 rounded-xl bg-green-600 px-3 py-3 text-sm font-semibold text-white hover:bg-green-700"
-            >
-              Excel
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Report */}
-      {report && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
+    <div className="dashboard-shell px-3 py-4 md:px-5 md:py-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="dashboard-hero">
+          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-slate-900">
-                Creator Analytics Report
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Report type: {report.report_type}
-              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-200">CreatorIQ Reporting</p>
+              <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">Reports</h1>
+              <p className="mt-2 text-sm text-indigo-100/90">Generate and download analytics reports for Creator {creatorId}.</p>
             </div>
 
-            <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-700">
-              Generated
-            </span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/20 backdrop-blur-sm">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+              Creator #{creatorId}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="stat-card stat-card-indigo">
+            <p className="text-sm font-medium text-indigo-100">Creator</p>
+            <h2 className="mt-5 text-3xl font-bold text-white">#{creatorId}</h2>
+            <p className="mt-2 text-sm text-indigo-100/90">Connected</p>
           </div>
 
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold text-slate-900">
-              Revenue Analytics
-            </h3>
+          <div className="stat-card stat-card-sky">
+            <p className="text-sm font-medium text-sky-50">Generate Report</p>
+            <button onClick={fetchReport} disabled={loading} className="mt-5 w-full rounded-xl bg-white/15 px-4 py-3 font-semibold text-white transition hover:bg-white/20 disabled:opacity-50">
+              {loading ? "Generating..." : "Generate Report"}
+            </button>
+          </div>
 
-            {report.revenue?.revenue_summary && (
-              <div className="mt-4 rounded-xl bg-slate-50 p-5">
-                <p className="text-sm text-slate-500">
-                  Total Revenue
-                </p>
+          <div className="stat-card stat-card-emerald">
+            <p className="text-sm font-medium text-emerald-50">Export</p>
+            <div className="mt-5 flex gap-2">
+              <button onClick={downloadPdf} className="flex-1 rounded-xl bg-white/15 px-3 py-3 text-sm font-semibold text-white hover:bg-white/20">PDF</button>
+              <button onClick={downloadExcel} className="flex-1 rounded-xl bg-white/15 px-3 py-3 text-sm font-semibold text-white hover:bg-white/20">Excel</button>
+            </div>
+          </div>
+        </div>
 
-                <p className="mt-1 text-3xl font-bold text-slate-900">
-                  ₹
-                  {Number(
-                    report.revenue.revenue_summary.total_revenue || 0
-                  ).toLocaleString("en-IN")}
-                </p>
+        {error && (
+          <div className="rounded-[24px] border border-red-200 bg-red-50 p-4 text-red-700 shadow-sm">{error}</div>
+        )}
+
+        {report && (
+          <div className="content-table-card">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">Creator Analytics Report</h2>
+                <p className="mt-1 text-sm text-slate-500">Report type: {report.report_type}</p>
+              </div>
+              <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">Generated</span>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-slate-800">Revenue Analytics</h3>
+              {report.revenue?.revenue_summary && (
+                <div className="mt-4 rounded-[22px] border border-violet-200 bg-violet-50/70 p-5">
+                  <p className="text-sm text-slate-500">Total Revenue</p>
+                  <p className="mt-1 text-3xl font-bold text-slate-900">₹{Number(report.revenue.revenue_summary.total_revenue || 0).toLocaleString("en-IN")}</p>
+                </div>
+              )}
+            </div>
+
+            {report.revenue?.revenue_by_source?.revenue_by_source && (
+              <div className="mt-8">
+                <h3 className="text-lg font-semibold text-slate-800">Revenue by Source</h3>
+                <div className="mt-4 overflow-x-auto">
+                  <table className="dashboard-table w-full text-left">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {report.revenue.revenue_by_source.revenue_by_source.map((item, index) => (
+                        <tr key={index}>
+                          <td>{item.source}</td>
+                          <td>₹{Number(item.amount || 0).toLocaleString("en-IN")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
+        )}
 
-          {/* Revenue Sources */}
-          {report.revenue?.revenue_by_source
-            ?.revenue_by_source && (
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-slate-900">
-                Revenue by Source
-              </h3>
-
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="px-4 py-3 font-semibold">
-                        Source
-                      </th>
-
-                      <th className="px-4 py-3 font-semibold">
-                        Amount
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {report.revenue.revenue_by_source.revenue_by_source.map(
-                      (item, index) => (
-                        <tr
-                          key={index}
-                          className="border-b border-slate-100"
-                        >
-                          <td className="px-4 py-3">
-                            {item.source}
-                          </td>
-
-                          <td className="px-4 py-3 font-semibold">
-                            ₹
-                            {Number(
-                              item.amount || 0
-                            ).toLocaleString("en-IN")}
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!report && !loading && !error && (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center">
-          <h2 className="text-xl font-semibold text-slate-800">
-            No report generated yet
-          </h2>
-
-          <p className="mt-2 text-slate-500">
-            Click "Generate Report" to load your creator analytics.
-          </p>
-        </div>
-      )}
+        {!report && !loading && !error && (
+          <div className="rounded-[28px] border border-dashed border-slate-300 bg-white/80 p-12 text-center shadow-[0_18px_40px_rgba(148,163,184,0.12)]">
+            <h2 className="text-xl font-semibold text-slate-800">No report generated yet</h2>
+            <p className="mt-2 text-slate-500">Click “Generate Report” to load your creator analytics.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
