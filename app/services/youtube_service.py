@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Any, Dict, List
 from fastapi import HTTPException, status
 import requests
@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.content import Content
+from app.models.content import Content, ContentItem
 from app.models.user import User
 
 
@@ -354,6 +354,40 @@ class YouTubeService:
                 new_record = Content(creator_id=creator_id, **item)
                 db.add(new_record)
                 synced_count += 1
+
+            # The dashboard reports read the platform-neutral table. Mirror the
+            # live YouTube ingestion here so it never falls back to frontend data.
+            unified_record = (
+                db.query(ContentItem)
+                .filter(
+                    ContentItem.platform == "YouTube",
+                    ContentItem.content_id == item["external_content_id"],
+                )
+                .one_or_none()
+            )
+            unified_values = {
+                "title": item["content_title"],
+                "url": f"https://www.youtube.com/watch?v={item['external_content_id']}",
+                "views": item["views"],
+                "likes": item["likes"],
+                "comments": item["comments"],
+                "shares": item.get("shares", 0),
+                "reach": item["reach"],
+                "published_at": datetime.combine(
+                    item["published_date"], datetime.min.time(), tzinfo=timezone.utc
+                ),
+            }
+            if unified_record:
+                for field, value in unified_values.items():
+                    setattr(unified_record, field, value)
+            else:
+                db.add(
+                    ContentItem(
+                        platform="YouTube",
+                        content_id=item["external_content_id"],
+                        **unified_values,
+                    )
+                )
 
         db.commit()
 

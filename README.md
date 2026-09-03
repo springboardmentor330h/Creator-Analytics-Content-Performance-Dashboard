@@ -2,6 +2,16 @@
 
 A high-performance FastAPI backend designed for content creators, agencies, and social media managers to track, analyze, and store content metrics across multiple platforms.
 
+## Containerized local environment
+
+The repository now ships a complete local service topology: React/Nginx frontend, FastAPI API, Celery worker, PostgreSQL, MongoDB, and Redis. Copy `.env.example` to `.env`, provide a strong `SECRET_KEY` and the provider credentials you need, then run:
+
+```bash
+docker compose up --build
+```
+
+The dashboard is available at `http://localhost:5173`, and the API documentation at `http://localhost:8000/docs`. Service responsibilities, OAuth refresh rules, and the component diagram are documented in [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## 🧭 Platform Architecture Summary

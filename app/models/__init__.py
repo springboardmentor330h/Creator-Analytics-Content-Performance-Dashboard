@@ -1,5 +1,5 @@
 from app.models.user import User, UserRole
-from app.models.content import Content
+from app.models.content import Content, ContentItem
 from app.models.audience import AudienceDemographics
 from app.models.growth import ContentGrowth
 from app.models.revenue import Revenue
@@ -10,6 +10,7 @@ __all__ = [
     "User",
     "UserRole",
     "Content",
+    "ContentItem",
     "AudienceDemographics",
     "ContentGrowth",
     "Revenue",

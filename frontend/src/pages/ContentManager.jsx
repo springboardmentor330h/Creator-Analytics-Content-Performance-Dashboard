@@ -12,26 +12,8 @@ export default function ContentManager() {
         setPosts(data.slice(0, 6));
       } catch (error) {
         console.error('Load content failed:', error);
-        setPosts([
-          {
-            id: 1,
-            content_title: 'CreatorIQ Starter Reel',
-            platform: 'Instagram',
-            views: 182400,
-            likes: 5400,
-            comments: 320,
-            reach: 240000,
-          },
-          {
-            id: 2,
-            content_title: 'YouTube Growth Breakdown',
-            platform: 'YouTube',
-            views: 248000,
-            likes: 7600,
-            comments: 480,
-            reach: 310000,
-          },
-        ]);
+        // Do not show fabricated content metrics when the API is unavailable.
+        setPosts([]);
       } finally {
         setLoading(false);
       }
@@ -54,6 +36,7 @@ export default function ContentManager() {
         <p style={styles.loading}>Loading content...</p>
       ) : (
         <div style={styles.cardTableWrap}>
+          {!posts.length && <p style={styles.empty}>No content is available while the API is offline.</p>}
           <table style={styles.table}>
             <thead>
               <tr>
@@ -125,6 +108,11 @@ const styles = {
   },
   loading: {
     color: '#475569'
+  },
+  empty: {
+    margin: 0,
+    padding: '1rem',
+    color: '#64748b'
   },
   cardTableWrap: {
     background: '#fff',

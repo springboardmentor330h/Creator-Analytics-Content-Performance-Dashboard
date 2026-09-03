@@ -12,6 +12,7 @@ from app.schemas.growth import (
     GrowthUpdate,
     GrowthResponse,
 )
+from app.schemas.content_item import ContentItemCreate, ContentItemResponse
 
 __all__ = [
     # User Schemas
@@ -26,4 +27,6 @@ __all__ = [
     "GrowthCreate",
     "GrowthUpdate",
     "GrowthResponse",
+    "ContentItemCreate",
+    "ContentItemResponse",
 ]

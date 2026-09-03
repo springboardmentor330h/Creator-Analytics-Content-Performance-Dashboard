@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.database import Base, engine, get_db
 from app.models.content import Content
 from app.models.user import User
@@ -23,8 +24,10 @@ from app.routers import (
     audience as audience_router,
     auth,
     content as content_router,
+    content_items,
     notification,
     report,
+    reports,
     revenue,
     social,
     sponsorship,
@@ -39,7 +42,7 @@ app = FastAPI(
 
 # Configure CORS Middleware
 # Allow Vite dev servers and common local frontends during development.
-origins = [
+development_origins = [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:4173",
@@ -49,6 +52,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+origins = list({*development_origins, *(origin.strip() for origin in settings.CORS_ORIGINS.split(",") if origin.strip())})
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,13 +70,15 @@ Base.metadata.create_all(bind=engine)
 # Register Application Routers
 app.include_router(user.router)  # Registered users router
 app.include_router(content_router.router)
+app.include_router(content_items.router)
 app.include_router(analytics.router)
 app.include_router(audience_router.router)
 app.include_router(social.router)
 app.include_router(sponsorship.router)  # Registered sponsorship router
 app.include_router(revenue.router)  # Registered revenue router
 app.include_router(notification.router)  # Registered notification router
-app.include_router(report.router)  # Registered report router
+app.include_router(reports.router)
+app.include_router(report.router)  # Registered legacy report router
 app.include_router(auth.router)  # Registered authentication router
 
 
