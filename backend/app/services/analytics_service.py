@@ -124,6 +124,40 @@ def get_kpi_summary(db: Session):
         "average_engagement_rate": avg_rate,
     }
 
+
+def get_kpi_summary_filtered(db: Session, platform: str | None = None):
+    query = db.query(Content)
+    if platform and platform != "All":
+        query = query.filter(Content.platform == platform)
+    content_items = query.all()
+
+    total_views = sum(c.views or 0 for c in content_items)
+    total_likes = sum(c.likes for c in content_items)
+    total_comments = sum(c.comments for c in content_items)
+    total_shares = sum(c.shares or 0 for c in content_items)
+    total_reach = sum(c.reach or 0 for c in content_items)
+
+    rates = [calculate_engagement_rate(c) for c in content_items]
+    avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
+
+    growth_rows = db.query(Growth).order_by(Growth.creator_id, Growth.date.asc()).all()
+    latest_per_creator = {}
+    for g in growth_rows:
+        latest_per_creator[g.creator_id] = g.followers
+    total_followers = sum(latest_per_creator.values()) if not platform or platform == "All" else None
+    
+    return {
+        "total_views": total_views,
+        "total_likes": total_likes,
+        "total_comments": total_comments,
+        "total_shares": total_shares,
+        "total_reach": total_reach,
+        "total_followers": total_followers,
+        "average_engagement_rate": avg_rate,
+        "content_count": len(content_items),
+    }
+
+
 def get_engagement_chart(db: Session):
     rows = db.query(Growth).order_by(Growth.date.asc()).all()
     daily = defaultdict(list)

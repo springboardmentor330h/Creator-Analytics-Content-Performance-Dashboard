@@ -4,7 +4,10 @@ import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 
+const PLATFORMS = ["All", "YouTube", "Instagram", "TikTok", "Facebook", "LinkedIn", "X"];
+
 export default function Dashboard() {
+  const [platform, setPlatform] = useState("All");
   const [kpi, setKpi] = useState(null);
   const [engagementChart, setEngagementChart] = useState([]);
   const [followersChart, setFollowersChart] = useState([]);
@@ -13,24 +16,21 @@ export default function Dashboard() {
   const load = async () => {
     setError("");
     try {
-      const [kpiRes, engRes, folRes] = await Promise.all([
-        api.get("/analytics/summary"),
+      const kpiRes = await api.get("/analytics/summary", { params: { platform: platform === "All" ? undefined : platform } });
+      setKpi(kpiRes.data);
+
+      const [engRes, folRes] = await Promise.all([
         api.get("/analytics/chart/engagement"),
         api.get("/analytics/chart/followers"),
       ]);
-      setKpi(kpiRes.data);
-      setEngagementChart(
-        engRes.data.labels.map((label, i) => ({ date: label, value: engRes.data.values[i] }))
-      );
-      setFollowersChart(
-        folRes.data.labels.map((label, i) => ({ date: label, value: folRes.data.values[i] }))
-      );
+      setEngagementChart(engRes.data.labels.map((label, i) => ({ date: label, value: engRes.data.values[i] })));
+      setFollowersChart(folRes.data.labels.map((label, i) => ({ date: label, value: folRes.data.values[i] })));
     } catch {
       setError("Could not load dashboard data");
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [platform]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
@@ -38,7 +38,12 @@ export default function Dashboard() {
       <div className="flex-1 overflow-y-auto">
         <Navbar />
         <main className="p-4 sm:p-6">
-          <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Overview</h1>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <h1 className="text-xl font-semibold sm:text-2xl">Overview</h1>
+            <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="rounded border px-3 py-2 text-sm">
+              {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
 
           {kpi && (
@@ -48,8 +53,9 @@ export default function Dashboard() {
               <Stat label="Total Comments" value={kpi.total_comments?.toLocaleString()} />
               <Stat label="Total Shares" value={kpi.total_shares?.toLocaleString()} />
               <Stat label="Total Reach" value={kpi.total_reach?.toLocaleString()} />
-              <Stat label="Total Followers" value={kpi.total_followers?.toLocaleString()} />
+              <Stat label="Total Followers" value={kpi.total_followers != null ? kpi.total_followers.toLocaleString() : "N/A (all platforms only)"} />
               <Stat label="Avg Engagement Rate" value={`${kpi.average_engagement_rate}%`} />
+              <Stat label="Content Count" value={kpi.content_count} />
             </div>
           )}
 
@@ -66,9 +72,7 @@ export default function Dashboard() {
                     <Line type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-gray-500">No growth data yet. Add records via /growth.</p>
-              )}
+              ) : <p className="text-sm text-gray-500">No growth data yet.</p>}
             </div>
 
             <div className="rounded-xl bg-white p-4 shadow">
@@ -83,9 +87,7 @@ export default function Dashboard() {
                     <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : (
-                <p className="text-sm text-gray-500">No growth data yet. Add records via /growth.</p>
-              )}
+              ) : <p className="text-sm text-gray-500">No growth data yet.</p>}
             </div>
           </div>
         </main>

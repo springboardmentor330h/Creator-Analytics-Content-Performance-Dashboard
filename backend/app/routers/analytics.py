@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -25,10 +25,9 @@ def platform_performance(db: Session = Depends(get_db)):
     return analytics_service.get_platform_performance(db)
 
 
-
 @router.get("/summary")
-def kpi_summary(db: Session = Depends(get_db)):
-    return analytics_service.get_kpi_summary(db)
+def kpi_summary(platform: str | None = Query(None), db: Session = Depends(get_db)):
+    return analytics_service.get_kpi_summary_filtered(db, platform)
 
 
 @router.get("/chart/engagement")

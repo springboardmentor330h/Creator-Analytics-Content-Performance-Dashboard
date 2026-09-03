@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -20,8 +20,11 @@ def create_content(payload: ContentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[ContentOut])
-def get_all_content(db: Session = Depends(get_db)):
-    return db.query(Content).all()
+def get_all_content(platform: str | None = Query(None), db: Session = Depends(get_db)):
+    query = db.query(Content)
+    if platform and platform != "All":
+        query = query.filter(Content.platform == platform)
+    return query.all()
 
 
 @router.get("/{id}", response_model=ContentOut)
