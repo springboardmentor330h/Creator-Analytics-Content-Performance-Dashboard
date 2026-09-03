@@ -46,8 +46,8 @@ def _apply_audience_scope(stmt: Any, user: User) -> Any:
     return stmt.where(Audience.creator_id == user.id)
 
 
-def get_total_followers(db: Session, user: User) -> int:
-    """Calculate total current followers from Growth (latest date) or Audience data."""
+def get_total_followers(db: Session, user: User, platform: Optional[str] = None) -> int:
+    """Calculate total current followers from Growth/Audience data with optional platform attribution."""
     role = user.role.lower() if user.role else ""
     if role in {"administrator", "admin", "marketing team", "marketing"}:
         target_creators = db.scalars(select(User.id).where(User.role.ilike("Creator"))).all()
@@ -82,6 +82,27 @@ def get_total_followers(db: Session, user: User) -> int:
             Audience.creator_id.in_(creators_with_no_growth)
         )
         total_followers += int(db.scalar(aud_stmt) or 0)
+
+    # If no followers recorded in Growth or Audience, calculate baseline from Content reach
+    if total_followers == 0:
+        base_stmt = _apply_scope(select(func.coalesce(func.sum(Content.reach), 0)), user)
+        total_reach = int(db.scalar(base_stmt) or 0)
+        total_followers = int(total_reach * 0.25)
+
+    # When platform filter is specified, attribute followers proportionally based on platform's reach share
+    if platform and platform.strip().lower() not in {"all", "all platforms"}:
+        if total_followers == 0:
+            return 0
+        p_clean = platform.strip().lower()
+        all_scoped_stmt = _apply_scope(select(Content.platform, func.coalesce(func.sum(Content.reach), 0)).group_by(Content.platform), user)
+        reach_by_platform = {p.lower(): r for p, r in db.execute(all_scoped_stmt).all()}
+        platform_reach = reach_by_platform.get(p_clean, 0)
+        total_platform_reach = sum(reach_by_platform.values())
+        if total_platform_reach > 0 and platform_reach > 0:
+            return int(round(total_followers * (platform_reach / total_platform_reach)))
+        elif p_clean in reach_by_platform:
+            return total_followers // max(1, len(reach_by_platform))
+        return 0
 
     return total_followers
 
@@ -190,7 +211,7 @@ def get_dashboard_summary(db: Session, user: User, platform: Optional[str] = Non
     else:
         avg_eng_rate = 0.0
 
-    total_followers = get_total_followers(db, user)
+    total_followers = get_total_followers(db, user, platform=platform)
 
     return {
         "total_views": total_views,

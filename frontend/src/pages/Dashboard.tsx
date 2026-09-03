@@ -161,12 +161,13 @@ export default function Dashboard() {
 
   const cards = summary
     ? [
-        { label: 'Total Views', value: summary.total_views, icon: Eye, change: '+14.2%', color: 'text-indigo-600 bg-indigo-50' },
-        { label: 'Total Likes', value: summary.total_likes, icon: ThumbsUp, change: '+8.7%', color: 'text-blue-600 bg-blue-50' },
-        { label: 'Total Comments', value: summary.total_comments, icon: MessageSquare, change: '+12.1%', color: 'text-amber-600 bg-amber-50' },
-        { label: 'Total Shares', value: summary.total_shares, icon: Share2, change: '+5.4%', color: 'text-emerald-600 bg-emerald-50' },
-        { label: 'Total Reach', value: summary.total_reach, icon: Users, change: '+18.6%', color: 'text-cyan-600 bg-cyan-50' },
-        { label: 'Total Followers', value: summary.total_followers, icon: UserCheck, change: '+10.5%', color: 'text-purple-600 bg-purple-50' },
+        { label: 'Total Views', value: formatNumber(summary.total_views), icon: Eye, change: '+14.2%', color: 'text-indigo-600 bg-indigo-50' },
+        { label: 'Total Likes', value: formatNumber(summary.total_likes), icon: ThumbsUp, change: '+8.7%', color: 'text-blue-600 bg-blue-50' },
+        { label: 'Total Comments', value: formatNumber(summary.total_comments), icon: MessageSquare, change: '+12.1%', color: 'text-amber-600 bg-amber-50' },
+        { label: 'Total Shares', value: formatNumber(summary.total_shares), icon: Share2, change: '+5.4%', color: 'text-emerald-600 bg-emerald-50' },
+        { label: 'Total Reach', value: formatNumber(summary.total_reach), icon: Users, change: '+18.6%', color: 'text-cyan-600 bg-cyan-50' },
+        { label: 'Total Followers', value: formatNumber(summary.total_followers), icon: UserCheck, change: '+10.5%', color: 'text-purple-600 bg-purple-50' },
+        { label: 'Average Engagement Rate', value: formatPercent(summary.average_engagement_rate), icon: Zap, change: '+3.2%', color: 'text-rose-600 bg-rose-50' },
       ]
     : []
 
@@ -213,27 +214,28 @@ export default function Dashboard() {
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700">
             <Sparkles className="h-3.5 w-3.5" />
-            Content Performance Suite
+            Multi-Platform Analytics Suite
           </div>
           <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">Dashboard Overview</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Active Scope: <span className="font-bold text-slate-700">{user?.role || 'Creator'}</span> · Real-time analytics tracking.
+            Active Scope: <span className="font-bold text-slate-700">{user?.role || 'Creator'}</span> · PostgreSQL live metrics ingestion.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 self-start sm:self-auto">
-          <select
-            value={selectedPlatform}
-            onChange={(e) => setSelectedPlatform(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          >
-            <option value="All">All Platforms</option>
-            <option value="YouTube">YouTube</option>
-            <option value="Instagram">Instagram</option>
-            <option value="TikTok">TikTok</option>
-            <option value="Facebook">Facebook</option>
-            <option value="LinkedIn">LinkedIn</option>
-            <option value="X">X (Twitter)</option>
-          </select>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 self-start sm:self-auto">
+          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-1.5 shadow-sm">
+            <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Platform:</span>
+            <select
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value)}
+              className="bg-transparent text-sm font-extrabold text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="All">All Platforms</option>
+              <option value="YouTube">YouTube</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Facebook">Facebook</option>
+              <option value="LinkedIn">LinkedIn</option>
+            </select>
+          </div>
           <Link to="/content-analytics" className="ciq-btn-primary">
             <BarChart3 className="h-4 w-4" />
             <span>Content Analytics</span>
@@ -241,8 +243,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {/* KPI Cards Grid - All 7 metrics */}
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon
           return (
@@ -255,7 +257,7 @@ export default function Dashboard() {
               </div>
 
               <div className="mt-4 flex items-baseline justify-between">
-                <p className="text-3xl font-extrabold text-slate-900">{formatNumber(card.value)}</p>
+                <p className="text-2xl lg:text-3xl font-extrabold text-slate-900">{card.value}</p>
                 <span className="inline-flex items-center text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   {card.change}

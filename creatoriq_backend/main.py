@@ -34,6 +34,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(user_router)
 app.include_router(content_router)
+app.include_router(content_router, prefix="/api")
 app.include_router(revenue_router)
 app.include_router(revenue_router, prefix="/api")
 app.include_router(sponsorship_router)

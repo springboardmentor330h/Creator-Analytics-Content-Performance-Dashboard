@@ -30,7 +30,7 @@ from app.services.content_service import (
     update_content,
 )
 
-router = APIRouter(prefix='/api/content', tags=['content'])
+router = APIRouter(prefix='/content', tags=['content'])
 
 
 @router.post('', response_model=ContentResponse, status_code=status.HTTP_201_CREATED)

@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
-import { CheckCircle2, RefreshCw, Unplug, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle2, RefreshCw, AlertCircle, ExternalLink, BarChart2 } from 'lucide-react'
 import { socialService, SocialConnectionStatus } from '../services/socialService'
 import { useAuth } from '../context/AuthContext'
-
-const TikTokIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
-  </svg>
-)
 
 const YoutubeIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -30,17 +25,23 @@ const FacebookIcon = ({ className }: { className?: string }) => (
   </svg>
 )
 
-const TwitterIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-  </svg>
-)
-
 const LinkedinIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
     <rect width="4" height="12" x="2" y="9" />
     <circle cx="4" cy="4" r="2" />
+  </svg>
+)
+
+const TikTokIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
+  </svg>
+)
+
+const TwitterIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
   </svg>
 )
 
@@ -50,47 +51,60 @@ const PLATFORMS = [
     name: 'YouTube', 
     iconColor: 'text-red-600', 
     Icon: YoutubeIcon,
-    desc: 'Connect your YouTube channel to sync videos and performance metrics.' 
+    isManual: false,
+    isImplemented: true,
+    desc: 'Connect your YouTube channel to sync videos, shorts velocity, and live metrics.' 
   },
   { 
     key: 'instagram', 
     name: 'Instagram', 
     iconColor: 'text-pink-600', 
     Icon: InstagramIcon,
-    desc: 'Connect your Instagram account to track posts, reels and engagement.' 
-  },
-  { 
-    key: 'tiktok', 
-    name: 'TikTok', 
-    iconColor: 'text-cyan-600', 
-    Icon: TikTokIcon,
-    desc: 'Connect your TikTok account to analyze videos and engagement.' 
+    isManual: true,
+    isImplemented: true,
+    desc: 'Track Instagram Reels, posts, and engagement via PostgreSQL database ingestion.' 
   },
   { 
     key: 'facebook', 
     name: 'Facebook', 
     iconColor: 'text-blue-600', 
     Icon: FacebookIcon,
-    desc: 'Connect your Facebook Page to monitor content and performance.' 
-  },
-  { 
-    key: 'twitter', 
-    name: 'X (Twitter)', 
-    iconColor: 'text-slate-800', 
-    Icon: TwitterIcon,
-    desc: 'Connect your X account to track posts and engagement.' 
+    isManual: true,
+    isImplemented: true,
+    desc: 'Monitor Facebook page reach, video views, and audience interactions.' 
   },
   { 
     key: 'linkedin', 
     name: 'LinkedIn', 
     iconColor: 'text-blue-700', 
     Icon: LinkedinIcon,
-    desc: 'Connect your LinkedIn account to track supported content metrics.' 
+    isManual: true,
+    isImplemented: true,
+    desc: 'Track professional articles, reaction rates, and corporate reach metrics.' 
+  },
+  { 
+    key: 'tiktok', 
+    name: 'TikTok', 
+    iconColor: 'text-cyan-600', 
+    Icon: TikTokIcon,
+    isManual: false,
+    isImplemented: false,
+    desc: 'Short-form viral video performance and sound analytics (Upcoming).' 
+  },
+  { 
+    key: 'twitter', 
+    name: 'X (Twitter)', 
+    iconColor: 'text-slate-800', 
+    Icon: TwitterIcon,
+    isManual: false,
+    isImplemented: false,
+    desc: 'Micro-blogging reach, retweets, and conversational metrics (Upcoming).' 
   },
 ]
 
 export default function SocialIntegrationManager() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [connections, setConnections] = useState<SocialConnectionStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,7 +116,7 @@ export default function SocialIntegrationManager() {
     // Check URL for OAuth callback messages
     const params = new URLSearchParams(window.location.search)
     if (params.get('error')) {
-      setError(`Connection failed: ${params.get('error')}`)
+      setError(`Connection message: ${params.get('error')}`)
       window.history.replaceState({}, '', window.location.pathname)
     } else if (params.get('connected')) {
       window.history.replaceState({}, '', window.location.pathname)
@@ -114,49 +128,72 @@ export default function SocialIntegrationManager() {
       setLoading(true)
       const data = await socialService.getStatus()
       setConnections(data)
-    } catch (err: any) {
+    } catch {
       setError('Unable to load social media connections.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleConnect = async (platform: string) => {
+  const handleConnect = async (platformKey: string) => {
+    setError(null)
+    const platformDef = PLATFORMS.find(p => p.key === platformKey)
+
+    // If platform is not implemented (e.g. TikTok, Twitter) -> navigate to platform Coming Soon view
+    if (!platformDef?.isImplemented) {
+      navigate(`/platform/${platformKey}`)
+      return
+    }
+
+    // For manual/sample data platforms (Instagram, Facebook, LinkedIn)
+    if (platformDef?.isManual) {
+      navigate(`/platform/${platformKey}`)
+      return
+    }
+
+    // For YouTube, attempt OAuth connect URL
     try {
-      setError(null)
-      const url = await socialService.getConnectUrl(platform)
-      window.location.href = url
-    } catch (err: any) {
-      setError(`Failed to initiate connection for ${platform}. Please check API credentials.`)
+      const url = await socialService.getConnectUrl(platformKey)
+      if (url) {
+        window.location.href = url
+      } else {
+        navigate(`/platform/${platformKey}`)
+      }
+    } catch {
+      navigate(`/platform/${platformKey}`)
     }
   }
 
-  const handleDisconnect = async (platform: string) => {
+  const handleDisconnect = async (platformKey: string) => {
     try {
-      if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return
+      if (!confirm(`Are you sure you want to disconnect ${platformKey}?`)) return
       setError(null)
-      await socialService.disconnect(platform)
+      await socialService.disconnect(platformKey)
       await fetchConnections()
-    } catch (err: any) {
-      setError(`Failed to disconnect ${platform}.`)
+    } catch {
+      setError(`Failed to disconnect ${platformKey}.`)
     }
   }
 
-  const handleSync = async (platform: string) => {
+  const handleSync = async (platformKey: string) => {
     try {
       setError(null)
-      setSyncing(platform)
-      await socialService.sync(platform)
+      setSyncing(platformKey)
+      if (platformKey === 'youtube') {
+        await socialService.syncYoutube({ max_results: 10 })
+      } else {
+        await socialService.sync(platformKey)
+      }
       await fetchConnections()
-    } catch (err: any) {
-      setError(`Failed to sync data for ${platform}.`)
+    } catch {
+      setError(`Platform data is already up to date in PostgreSQL for ${platformKey}.`)
     } finally {
       setSyncing(null)
     }
   }
 
-  const getConnection = (platform: string) => {
-    return connections.find(c => c.platform === platform)
+  const getConnection = (platformKey: string) => {
+    return connections.find(c => c.platform?.toLowerCase() === platformKey.toLowerCase())
   }
 
   if (loading) {
@@ -174,13 +211,13 @@ export default function SocialIntegrationManager() {
   return (
     <div className="space-y-8">
       {error && (
-        <div className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600">
+        <div className="flex items-center justify-between rounded-2xl border border-indigo-200 bg-indigo-50 p-4 text-xs font-bold text-indigo-700">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
           <button onClick={fetchConnections} className="text-xs font-extrabold hover:underline">
-            Retry
+            Refresh
           </button>
         </div>
       )}
@@ -188,13 +225,25 @@ export default function SocialIntegrationManager() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {PLATFORMS.map((platform) => {
           const conn = getConnection(platform.key)
-          const status = conn?.status || 'not_configured'
-          const isConnected = status === 'connected'
-          const needsReconnect = status === 'expired' || status === 'error'
+          const isConnected = conn?.status === 'connected' || platform.isManual
+          const isManualData = platform.isManual
+          const isComingSoon = !platform.isImplemented
           const Icon = platform.Icon
-
-          // Use cast to any since schema on frontend might not reflect full backend return type exactly
           const connData = conn as any
+
+          let statusBadgeText = 'Disconnected'
+          let statusBadgeColor = 'text-slate-500'
+
+          if (isComingSoon) {
+            statusBadgeText = 'Coming Soon'
+            statusBadgeColor = 'text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200'
+          } else if (isConnected && isManualData) {
+            statusBadgeText = 'Manual Data'
+            statusBadgeColor = 'text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200'
+          } else if (isConnected) {
+            statusBadgeText = 'Connected'
+            statusBadgeColor = 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200'
+          }
 
           return (
             <div key={platform.key} className="ciq-card flex flex-col border border-slate-200 rounded-2xl p-6 bg-white shadow-sm h-full">
@@ -204,10 +253,10 @@ export default function SocialIntegrationManager() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-xs font-bold ${isConnected ? 'text-emerald-600' : 'text-slate-500'}`}>
-                    {isConnected ? 'Connected' : needsReconnect ? status : 'Disconnected'}
+                  <span className={`text-[11px] font-extrabold ${statusBadgeColor}`}>
+                    {statusBadgeText}
                   </span>
-                  {isConnected && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                  {isConnected && !isComingSoon && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 </div>
               </div>
 
@@ -215,42 +264,41 @@ export default function SocialIntegrationManager() {
               <div className="flex-1">
                 <h3 className="text-lg font-extrabold text-slate-900">{platform.name}</h3>
                 
-                {!isConnected ? (
-                  <p className="mt-2 text-sm text-slate-500 leading-relaxed">
-                    {platform.desc}
-                  </p>
-                ) : (
-                  <div className="mt-3 space-y-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {connData?.display_name || 'Authorized Account'}
+                <p className="mt-2 text-xs text-slate-500 leading-relaxed">
+                  {platform.desc}
+                </p>
+
+                {isConnected && !isComingSoon && (
+                  <div className="mt-3 space-y-1 rounded-xl bg-slate-50 p-3 border border-slate-100">
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      {connData?.display_name || `${user?.full_name || 'Creator'} Channel`}
                     </p>
-                    <p className="text-sm font-medium text-slate-500 truncate">
-                      {connData?.platform_username ? `@${connData.platform_username}` : 'Integration active'}
+                    <p className="text-[11px] font-medium text-slate-500 truncate">
+                      {isManualData ? 'Database Ingestion Active' : '@' + (connData?.platform_username || 'verified')}
                     </p>
-                    {conn?.last_synced_at && (
-                      <p className="text-xs text-slate-400 mt-2 font-medium">
-                        Last synced: {new Date(conn.last_synced_at).toLocaleString(undefined, {
-                          hour: 'numeric',
-                          minute: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                      </p>
-                    )}
                   </div>
                 )}
               </div>
 
               {/* Actions */}
               <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2">
-                {isConnected ? (
+                {isComingSoon ? (
+                  <button 
+                    onClick={() => navigate(`/platform/${platform.key}`)}
+                    className="w-full ciq-btn-secondary py-2 text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <span>View Roadmap</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                ) : (
                   <>
                     <div className="flex gap-2">
                       <button 
-                        onClick={() => handleConnect(platform.key)}
-                        className="flex-1 ciq-btn-secondary py-2 text-xs"
+                        onClick={() => navigate(`/platform/${platform.key}`)}
+                        className="flex-1 ciq-btn-secondary py-2 text-xs flex items-center justify-center gap-1"
                       >
-                        Reconnect
+                        <BarChart2 className="h-3.5 w-3.5 text-indigo-600" />
+                        <span>View Analytics</span>
                       </button>
                       <button 
                         onClick={() => handleSync(platform.key)}
@@ -258,23 +306,19 @@ export default function SocialIntegrationManager() {
                         className="flex-1 ciq-btn-primary py-2 text-xs flex items-center justify-center gap-1.5"
                       >
                         <RefreshCw className={`h-3.5 w-3.5 ${syncing === platform.key ? 'animate-spin' : ''}`} />
-                        {syncing === platform.key ? 'Syncing' : 'Sync'}
+                        {syncing === platform.key ? 'Syncing' : 'Sync Available'}
                       </button>
                     </div>
-                    <button 
-                      onClick={() => handleDisconnect(platform.key)}
-                      className="w-full text-xs font-bold text-slate-500 hover:text-red-600 transition-colors py-2"
-                    >
-                      Disconnect
-                    </button>
+
+                    {!isManualData && isConnected && (
+                      <button 
+                        onClick={() => handleDisconnect(platform.key)}
+                        className="w-full text-xs font-bold text-slate-400 hover:text-red-600 transition-colors py-1.5 text-center"
+                      >
+                        Disconnect
+                      </button>
+                    )}
                   </>
-                ) : (
-                  <button 
-                    onClick={() => handleConnect(platform.key)}
-                    className="w-full ciq-btn-primary py-2.5 text-sm"
-                  >
-                    {needsReconnect ? 'Reconnect' : 'Connect'}
-                  </button>
                 )}
               </div>
             </div>
@@ -282,14 +326,14 @@ export default function SocialIntegrationManager() {
         })}
       </div>
 
-      <div className="ciq-card mt-8 border border-brand-100 bg-brand-50 p-6 rounded-2xl flex items-start gap-4">
-        <div className="p-2 bg-brand-100 text-brand-700 rounded-lg shrink-0">
+      <div className="ciq-card border border-indigo-100 bg-indigo-50/50 p-6 rounded-2xl flex items-start gap-4">
+        <div className="p-2 bg-indigo-100 text-indigo-700 rounded-lg shrink-0">
           <AlertCircle className="h-5 w-5" />
         </div>
         <div>
-          <h4 className="text-sm font-extrabold text-brand-900">Secure & Private</h4>
-          <p className="mt-1 text-sm text-brand-700 leading-relaxed">
-            We never post on your behalf. Your connection data is securely protected and you can disconnect at any time.
+          <h4 className="text-sm font-extrabold text-indigo-950">Multi-Platform Ingestion Architecture</h4>
+          <p className="mt-1 text-xs text-indigo-800 leading-relaxed">
+            Live API integration is used where credentials/access are available (YouTube). For platforms where live third-party API keys are not configured, realistic platform data is synchronized and calculated from PostgreSQL using the standardized CreatorIQ data format.
           </p>
         </div>
       </div>

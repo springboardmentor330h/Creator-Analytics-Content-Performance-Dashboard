@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from math import ceil
 from typing import Any, Dict, List, Optional, Sequence
 
@@ -83,7 +83,7 @@ def _apply_filters(
     published_to: Optional[date] = None,
 ) -> Select[Any]:
     if platform:
-        stmt = stmt.where(Content.platform == platform)
+        stmt = stmt.where(func.lower(Content.platform) == platform.strip().lower())
     if content_type:
         stmt = stmt.where(Content.content_type == content_type)
     if search:
@@ -118,10 +118,43 @@ def create_content(db: Session, creator: User, payload: ContentCreate) -> Conten
     engagement_rate = calculate_engagement_rate(
         payload.likes, payload.comments, payload.shares, payload.saves, payload.reach
     )
+
+    # Enforce logical uniqueness using platform + external_content_id (scoped to creator)
+    ext_id = (payload.external_content_id or payload.content_id or '').strip()
+    if ext_id:
+        existing = db.query(Content).filter(
+            Content.creator_id == target_creator_id,
+            func.lower(Content.platform) == payload.platform.lower(),
+            or_(
+                Content.external_content_id == ext_id,
+                Content.content_id == ext_id,
+            ),
+        ).first()
+        if existing:
+            # Update existing record
+            existing.title = payload.title
+            existing.content_type = payload.content_type
+            existing.published_at = payload.published_at
+            existing.views = payload.views
+            existing.likes = payload.likes
+            existing.comments = payload.comments
+            existing.shares = payload.shares
+            existing.saves = payload.saves
+            existing.watch_time = payload.watch_time
+            existing.reach = payload.reach
+            existing.engagement_rate = engagement_rate
+            existing.external_content_id = ext_id
+            existing.updated_at = datetime.utcnow()
+            db.commit()
+            db.refresh(existing)
+            return existing
+
+    gen_id = ext_id or f'{target_creator_id}-{payload.title[:40]}'.replace(' ', '-').lower()
     content = Content(
         creator_id=target_creator_id,
         platform=payload.platform,
-        content_id=f'{target_creator_id}-{payload.title[:40]}'.replace(' ', '-').lower(),
+        content_id=gen_id,
+        external_content_id=ext_id or gen_id,
         title=payload.title,
         content_type=payload.content_type,
         published_at=payload.published_at,
@@ -133,6 +166,8 @@ def create_content(db: Session, creator: User, payload: ContentCreate) -> Conten
         watch_time=payload.watch_time,
         reach=payload.reach,
         engagement_rate=engagement_rate,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
     )
     db.add(content)
     db.commit()

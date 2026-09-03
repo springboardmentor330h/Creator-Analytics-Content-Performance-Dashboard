@@ -1,362 +1,279 @@
-# CreatorIQ – Multi-Platform Social Media Integration & Analytics (Sprint 8: Instagram Integration)
+# CreatorIQ – Multi-Platform Social Media Analytics & Content Performance Dashboard
 
-CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with FastAPI, PostgreSQL, SQLAlchemy, and OAuth / Social Data Integrations.
+CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with **FastAPI**, **PostgreSQL**, **SQLAlchemy**, and **React**.
+
+> **Important Integration Notice:**  
+> Live API integration is used where credentials/access are available (such as YouTube Data API v3). For platforms where API access is unavailable, realistic sample data is stored in PostgreSQL through the same backend architecture and standardized data schemas.
 
 ---
 
 ## 1. Project Overview
 
-CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. Sprint 8 extends the platform architecture to support **Instagram Graph API Integration alongside YouTube Data API v3**, standardizing all social media ingestion through a unified Common Platform Format into PostgreSQL, enabling cross-platform comparison and granular per-platform KPI filtering without code duplication.
+CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. The Multi-Platform Analytics System extends CreatorIQ beyond YouTube to comprehensively support:
+- **YouTube** (Live Data API v3 & Ingestion)
+- **Instagram** (PostgreSQL Platform Ingestion / Reels & Posts)
+- **Facebook** (PostgreSQL Platform Ingestion / Pages & Live)
+- **LinkedIn** (PostgreSQL Platform Ingestion / Professional Articles & Posts)
+
+All platforms adhere to a unified **Common Platform Format** stored in PostgreSQL. The same analytics engine calculates KPI cards, chronological trends, rankings, and platform benchmarking without duplicated logic.
 
 ---
 
-## 2. System Architecture
+## 2. Multi-Platform System Architecture
 
 ```
-YouTube API ────────┐
-                    ├──> Common Platform Format ──> Duplicate Detection ──> PostgreSQL (Content Table)
-Instagram API ──────┘                                                             │
-                                                                                  ▼
-                                                                     Shared Analytics Service
-                                                                                  │
-                                                                                  ▼
-                                                                     Aggregated Dashboard APIs
-                                                                      (?platform= filterable)
+YouTube:
+  YouTube Data API v3 ───┐
+                         │
+Additional Platforms:    ▼
+  Manual / Sample Data ──┼──> Common CreatorIQ Format ──> Duplicate Detection ──> PostgreSQL
+  (Instagram/FB/LinkedIn)│                                (platform + ext_id)         │
+                         │                                                            ▼
+Live APIs (When Avail) ─┘                                                    Analytics Services
+                                                                                      │
+                                                                                      ▼
+                                                                                 FastAPI APIs
+                                                                             (?platform= filterable)
+                                                                                      │
+                                                                                      ▼
+                                                                               React Dashboard
 ```
 
 ---
 
-## 3. Modules Implemented
+## 3. Supported Platforms
 
-- **Core & Config (`app/core/config.py`)**: Centralized Pydantic settings loading environment variables including `YOUTUBE_API_KEY`, `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, database URL, and JWT settings.
-- **Data Models (`app/models/content.py`)**: SQLAlchemy `Content` model with `external_content_id` for tracking platform-native IDs and enabling idempotent upserts.
-- **Data Schemas (`app/schemas/content.py`, `app/schemas/social_connection.py`)**: Pydantic v2 schemas for request validation, serialization, and YouTube sync payload/responses (`YouTubeSyncRequest`, `YouTubeSyncResponse`).
-- **YouTube Service (`app/services/youtube_service.py`)**: Google API client management, data fetching, transformation into CreatorIQ common schema, validation, duplicate check, and PostgreSQL upsert logic.
-- **Social Router (`app/routers/social.py`)**: Exposes `POST /social/youtube/sync` for background and manual synchronization.
-- **Analytics Service (`app/services/analytics_service.py`)**: Aggregated metrics calculation (KPI summary, top content, platform comparison, engagement curves, follower growth) from PostgreSQL data.
-
----
-
-## 4. API Endpoints
-
-### Authentication & Users
-- `POST /auth/register` – Register a new user (Creator, Agency, Marketing Team, Administrator).
-- `POST /auth/login` – Authenticate user and receive JWT access token.
-- `GET /users/me` – Retrieve current user profile.
-
-### Social & Platform Integrations (YouTube + Instagram)
-- `POST /social/youtube/sync` – Synchronize YouTube videos and metrics into PostgreSQL.
-  - **Request Body (Optional)**:
-    ```json
-    {
-      "channel_id": "UC_x5XG1OV2P6uZZ5FSM9Ttw",
-      "query": "Python Tutorial",
-      "max_results": 10
-    }
-    ```
-  - **Response (200 OK)**:
-    ```json
-    {
-      "platform": "YouTube",
-      "status": "success",
-      "records_synced": 10
-    }
-    ```
-
-- `POST /social/instagram/sync` – Synchronize Instagram media and insights into PostgreSQL.
-  - **Request Body (Optional)**:
-    ```json
-    {
-      "account_id": "17841405309211844",
-      "max_results": 10
-    }
-    ```
-  - **Response (200 OK)**:
-    ```json
-    {
-      "platform": "Instagram",
-      "status": "success",
-      "records_synced": 10
-    }
-    ```
-
-### Analytics Endpoints (Platform Filter Supported)
-- `GET /analytics/summary?platform=YouTube|Instagram` – KPI summary metrics filtered by platform.
-- `GET /analytics/top-content?platform=YouTube|Instagram` – Top-performing content filtered by platform.
-- `GET /analytics/chart/engagement?platform=YouTube|Instagram` – Engagement rate trends over time.
-- `GET /analytics/platform-comparison` – Multi-platform performance breakdown and comparison.
-- `POST /social/connect` – Connect a social media platform account.
-- `GET /social/platforms` – List connected social platforms.
-- `POST /social/sync` – Synchronize simulated social platform data.
-
-### Revenue Management & Analytics (Sprint 6)
-- `POST /revenue` – Add a new revenue record (`Sponsorship`, `Ad Revenue`, `Affiliate Marketing`, `Brand Collaboration`, `Subscription Revenue`).
-- `GET /revenue` – List all revenue records for authenticated creator.
-- `GET /revenue/{id}` – Retrieve single revenue record.
-- `PUT /revenue/{id}` – Update single revenue record.
-- `DELETE /revenue/{id}` – Delete single revenue record.
-- `GET /analytics/revenue/summary` – Retrieve total accumulated revenue and currency.
-- `GET /analytics/revenue/by-source` – Retrieve revenue breakdown grouped by category.
-- `GET /analytics/revenue/monthly` – Retrieve chronological monthly revenue totals.
-- `GET /analytics/revenue/trend` – Retrieve chart-ready monthly revenue time-series labels and values.
-
-### Sponsorship Management & Tracking (Sprint 6)
-- `POST /sponsorships` – Create a new brand sponsorship campaign (`Draft`, `Active`, `Completed`, `Cancelled`).
-- `GET /sponsorships` – List all sponsorship campaigns for authenticated creator.
-- `GET /sponsorships/{id}` – Retrieve single sponsorship campaign details.
-- `PUT /sponsorships/{id}` – Update sponsorship campaign details.
-- `DELETE /sponsorships/{id}` – Delete sponsorship campaign.
-- `GET /analytics/sponsorships/summary` – Summary of total deals, contract value, active deals, and pending payments.
-- `GET /analytics/sponsorships/status` – Breakdown of sponsorship deals grouped by status.
-
-### Performance Analytics Endpoints
-- `GET /analytics/summary` – Aggregate KPI totals (views, likes, comments, shares, reach, followers, avg engagement rate).
-- `GET /analytics/top-content` – Top performing content ranked by engagement rate.
-- `GET /analytics/platform-comparison` – Cross-platform performance comparison (YouTube, Instagram, TikTok, LinkedIn, etc.).
-- `GET /analytics/chart/engagement` – Chronological engagement rate timeline data.
-- `GET /analytics/chart/followers` – Chronological follower growth timeline data.
-- `GET /analytics/content/{id}/engagement` – Detailed metrics for a single content item.
+| Platform | Ingestion Workflow | Content Types Supported | Status |
+| :--- | :--- | :--- | :--- |
+| **YouTube** | Live API v3 / Sync Service | Video, Short | Active (Live Sync) |
+| **Instagram** | PostgreSQL Ingestion / Common Format | Reel, Post | Active (Database Ingestion) |
+| **Facebook** | PostgreSQL Ingestion / Common Format | Post, Live | Active (Database Ingestion) |
+| **LinkedIn** | PostgreSQL Ingestion / Common Format | Article, Post | Active (Database Ingestion) |
+| **TikTok** | Common Schema Ready | Short, Video | Coming Soon |
+| **X (Twitter)** | Common Schema Ready | Post | Coming Soon |
 
 ---
 
-## 5. Database Tables
+## 4. Common Platform Data Format
 
-### `public.content`
-Stores normalized content across all social media platforms:
-
-| Column | Type | Constraints / Description |
-| :--- | :--- | :--- |
-| `id` | Integer | Primary key, Auto-increment |
-| `creator_id` | Integer | Foreign key to `users.id`, Indexed |
-| `platform` | String(50) | 'YouTube', 'Instagram', 'TikTok', 'Facebook', 'X', 'LinkedIn' |
-| `content_id` | String(150) | Internal / backward-compatible unique identifier |
-| `external_content_id` | String(150) | Native video/post ID from platform (Indexed) |
-| `title` | String(255) | Content title or headline |
-| `content_type` | String(50) | 'Video', 'Short', 'Post', 'Reel', 'Article', 'Live' |
-| `published_at` | Date | Publication date |
-| `views` | Integer | Total views (default: 0) |
-| `likes` | Integer | Total likes (default: 0) |
-| `comments` | Integer | Total comments (default: 0) |
-| `shares` | Integer | Total shares (default: 0) |
-| `saves` | Integer | Total saves / bookmarks (default: 0) |
-| `watch_time` | Integer | Watch time in minutes (default: 0) |
-| `reach` | Integer | Total reach / impressions (default: 0) |
-| `engagement_rate` | Float | Calculated percentage `((likes+comments+shares+saves)/reach)*100` |
-| `created_at` | DateTime | Creation timestamp (UTC) |
-| `updated_at` | DateTime | Last updated timestamp (UTC) |
-
-### `public.revenue`
-Stores creator revenue records across diversified monetization channels:
-
-| Column | Type | Constraints / Description |
-| :--- | :--- | :--- |
-| `id` | Integer | Primary key, Auto-increment |
-| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
-| `source` | String(100) | 'Sponsorship', 'Ad Revenue', 'Affiliate Marketing', 'Brand Collaboration', 'Subscription Revenue' |
-| `amount` | Float | Revenue amount (>= 0.0) |
-| `currency` | String(10) | Currency code (default: 'INR') |
-| `description` | Text | Optional campaign / invoice notes |
-| `revenue_date` | Date | Transaction / earnings date |
-| `created_at` | DateTime | Creation timestamp (UTC) |
-| `updated_at` | DateTime | Last updated timestamp (UTC) |
-
-### `public.sponsorship`
-Tracks creator brand partnerships, campaigns, and contract payment status:
-
-| Column | Type | Constraints / Description |
-| :--- | :--- | :--- |
-| `id` | Integer | Primary key, Auto-increment |
-| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
-| `brand_name` | String(150) | Brand / sponsor company name |
-| `campaign_name` | String(150) | Campaign title / deliverables |
-| `contract_value` | Float | Agreed contract value (>= 0.0) |
-| `currency` | String(10) | Currency code (default: 'INR') |
-| `start_date` | Date | Campaign start date |
-| `end_date` | Date | Campaign end date (>= start_date) |
-| `status` | String(50) | 'Draft', 'Active', 'Completed', 'Cancelled' |
-| `payment_status` | String(50) | 'Pending', 'Partially Paid', 'Paid', 'Overdue' |
-| `description` | Text | Campaign terms and scope |
-| `created_at` | DateTime | Creation timestamp (UTC) |
-| `updated_at` | DateTime | Last updated timestamp (UTC) |
-
----
-
-## 6. YouTube API Integration
-
-The YouTube integration interacts directly with the **YouTube Data API v3**:
-1. Uses `google-api-python-client` to initialize an authorized service client.
-2. Supports fetching channel video feeds via uploads playlist (`channels().list` -> `playlistItems().list`), keyword search (`search().list`), or popular videos (`videos().list(chart="mostPopular")`).
-3. Fetches precise video statistics (`viewCount`, `likeCount`, `commentCount`) and snippet metadata (`title`, `publishedAt`).
-4. Extracts only non-fabricated API metrics.
-
----
-
-## 7. Environment Configuration
-
-Configuration is loaded from `.env` via `app/core/config.py`:
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/creatoriq
-JWT_SECRET_KEY=your-secure-random-jwt-secret-key
-JWT_ALGORITHM=HS256
-JWT_EXPIRE_MINUTES=1440
-FRONTEND_URL=http://localhost:5173
-
-# YouTube API Credentials
-YOUTUBE_API_KEY=your_google_api_key_here
-YOUTUBE_CLIENT_ID=your_oauth_client_id_here
-YOUTUBE_CLIENT_SECRET=your_oauth_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:5173/api/social/youtube/callback
-```
-
-> **Security Note:** The `.env` file is excluded from Git tracking via `.gitignore`. Never commit API keys or production secrets to source control.
-
----
-
-## 8. Data Transformation Workflow
-
-Raw responses from YouTube API v3 are transformed into CreatorIQ's canonical cross-platform representation:
+All social platforms ingest data using an identical internal payload structure:
 
 ```json
 {
-    "platform": "YouTube",
-    "external_content_id": "dQw4w9WgXcQ",
-    "content_title": "Python Asyncio & FastAPI Masterclass",
-    "views": 25000,
-    "likes": 1800,
-    "comments": 220,
-    "shares": 0,
-    "reach": 0,
-    "published_date": "2026-08-10"
+  "platform": "Instagram",
+  "external_content_id": "IG101",
+  "content_title": "Behind the Scenes: High-Performance Server Rack Setup",
+  "content_type": "Reel",
+  "views": 28500,
+  "likes": 2950,
+  "comments": 240,
+  "shares": 380,
+  "reach": 26000,
+  "published_date": "2026-05-04"
 }
 ```
 
-This ensures future platforms (Instagram, TikTok, LinkedIn, X, Facebook) integrate smoothly into the exact same analytics engine without duplicate logic.
+### Standardized Database Fields (`public.content` table):
+- `platform`: `YouTube`, `Instagram`, `Facebook`, `LinkedIn`, `TikTok`, `X`
+- `external_content_id`: Native platform unique identifier (Indexed)
+- `title` / `content_title`: Content headline or title
+- `content_type`: `Video`, `Short`, `Post`, `Reel`, `Article`, `Live`
+- `published_at` / `published_date`: Publication date (`YYYY-MM-DD`)
+- `views`: Non-negative view count
+- `likes`: Reaction / like count
+- `comments`: Comment count
+- `shares`: Share / retweet count
+- `reach`: Audience reach / impressions
+- `engagement_rate`: Normalized engagement metric calculated as:
+  $$\text{Engagement Rate} = \frac{\text{likes} + \text{comments} + \text{shares} + \text{saves}}{\text{reach}} \times 100$$
 
 ---
 
-## 9. Synchronization Workflow
+## 5. Duplicate Handling (Upsert Logic)
 
-1. Client triggers `POST /social/youtube/sync` with authorization bearer token.
-2. The router delegates execution to `youtube_service.sync_youtube_data()`.
-3. YouTube service loads API key, queries YouTube Data API v3, and retrieves video batches.
-4. Each raw record is parsed by `transform_youtube_data()` and verified with `validate_youtube_data()`.
-5. Database session queries for existing records matching `creator_id`, `platform = "YouTube"`, and `external_content_id`.
-6. Upsert execution updates existing rows or creates new records.
-7. Database commit is performed and response `{ "platform": "YouTube", "status": "success", "records_synced": N }` is returned.
-
----
-
-## 10. Duplicate Handling
-
-Duplicate detection is strictly enforced at the database and service layer using:
-
-$$\text{creator\_id} + \text{platform} + \text{external\_content\_id}$$
-
-- **If record exists**: The service updates the existing record's views, likes, comments, title, publication date, and recalculates the engagement rate.
-- **If record does not exist**: A new record is inserted.
-- Running synchronization repeatedly is idempotent and does not result in duplicate records in PostgreSQL.
+To prevent duplicate records when synchronizing or entering platform data multiple times:
+- Logical Unique Key: `creator_id + platform + external_content_id`
+- **Synchronization / Insert Behavior**:
+  - **Existing record?**
+    - `YES` &rarr; **Update** existing record metrics (`views`, `likes`, `comments`, `shares`, `reach`, `engagement_rate`, `updated_at`).
+    - `NO` &rarr; **Create** new record with native platform identifier.
 
 ---
 
-## 11. Error Handling
+## 6. Analytics Workflow & Platform Filtering
 
-All external and internal failures are handled gracefully without application crashes or credential leaks:
+The central `analytics_service.py` provides cross-platform calculations for all supported platforms:
 
-| Scenario | HTTP Status | Detail / Behavior |
-| :--- | :--- | :--- |
-| Missing API Key | `400 Bad Request` | Clean error informing user that API key is not configured |
-| Invalid API Key | `401 Unauthorized` / `400 Bad Request` | Informs client of invalid credentials without revealing key |
-| Channel / Video Not Found | `404 Not Found` | Specified YouTube resource not found |
-| Quota Exceeded | `429 Too Many Requests` | Rate limit / quota notification |
-| Empty API Results | `200 OK` | `{ "platform": "YouTube", "status": "success", "records_synced": 0 }` |
-| Database Error | `500 Internal Server Error` | Transaction rolled back (`db.rollback()`) safely |
+### 1. Dashboard Summary (`GET /analytics/summary`)
+Supports `?platform=YouTube|Instagram|Facebook|LinkedIn`:
+- When **All Platforms** is selected: combined PostgreSQL metrics across all platforms.
+- When **YouTube / Instagram / Facebook / LinkedIn** is selected: filters to that platform only.
+- Calculates:
+  - Total Views
+  - Total Likes
+  - Total Comments
+  - Total Shares
+  - Total Reach
+  - Total Followers (attributing proportional platform audience)
+  - Average Engagement Rate
 
----
-
-## 12. Swagger Testing
-
-1. Start the FastAPI backend:
-   ```bash
-   uvicorn main:app --reload --host 127.0.0.1 --port 8000
-   ```
-2. Navigate to Swagger UI: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-3. Authenticate using `POST /auth/login` to obtain an access token and authorize via the **Authorize** button (`Bearer <token>`).
-4. Execute `POST /social/youtube/sync`:
-   - Verify `200 OK` response with `status: success` and `records_synced`.
-5. Execute analytics endpoints:
-   - `GET /analytics/summary` – Verify total views, likes, comments, and engagement rate reflect the synchronized YouTube data.
-   - `GET /analytics/top-content` – Verify YouTube videos appear in top content rankings.
-   - `GET /analytics/platform-comparison` – Verify "YouTube" is present in platform comparison breakdown.
-   - `GET /analytics/chart/engagement` – Verify engagement time series includes YouTube publication dates.
-   - `GET /analytics/chart/followers` – Verify follower trend data.
-
----
-
-## 13. PostgreSQL Verification
-
-Run the following queries in **pgAdmin** or `psql` to verify synchronized records and duplicate handling:
-
-```sql
--- 1. View all synchronized content
-SELECT *
-FROM public.content
-ORDER BY id DESC;
-
--- 2. Verify external_content_id and YouTube performance metrics
-SELECT
-    id,
-    creator_id,
-    platform,
-    external_content_id,
-    title,
-    views,
-    likes,
-    comments,
-    published_at
-FROM public.content
-WHERE platform = 'YouTube'
-ORDER BY id DESC;
-
--- 3. Verify deduplication (count should not multiply on repeated sync)
-SELECT
-    platform,
-    external_content_id,
-    COUNT(*) AS record_count
-FROM public.content
-GROUP BY platform, external_content_id
-HAVING COUNT(*) > 1;
--- (Should return 0 rows)
-
--- 4. Verify Revenue records (Sprint 6)
-SELECT id, creator_id, source, amount, currency, revenue_date, created_at
-FROM public.revenue
-ORDER BY id DESC;
-
--- 5. Verify Sponsorship campaigns (Sprint 6)
-SELECT id, creator_id, brand_name, campaign_name, contract_value, currency, status, payment_status, start_date, end_date
-FROM public.sponsorship
-ORDER BY id DESC;
+### 2. Platform Comparison (`GET /analytics/platform-comparison`)
+Returns database-derived breakdown for all platforms with data:
+```json
+{
+  "YouTube": {
+    "views": 621000,
+    "reach": 584500,
+    "engagement_rate": 12.16,
+    "likes": 52580,
+    "comments": 4540
+  },
+  "Instagram": {
+    "views": 497200,
+    "reach": 451000,
+    "engagement_rate": 18.15,
+    "likes": 57350,
+    "comments": 4855
+  },
+  "Facebook": {
+    "views": 310000,
+    "reach": 281400,
+    "engagement_rate": 12.55,
+    "likes": 25670,
+    "comments": 3665
+  },
+  "LinkedIn": {
+    "views": 408500,
+    "reach": 379500,
+    "engagement_rate": 13.51,
+    "likes": 35350,
+    "comments": 4605
+  }
+}
 ```
 
+### 3. Chronological Charts & Content Ranking
+- `GET /analytics/chart/engagement?platform={name}` &ndash; Chronological engagement rate timeline.
+- `GET /analytics/chart/followers` &ndash; Follower growth timeline from Growth table.
+- `GET /analytics/top-content?platform={name}` &ndash; Top 5 content items ranked by engagement rate.
+
 ---
 
-## How to Run Tests
+## 7. Frontend Features & Routing
 
-To execute the automated test suite:
+1. **Dashboard Platform Selector**:
+   - `Platform: [ All Platforms ▼ ]` dropdown with options:
+     - `All Platforms`
+     - `YouTube`
+     - `Instagram`
+     - `Facebook`
+     - `LinkedIn`
+   - Dynamically re-fetches all 7 KPI cards, engagement trends, top content, and platform distribution.
+2. **Dedicated Platform Pages**:
+   - `/platform/:platformId` or `/youtube`, `/instagram`, `/facebook`, `/linkedin`
+   - Implemented platforms display platform metrics, status badge ("Live API" vs "Manual Data / PostgreSQL"), engagement trend, and top posts.
+   - Unimplemented platforms (e.g. TikTok, X) display a clean **"Coming Soon"** state instead of redirecting to the landing page.
+3. **Social Media Page (`/social-connections`)**:
+   - Displays YouTube, Instagram, Facebook, and LinkedIn.
+   - Shows state badges: `Connected`, `Manual Data`, `Sync Available`.
+   - Direct button to View Platform Analytics without undefined URL bounces.
 
-```bash
+---
+
+## 8. How to Run the Application
+
+### Backend (FastAPI & PostgreSQL)
+
+1. Activate virtual environment and navigate to backend directory:
+   ```powershell
+   cd creatoriq_backend
+   ..\venv\Scripts\activate
+   ```
+2. Verify `.env` configuration:
+   ```env
+   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/creatoriq
+   JWT_SECRET_KEY=your-jwt-secret-key
+   YOUTUBE_API_KEY=your_optional_youtube_key
+   ```
+3. Seed multi-platform dataset (creates 12+ items per platform = 48+ items):
+   ```powershell
+   python seed_multiplatform.py
+   ```
+4. Start development server:
+   ```powershell
+   uvicorn main:app --reload --host 127.0.0.1 --port 8000
+   ```
+
+### Frontend (React & Vite)
+
+1. Navigate to frontend:
+   ```powershell
+   cd frontend
+   ```
+2. Start development server:
+   ```powershell
+   cmd /c npm run dev
+   ```
+3. Open [http://localhost:5173](http://localhost:5173) in browser.
+4. Log in using demo credentials:
+   - **Email:** `creator@creatoriq.dev`
+   - **Password:** `Password123!`
+
+---
+
+## 9. Verification & Testing Procedure
+
+### A. Automated Backend Tests
+Run the comprehensive test suite (all 85 tests):
+```powershell
 pytest -v
 ```
 
-To run Sprint 6 Revenue & Sponsorship tests specifically:
+### B. Swagger UI Testing
+1. Navigate to: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+2. Log in at `POST /auth/login` and paste the JWT token into the **Authorize** dialog.
+3. Test endpoints:
+   - `POST /content` (verify content creation and duplicate prevention with same `external_content_id`)
+   - `GET /content` (verify pagination and total content count)
+   - `GET /content/{id}` (verify fetching single item)
+   - `GET /analytics/summary` (test with and without `platform=Instagram`)
+   - `GET /analytics/top-content` (test with and without `platform=Facebook`)
+   - `GET /analytics/platform-performance` (grouped totals)
+   - `GET /analytics/chart/engagement` (time series)
+   - `GET /analytics/chart/followers` (growth curve)
+   - `GET /analytics/platform-comparison` (YouTube, Instagram, Facebook, LinkedIn breakdown)
 
-```bash
-pytest tests/test_sprint6.py -v
+### C. pgAdmin / PostgreSQL Verification Queries
+Run in pgAdmin Query Tool:
+
+```sql
+-- 1. Check content distribution across platforms (should show 10+ records for YouTube, Instagram, Facebook, LinkedIn)
+SELECT platform, COUNT(*) AS total_records
+FROM public.content
+GROUP BY platform
+ORDER BY total_records DESC;
+
+-- 2. View recent content records
+SELECT id, creator_id, platform, external_content_id, title, views, likes, comments, shares, reach, engagement_rate, published_at
+FROM public.content
+ORDER BY published_at DESC;
+
+-- 3. Verify duplicate prevention (should return 0 rows)
+SELECT platform, external_content_id, COUNT(*)
+FROM public.content
+WHERE external_content_id IS NOT NULL
+GROUP BY platform, external_content_id
+HAVING COUNT(*) > 1;
+
+-- 4. Verify social connections status
+SELECT user_id, platform, status, last_synced_at
+FROM public.social_connections;
 ```
 
-To run Sprint 5 YouTube integration tests:
+---
 
-```bash
-pytest tests/test_youtube_sprint5.py -v
-```
+## 10. Security Practices
+
+- `.env` files and production credentials are excluded from Git tracking via `.gitignore`.
+- Password hashes use salted bcrypt via PassLib.
+- User data isolation is enforced across all analytics queries via `_apply_scope` to prevent cross-tenant data leakage.

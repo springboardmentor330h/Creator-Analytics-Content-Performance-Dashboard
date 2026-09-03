@@ -19,6 +19,7 @@ import Profile from './pages/Profile'
 import Register from './pages/Register'
 import Reports from './pages/Reports'
 import Revenue from './pages/Revenue'
+import PlatformPage from './pages/PlatformPage'
 import SocialConnections from './pages/SocialConnections'
 import Sponsorships from './pages/Sponsorships'
 import ProtectedRoute from './routes/ProtectedRoute'
@@ -104,7 +105,7 @@ function App() {
             }
           />
 
-          {/* Social */}
+          {/* Social & Platform Analytics */}
           <Route
             path="/social-connections"
             element={
@@ -113,6 +114,12 @@ function App() {
               </RoleProtectedRoute>
             }
           />
+          <Route path="/platform/:platformId" element={<PlatformPage />} />
+          <Route path="/platforms/:platformId" element={<PlatformPage />} />
+          <Route path="/youtube" element={<PlatformPage forcedPlatform="youtube" />} />
+          <Route path="/instagram" element={<PlatformPage forcedPlatform="instagram" />} />
+          <Route path="/facebook" element={<PlatformPage forcedPlatform="facebook" />} />
+          <Route path="/linkedin" element={<PlatformPage forcedPlatform="linkedin" />} />
 
           {/* Profile & Settings */}
           <Route path="/profile" element={<Profile />} />
