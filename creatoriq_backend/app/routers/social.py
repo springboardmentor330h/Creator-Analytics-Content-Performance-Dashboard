@@ -85,12 +85,16 @@ def sync_youtube(
     channel_id = payload.channel_id if payload else None
     query = payload.query if payload else None
     max_results = payload.max_results if payload and payload.max_results else 10
+    api_key = payload.api_key if payload else None
+    account_name = payload.account_name if payload else None
     return sync_youtube_data(
         db=db,
         user=current_user,
         channel_id=channel_id,
         query=query,
         max_results=max_results,
+        api_key=api_key,
+        account_name=account_name,
     )
 
 

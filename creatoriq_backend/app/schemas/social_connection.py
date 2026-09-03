@@ -86,12 +86,16 @@ class YouTubeSyncRequest(BaseModel):
     channel_id: Optional[str] = None
     query: Optional[str] = None
     max_results: Optional[int] = 10
+    api_key: Optional[str] = None
+    account_name: Optional[str] = None
 
 
 class YouTubeSyncResponse(BaseModel):
     platform: str = "YouTube"
     status: str = "success"
     records_synced: int
+    channel_title: Optional[str] = None
+    message: Optional[str] = None
 
 
 class InstagramSyncRequest(BaseModel):

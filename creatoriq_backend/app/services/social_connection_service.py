@@ -30,7 +30,7 @@ class SocialConnectionService:
         
         # If user is Agency, they can view assigned creators' connections if target user specified, but default to user's own
         connections = db.query(SocialConnection).filter(SocialConnection.user_id == user.id).all()
-        existing_map = {conn.platform: conn for conn in connections}
+        existing_map = {conn.platform.lower(): conn for conn in connections}
 
         # Build list of 6 platforms with actual or default status
         result = []

@@ -369,11 +369,14 @@ def sync_youtube_data(
     channel_id: Optional[str] = None,
     query: Optional[str] = None,
     max_results: int = 10,
+    api_key: Optional[str] = None,
+    account_name: Optional[str] = None,
     custom_items: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Execute end-to-end YouTube content synchronization and upsert into PostgreSQL.
 
-    Enforces duplicate detection using platform + external_content_id.
+    Enforces duplicate detection using platform + external_content_id, and updates
+    the SocialConnection state in PostgreSQL to reflect connected live status.
     """
     raw_items: List[Dict[str, Any]] = []
 
@@ -384,6 +387,7 @@ def sync_youtube_data(
             channel_id=channel_id,
             query=query,
             max_results=max_results,
+            api_key=api_key,
         )
 
     if not raw_items:
@@ -391,6 +395,8 @@ def sync_youtube_data(
             "platform": "YouTube",
             "status": "success",
             "records_synced": 0,
+            "channel_title": account_name or channel_id or "YouTube Live Channel",
+            "message": "No videos found for the specified channel or query.",
         }
 
     synced_count = 0
@@ -464,6 +470,39 @@ def sync_youtube_data(
 
         db.commit()
 
+        # 4. Update SocialConnection record in PostgreSQL to reflect active live connection
+        from app.models.social_connection import SocialConnection
+        display = account_name or (f"@{channel_id.lstrip('@')}" if channel_id else (f"@{user.full_name.lower().replace(' ', '')}" if user.full_name else "@youtube_creator"))
+        channel_title = account_name or (channel_id or "YouTube Live Channel")
+
+        conn = db.query(SocialConnection).filter(
+            SocialConnection.user_id == user.id,
+            func.lower(SocialConnection.platform) == "youtube",
+        ).first()
+
+        if not conn:
+            conn = SocialConnection(
+                user_id=user.id,
+                platform="youtube",
+                platform_username=display,
+                display_name=channel_title,
+                status="connected",
+                last_synced_at=datetime.utcnow(),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(conn)
+        else:
+            conn.status = "connected"
+            if display:
+                conn.platform_username = display
+            if channel_title:
+                conn.display_name = channel_title
+            conn.last_synced_at = datetime.utcnow()
+            conn.updated_at = datetime.utcnow()
+
+        db.commit()
+
     except HTTPException:
         db.rollback()
         raise
@@ -485,4 +524,6 @@ def sync_youtube_data(
         "platform": "YouTube",
         "status": "success",
         "records_synced": synced_count,
+        "channel_title": channel_title,
+        "message": f"Successfully synchronized {synced_count} videos from YouTube Data API v3.",
     }
