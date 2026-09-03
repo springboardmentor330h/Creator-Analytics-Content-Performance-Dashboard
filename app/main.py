@@ -13,6 +13,7 @@ from app.models.audience import Audience
 from app.models.growth import Growth
 from app.models.revenue import Revenue
 from app.models.sponsorship import Sponsorship
+from app.models.notification import Notification
 
 
 # =========================================================
@@ -26,7 +27,8 @@ from app.routers.analytics import router as analytics_router
 from app.routers.audience import router as audience_router
 from app.routers.social import router as social_router
 from app.routers.revenue import router as revenue_router
-
+from app.routers.notification import router as notification_router
+from app.routers.report import router as report_router
 
 # =========================================================
 # Create database tables
@@ -55,8 +57,8 @@ app.include_router(analytics_router)
 app.include_router(audience_router)
 app.include_router(social_router)
 app.include_router(revenue_router)
-
-
+app.include_router(notification_router)
+app.include_router(report_router)
 # =========================================================
 # Root endpoint
 # =========================================================

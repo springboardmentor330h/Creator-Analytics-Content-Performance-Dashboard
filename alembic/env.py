@@ -22,6 +22,7 @@ from app.models.audience import Audience
 from app.models.growth import Growth
 from app.models.revenue import Revenue
 from app.models.sponsorship import Sponsorship
+from app.models.notification import Notification
 
 # Metadata used for Alembic autogenerate
 target_metadata = Base.metadata
