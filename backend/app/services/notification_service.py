@@ -15,68 +15,74 @@ def create_notification(db: Session, creator_id: int, type: str, title: str, mes
 
 
 def check_performance_alerts(db: Session, creator_id: int) -> list:
-    """Flags content with unusually low engagement rate."""
+    """Flags content with unusually low engagement rate, skipping duplicates."""
     content_items = db.query(Content).filter(Content.creator_id == creator_id).all()
     created = []
 
     for c in content_items:
         rate = calculate_engagement(c)["engagement_rate"]
-        if rate < 2.0:  # threshold: low engagement
-            note = create_notification(
-                db, creator_id, "performance",
-                "Low Engagement Alert",
-                f"'{c.content_title}' on {c.platform} has a low engagement rate of {rate}%."
-            )
+        if rate < 2.0:
+            message = f"'{c.content_title}' on {c.platform} has a low engagement rate of {rate}%."
+
+            already_exists = db.query(Notification).filter(
+                Notification.creator_id == creator_id,
+                Notification.type == "performance",
+                Notification.message == message
+            ).first()
+            if already_exists:
+                continue
+
+            note = create_notification(db, creator_id, "performance", "Low Engagement Alert", message)
             created.append(note)
 
     return created
 
 
 def check_engagement_alerts(db: Session, creator_id: int) -> list:
-    """Flags standout high-performing content."""
+    """Flags standout high-performing content, skipping duplicates."""
     content_items = db.query(Content).filter(Content.creator_id == creator_id).all()
     created = []
 
     for c in content_items:
         rate = calculate_engagement(c)["engagement_rate"]
-        if rate > 15.0:  # threshold: high engagement worth celebrating
-            note = create_notification(
-                db, creator_id, "engagement",
-                "High Engagement!",
-                f"'{c.content_title}' on {c.platform} is performing great with {rate}% engagement."
-            )
+        if rate > 15.0:
+            message = f"'{c.content_title}' on {c.platform} is performing great with {rate}% engagement."
+
+            already_exists = db.query(Notification).filter(
+                Notification.creator_id == creator_id,
+                Notification.type == "engagement",
+                Notification.message == message
+            ).first()
+            if already_exists:
+                continue
+
+            note = create_notification(db, creator_id, "engagement", "High Engagement!", message)
             created.append(note)
 
     return created
 
 
 def check_revenue_alerts(db: Session, creator_id: int) -> list:
-    """Flags large revenue entries, skipping ones already alerted."""
+    """Flags large revenue entries, skipping duplicates."""
     revenues = db.query(Revenue).filter(Revenue.creator_id == creator_id).all()
     created = []
 
     for r in revenues:
         if r.amount >= 10000:
-            expected_message = f"You earned {r.amount} from {r.source} on {r.date}."
+            message = f"You earned {r.amount} from {r.source} on {r.date}."
 
             already_exists = db.query(Notification).filter(
                 Notification.creator_id == creator_id,
                 Notification.type == "revenue",
-                Notification.message == expected_message
+                Notification.message == message
             ).first()
-
             if already_exists:
                 continue
 
-            note = create_notification(
-                db, creator_id, "revenue",
-                "Revenue Milestone",
-                expected_message
-            )
+            note = create_notification(db, creator_id, "revenue", "Revenue Milestone", message)
             created.append(note)
 
     return created
-
 
 def get_notifications(db: Session, creator_id: int, unread_only: bool = False) -> list:
     query = db.query(Notification).filter(Notification.creator_id == creator_id)

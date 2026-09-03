@@ -57,38 +57,58 @@ def get_top_content(db: Session, limit: int = 5):
     return ranked[:limit]
 
 
-def get_platform_performance(db: Session):
-    """Task 3: aggregated performance metrics grouped by platform."""
-    all_content = db.query(Content).all()
+def get_platform_comparison(db: Session) -> dict:
+    all_content = db.query(Content).order_by(Content.published_date.asc()).all()
 
     platforms = {}
-
-    for content in all_content:
-        metrics = calculate_engagement(content)
-        platform = content.platform
-
-        if platform not in platforms:
-            platforms[platform] = {
-                "platform": platform,
-                "total_views": 0,
-                "total_likes": 0,
-                "total_comments": 0,
-                "total_reach": 0,
-                "engagement_rates": []
+    for c in all_content:
+        if c.platform not in platforms:
+            platforms[c.platform] = {
+                "views": 0,
+                "reach": 0,
+                "likes": 0,
+                "comments": 0,
+                "engagement_rates": [],
+                "dated_rates": []  # (date, engagement_rate) pairs, used to compute growth
             }
+        platforms[c.platform]["views"] += c.views
+        platforms[c.platform]["reach"] += c.reach
+        platforms[c.platform]["likes"] += c.likes
+        platforms[c.platform]["comments"] += c.comments
 
-        platforms[platform]["total_views"] += content.views
-        platforms[platform]["total_likes"] += content.likes
-        platforms[platform]["total_comments"] += content.comments
-        platforms[platform]["total_reach"] += content.reach
-        platforms[platform]["engagement_rates"].append(metrics["engagement_rate"])
+        rate = calculate_engagement(c)["engagement_rate"]
+        platforms[c.platform]["engagement_rates"].append(rate)
+        platforms[c.platform]["dated_rates"].append((c.published_date, rate))
 
-    result = []
-    for platform_data in platforms.values():
-        rates = platform_data.pop("engagement_rates")
+    result = {}
+    for platform, data in platforms.items():
+        rates = data.pop("engagement_rates")
         avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
-        platform_data["average_engagement_rate"] = avg_rate
-        result.append(platform_data)
+        data["engagement_rate"] = avg_rate
+
+        # Growth: compare average engagement rate in the earlier half of this
+        # platform's content vs. the later half, since per-platform follower
+        # growth isn't tracked in our data model. This is a content-engagement
+        # growth signal, not follower growth.
+        dated_rates = sorted(data.pop("dated_rates"), key=lambda x: x[0])
+        n = len(dated_rates)
+
+        if n < 2:
+            growth_rate = 0.0
+        else:
+            mid = n // 2
+            first_half = [r for _, r in dated_rates[:mid]]
+            second_half = [r for _, r in dated_rates[mid:]]
+            first_avg = sum(first_half) / len(first_half) if first_half else 0
+            second_avg = sum(second_half) / len(second_half) if second_half else 0
+
+            if first_avg == 0:
+                growth_rate = 0.0
+            else:
+                growth_rate = round(((second_avg - first_avg) / first_avg) * 100, 2)
+
+        data["growth_rate"] = growth_rate
+        result[platform] = data
 
     return result
 
@@ -114,8 +134,8 @@ def get_dashboard_summary(db: Session):
     engagement_rates = [calculate_engagement(c)["engagement_rate"] for c in all_content]
     average_engagement_rate = round(sum(engagement_rates) / total_content, 2)
 
-    platform_stats = get_platform_performance(db)
-    best_platform = max(platform_stats, key=lambda p: p["average_engagement_rate"])["platform"] if platform_stats else None
+    platform_stats = get_platform_comparison(db)
+    best_platform = max(platform_stats, key=lambda p: platform_stats[p]["engagement_rate"]) if platform_stats else None
 
     top = max(all_content, key=lambda c: calculate_engagement(c)["engagement_rate"])
     top_content_title = top.content_title
@@ -194,31 +214,3 @@ def get_followers_chart(db: Session) -> dict:
     return {"labels": labels, "values": values}
 
 
-# ----- Sprint 4: Platform Comparison -----
-def get_platform_comparison(db: Session) -> dict:
-    all_content = db.query(Content).all()
-
-    platforms = {}
-    for c in all_content:
-        if c.platform not in platforms:
-            platforms[c.platform] = {
-                "views": 0,
-                "reach": 0,
-                "likes": 0,
-                "comments": 0,
-                "engagement_rates": []
-            }
-        platforms[c.platform]["views"] += c.views
-        platforms[c.platform]["reach"] += c.reach
-        platforms[c.platform]["likes"] += c.likes
-        platforms[c.platform]["comments"] += c.comments
-        platforms[c.platform]["engagement_rates"].append(calculate_engagement(c)["engagement_rate"])
-
-    result = {}
-    for platform, data in platforms.items():
-        rates = data.pop("engagement_rates")
-        avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
-        data["engagement_rate"] = avg_rate
-        result[platform] = data
-
-    return result

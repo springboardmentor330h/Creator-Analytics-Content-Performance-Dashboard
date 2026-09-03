@@ -30,7 +30,7 @@ class SyncRequest(BaseModel):
 class YouTubeSyncRequest(BaseModel):
     channel_id: str
     creator_id: int
-    max_results: int = 10
+    max_results: int = 20
 
 
 @router.post("/social/connect")
@@ -117,7 +117,8 @@ def sync_youtube_data(request: YouTubeSyncRequest, db: Session = Depends(get_db)
             db.query(Content)
             .filter(
                 Content.platform == record["platform"],
-                Content.external_content_id == record["external_content_id"]
+                Content.external_content_id == record["external_content_id"],
+                Content.creator_id == record["creator_id"]
             )
             .first()
         )
@@ -150,7 +151,7 @@ def sync_youtube_data(request: YouTubeSyncRequest, db: Session = Depends(get_db)
 class InstagramSyncRequest(BaseModel):
     ig_user_id: str
     creator_id: int
-    max_results: int = 10
+    max_results: int = 20
 
 
 @router.post("/social/instagram/sync")
@@ -173,7 +174,8 @@ def sync_instagram_data(request: InstagramSyncRequest, db: Session = Depends(get
             db.query(Content)
             .filter(
                 Content.platform == record["platform"],
-                Content.external_content_id == record["external_content_id"]
+                Content.external_content_id == record["external_content_id"],
+                Content.creator_id == record["creator_id"]
             )
             .first()
         )
