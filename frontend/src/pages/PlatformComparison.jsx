@@ -12,8 +12,6 @@ export default function PlatformComparison() {
     api
       .get("/analytics/platform-comparison")
       .then((res) => {
-        // Backend returns a dict keyed by platform: { "YouTube": {...}, "Instagram": {...} }
-        // Convert it into an array for charts/tables to consume.
         const arr = Object.entries(res.data).map(([platform, stats]) => ({
           platform,
           views: stats.views,
@@ -21,6 +19,7 @@ export default function PlatformComparison() {
           comments: stats.comments,
           reach: stats.reach,
           engagement_rate: stats.engagement_rate,
+          growth_rate: stats.growth_rate,
         }));
         setData(arr);
       })
@@ -51,7 +50,13 @@ export default function PlatformComparison() {
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-400 border-b border-gray-100 dark:text-gray-500 dark:border-gray-700">
-              <th className="py-2">Platform</th><th className="py-2">Views</th><th className="py-2">Likes</th><th className="py-2">Comments</th><th className="py-2">Reach</th><th className="py-2">Engagement Rate</th>
+              <th className="py-2">Platform</th>
+              <th className="py-2">Views</th>
+              <th className="py-2">Likes</th>
+              <th className="py-2">Comments</th>
+              <th className="py-2">Reach</th>
+              <th className="py-2">Engagement Rate</th>
+              <th className="py-2">Growth</th>
             </tr>
           </thead>
           <tbody>
@@ -63,6 +68,11 @@ export default function PlatformComparison() {
                 <td className="py-2 text-gray-600 dark:text-gray-400">{p.comments.toLocaleString()}</td>
                 <td className="py-2 text-gray-600 dark:text-gray-400">{p.reach.toLocaleString()}</td>
                 <td className="py-2 text-gray-600 dark:text-gray-400">{p.engagement_rate}%</td>
+                <td className="py-2">
+                  <span className={p.growth_rate >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"}>
+                    {p.growth_rate >= 0 ? "+" : ""}{p.growth_rate}%
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>

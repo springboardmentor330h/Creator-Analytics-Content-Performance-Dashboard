@@ -7,7 +7,7 @@ import PlatformSelector from "../components/PlatformSelector";
 import { LoadingState, ErrorState, EmptyState } from "../components/LoadingState";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
-const ALL_PLATFORMS = ["YouTube", "Instagram", "TikTok", "Facebook", "LinkedIn", "Twitter", "Threads", "Pinterest", "Snapchat", "Twitch"];
+const ALL_PLATFORMS = ["YouTube", "Instagram", "TikTok", "Facebook", "LinkedIn","X", "Twitter", "Threads", "Pinterest", "Snapchat", "Twitch"];
 const emptyForm = { creator_id: "", platform: "", content_title: "", views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0, published_date: "" };
 
 export default function Content() {
