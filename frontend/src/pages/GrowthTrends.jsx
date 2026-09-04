@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getGrowthReport } from "../services/api";
+import PlatformSelector from "../components/PlatformSelector";
 import {
   LineChart,
   Line,
@@ -12,15 +13,16 @@ import {
 import { TrendingUp, Users, Calendar, ArrowUpRight } from "lucide-react";
 
 function GrowthTrends() {
+  const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadGrowth = async () => {
+  const loadGrowth = async (platform = selectedPlatform) => {
     try {
       setLoading(true);
       setError("");
-      const result = await getGrowthReport();
+      const result = await getGrowthReport(platform);
       setData(result);
     } catch (err) {
       console.error("Growth API error:", err);
@@ -31,10 +33,10 @@ function GrowthTrends() {
   };
 
   useEffect(() => {
-    loadGrowth();
-  }, []);
+    loadGrowth(selectedPlatform);
+  }, [selectedPlatform]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-3">
         <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
@@ -43,7 +45,7 @@ function GrowthTrends() {
     );
   }
 
-  if (error) {
+  if (error && !data) {
     return <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">{error}</div>;
   }
 
@@ -54,12 +56,22 @@ function GrowthTrends() {
   const netGrowth = latestFollowers - initialFollowers;
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 pb-16">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Follower Growth & Trajectory</h1>
-        <p className="text-sm text-slate-500 mt-1">Cross-platform follower velocity, reach compounding, and milestone projections</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Follower Growth & Trajectory</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {selectedPlatform === "All" ? "All Channels" : selectedPlatform}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1 font-medium">Cross-platform follower velocity, reach compounding, and milestone projections</p>
+        </div>
       </div>
+
+      {/* Platform Selector Filter */}
+      <PlatformSelector selectedPlatform={selectedPlatform} onSelectPlatform={setSelectedPlatform} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

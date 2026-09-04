@@ -29,7 +29,20 @@ function Revenue() {
   }, [selectedPlatform]);
 
   const report = data || {};
-  const revenueList = report.data || [];
+  const rawList = Array.isArray(report.data)
+    ? report.data
+    : Array.isArray(report.revenue)
+    ? report.revenue
+    : Array.isArray(report)
+    ? report
+    : [];
+
+  const revenueList = selectedPlatform !== "All"
+    ? rawList.filter((r) => (r.platform || "").toLowerCase() === selectedPlatform.toLowerCase() || r.platform === "Multi-Platform")
+    : rawList;
+
+  const totalRevenue = selectedPlatform !== "All" ? revenueList.reduce((sum, r) => sum + (Number(r.amount) || 0), 0) : (report.total_revenue ?? revenueList.reduce((sum, r) => sum + (Number(r.amount) || 0), 0));
+  const totalTransactions = selectedPlatform !== "All" ? revenueList.length : (report.total_records ?? revenueList.length);
 
   // Group revenue by source for visual chart
   const sourceMap = {};
@@ -71,7 +84,7 @@ function Revenue() {
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Recorded Revenue</span>
             <div className="text-2xl font-extrabold text-slate-900 mt-1 tracking-tight">
-              ₹{Number(report.total_revenue ?? 0).toLocaleString()}
+              ₹{Number(totalRevenue).toLocaleString()}
             </div>
             <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-1">
               <ArrowUpRight className="w-3.5 h-3.5" /> +22.4% vs last month
@@ -86,7 +99,7 @@ function Revenue() {
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Transactions</span>
             <div className="text-2xl font-extrabold text-slate-900 mt-1 tracking-tight">
-              {report.total_records ?? 0} Payouts
+              {totalTransactions} Payouts
             </div>
             <div className="text-[11px] font-semibold text-slate-400 mt-1">100% Cleared & Verified</div>
           </div>
@@ -99,7 +112,7 @@ function Revenue() {
           <div>
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg Deal Value</span>
             <div className="text-2xl font-extrabold text-indigo-600 mt-1 tracking-tight">
-              ₹{report.total_records > 0 ? Math.round(Number(report.total_revenue) / report.total_records).toLocaleString() : 0}
+              ₹{totalTransactions > 0 ? Math.round(Number(totalRevenue) / totalTransactions).toLocaleString() : 0}
             </div>
             <div className="text-[11px] font-semibold text-emerald-600 mt-1">High Sponsor Conversion</div>
           </div>

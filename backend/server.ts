@@ -2234,10 +2234,16 @@ const registerRoutes = (prefix = '') => {
     const platform = req.query.platform as string | undefined;
     let userAudience = audiences.filter((a) => a.creator_id === 1);
     if (platform && platform !== 'All' && platform !== 'All Platforms') {
-      userAudience = userAudience.filter((a) => a.platform.toLowerCase() === platform.toLowerCase());
+      userAudience = userAudience.filter((a) => (a.platform || '').toLowerCase() === platform.toLowerCase());
     }
+    const total_followers = userAudience.reduce((sum, a) => sum + (Number(a.followers) || 0), 0);
+    const total_reach = userAudience.reduce((sum, a) => sum + (Number(a.reach) || 0), 0);
+    const total_impressions = userAudience.reduce((sum, a) => sum + (Number(a.impressions) || 0), 0);
     res.json({
       total_records: userAudience.length,
+      total_followers,
+      total_reach,
+      total_impressions,
       data: userAudience,
     });
   });

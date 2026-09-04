@@ -4,6 +4,7 @@ import PlatformSelector, { PLATFORMS } from "../components/PlatformSelector";
 import {
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -79,53 +80,64 @@ function Dashboard() {
   }
 
   const content = data?.content_performance || {};
+  const rawList = Array.isArray(content.content) ? content.content : [];
+  const contentList = selectedPlatform !== "All"
+    ? rawList.filter((c) => (c.platform || "").toLowerCase() === selectedPlatform.toLowerCase())
+    : rawList;
   const platforms = data?.platform_comparison || [];
+
+  const totalContent = selectedPlatform !== "All" && contentList.length > 0 ? contentList.length : (content.total_content ?? contentList.length);
+  const totalViews = selectedPlatform !== "All" && contentList.length > 0 ? contentList.reduce((s, c) => s + (Number(c.views) || 0), 0) : (content.total_views ?? contentList.reduce((s, c) => s + (Number(c.views) || 0), 0));
+  const totalLikes = selectedPlatform !== "All" && contentList.length > 0 ? contentList.reduce((s, c) => s + (Number(c.likes) || 0), 0) : (content.total_likes ?? contentList.reduce((s, c) => s + (Number(c.likes) || 0), 0));
+  const totalComments = selectedPlatform !== "All" && contentList.length > 0 ? contentList.reduce((s, c) => s + (Number(c.comments) || 0), 0) : (content.total_comments ?? contentList.reduce((s, c) => s + (Number(c.comments) || 0), 0));
+  const totalShares = selectedPlatform !== "All" && contentList.length > 0 ? contentList.reduce((s, c) => s + (Number(c.shares) || 0), 0) : (content.total_shares ?? contentList.reduce((s, c) => s + (Number(c.shares) || 0), 0));
+  const totalReach = selectedPlatform !== "All" && contentList.length > 0 ? contentList.reduce((s, c) => s + (Number(c.reach) || 0), 0) : (content.total_reach ?? contentList.reduce((s, c) => s + (Number(c.reach) || 0), 0));
 
   const cards = [
     {
       title: "Total Content",
-      value: content.total_content ?? 0,
-      change: "+4 this week",
+      value: totalContent,
+      change: selectedPlatform === "All" ? "+4 this week" : `${selectedPlatform} Posts`,
       icon: Video,
       gradient: "from-blue-500 to-indigo-600",
       bgLight: "bg-blue-50/60 border-blue-100/80",
     },
     {
       title: "Total Views",
-      value: content.total_views ?? 0,
-      change: "+24.8%",
+      value: totalViews,
+      change: selectedPlatform === "All" ? "+24.8%" : `${selectedPlatform} Views`,
       icon: Eye,
       gradient: "from-indigo-500 to-purple-600",
       bgLight: "bg-indigo-50/60 border-indigo-100/80",
     },
     {
       title: "Total Likes",
-      value: content.total_likes ?? 0,
-      change: "+18.2%",
+      value: totalLikes,
+      change: selectedPlatform === "All" ? "+18.2%" : `${selectedPlatform} Likes`,
       icon: Heart,
       gradient: "from-rose-500 to-pink-600",
       bgLight: "bg-rose-50/60 border-rose-100/80",
     },
     {
       title: "Total Comments",
-      value: content.total_comments ?? 0,
-      change: "+12.4%",
+      value: totalComments,
+      change: selectedPlatform === "All" ? "+12.4%" : `${selectedPlatform} Comments`,
       icon: MessageSquare,
       gradient: "from-amber-500 to-orange-600",
       bgLight: "bg-amber-50/60 border-amber-100/80",
     },
     {
       title: "Total Shares",
-      value: content.total_shares ?? 0,
-      change: "+31.0%",
+      value: totalShares,
+      change: selectedPlatform === "All" ? "+31.0%" : `${selectedPlatform} Shares`,
       icon: Share2,
       gradient: "from-violet-500 to-indigo-600",
       bgLight: "bg-violet-50/60 border-violet-100/80",
     },
     {
       title: "Total Reach",
-      value: content.total_reach ?? 0,
-      change: "+27.5%",
+      value: totalReach,
+      change: selectedPlatform === "All" ? "+27.5%" : `${selectedPlatform} Reach`,
       icon: Users,
       gradient: "from-emerald-500 to-teal-600",
       bgLight: "bg-emerald-50/60 border-emerald-100/80",
@@ -232,7 +244,19 @@ function Dashboard() {
                       boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
                     }}
                   />
-                  <Bar dataKey="total_views" name="Total Views" fill="#4f46e5" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="total_views" name="Total Views" radius={[8, 8, 0, 0]}>
+                    {platforms.map((entry, index) => {
+                      const isSelected =
+                        selectedPlatform === "All" ||
+                        entry.platform.toLowerCase() === selectedPlatform.toLowerCase();
+                      return (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={isSelected ? "#4f46e5" : "#cbd5e1"}
+                        />
+                      );
+                    })}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

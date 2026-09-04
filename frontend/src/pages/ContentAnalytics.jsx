@@ -29,7 +29,24 @@ function ContentAnalytics() {
   }, [selectedPlatform]);
 
   const report = data || {};
-  const contentList = Array.isArray(report.content) ? report.content : [];
+  const rawList = Array.isArray(report.content)
+    ? report.content
+    : Array.isArray(report.data)
+    ? report.data
+    : Array.isArray(report.items)
+    ? report.items
+    : [];
+
+  const contentList = selectedPlatform !== "All"
+    ? rawList.filter((item) => (item.platform || "").toLowerCase() === selectedPlatform.toLowerCase())
+    : rawList;
+
+  const totalPosts = selectedPlatform !== "All" ? contentList.length : (report.total_content ?? contentList.length);
+  const totalViews = selectedPlatform !== "All" ? contentList.reduce((s, c) => s + (Number(c.views) || 0), 0) : (report.total_views ?? contentList.reduce((s, c) => s + (Number(c.views) || 0), 0));
+  const totalLikes = selectedPlatform !== "All" ? contentList.reduce((s, c) => s + (Number(c.likes) || 0), 0) : (report.total_likes ?? contentList.reduce((s, c) => s + (Number(c.likes) || 0), 0));
+  const totalComments = selectedPlatform !== "All" ? contentList.reduce((s, c) => s + (Number(c.comments) || 0), 0) : (report.total_comments ?? contentList.reduce((s, c) => s + (Number(c.comments) || 0), 0));
+  const totalShares = selectedPlatform !== "All" ? contentList.reduce((s, c) => s + (Number(c.shares) || 0), 0) : (report.total_shares ?? contentList.reduce((s, c) => s + (Number(c.shares) || 0), 0));
+  const totalReach = selectedPlatform !== "All" ? contentList.reduce((s, c) => s + (Number(c.reach) || 0), 0) : (report.total_reach ?? contentList.reduce((s, c) => s + (Number(c.reach) || 0), 0));
 
   const filteredContent = contentList.filter((item) => {
     const title = item.title || item.content_title || "";
@@ -70,7 +87,7 @@ function ContentAnalytics() {
             <span>Total Posts</span>
             <Video className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{report.total_content ?? 0}</div>
+          <div className="text-2xl font-extrabold text-slate-900 tracking-tight">{totalPosts}</div>
         </div>
 
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs card-hover">
@@ -79,7 +96,7 @@ function ContentAnalytics() {
             <Eye className="w-4 h-4 text-indigo-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {Number(report.total_views ?? 0).toLocaleString()}
+            {Number(totalViews).toLocaleString()}
           </div>
         </div>
 
@@ -89,7 +106,7 @@ function ContentAnalytics() {
             <Heart className="w-4 h-4 text-rose-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {Number(report.total_likes ?? 0).toLocaleString()}
+            {Number(totalLikes).toLocaleString()}
           </div>
         </div>
 
@@ -99,7 +116,7 @@ function ContentAnalytics() {
             <MessageSquare className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {Number(report.total_comments ?? 0).toLocaleString()}
+            {Number(totalComments).toLocaleString()}
           </div>
         </div>
 
@@ -109,7 +126,7 @@ function ContentAnalytics() {
             <Share2 className="w-4 h-4 text-purple-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {Number(report.total_shares ?? 0).toLocaleString()}
+            {Number(totalShares).toLocaleString()}
           </div>
         </div>
 
@@ -119,7 +136,7 @@ function ContentAnalytics() {
             <Bookmark className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            {Number(report.total_reach ?? 0).toLocaleString()}
+            {Number(totalReach).toLocaleString()}
           </div>
         </div>
       </div>

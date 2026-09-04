@@ -4,6 +4,7 @@ import {
   downloadPdfReport,
   downloadExcelReport,
 } from "../services/api";
+import PlatformSelector from "../components/PlatformSelector";
 import {
   FileText,
   Download,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 
 function Reports() {
+  const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -22,15 +24,19 @@ function Reports() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const loadReport = async () => {
+  useEffect(() => {
+    loadReport(selectedPlatform);
+  }, [selectedPlatform]);
+
+  const loadReport = async (platform = selectedPlatform) => {
     setLoading(true);
     setError("");
     setMessage("");
 
     try {
-      const data = await getDashboardReport();
+      const data = await getDashboardReport(platform);
       setReport(data);
-      setMessage("Latest analytics compiled successfully.");
+      setMessage(`Latest ${platform === "All" ? "cross-channel" : platform} analytics compiled successfully.`);
     } catch (err) {
       console.error("Report API error:", err);
       setError("Unable to load report.");
@@ -99,9 +105,17 @@ function Reports() {
     <div className="space-y-8 pb-12">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">CreatorIQ Reports & Exports</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">CreatorIQ Reports & Exports</h1>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            {selectedPlatform === "All" ? "All Platforms" : selectedPlatform}
+          </span>
+        </div>
         <p className="text-sm text-slate-500 mt-1">Generate comprehensive cross-channel analytics dossiers for sponsors, agencies, and audits</p>
       </div>
+
+      {/* Platform Selector */}
+      <PlatformSelector selectedPlatform={selectedPlatform} onSelectPlatform={setSelectedPlatform} />
 
       {/* Action Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -28,10 +28,21 @@ function AudienceAnalytics() {
   }, [selectedPlatform]);
 
   const report = data || {};
-  const audienceList = report.data || [];
-  const totalFollowers = audienceList.reduce((sum, a) => sum + (Number(a.followers) || 0), 0);
-  const totalReach = audienceList.reduce((sum, a) => sum + (Number(a.reach) || 0), 0);
-  const totalImpressions = audienceList.reduce((sum, a) => sum + (Number(a.impressions) || 0), 0);
+  const rawList = Array.isArray(report.data)
+    ? report.data
+    : Array.isArray(report.audience)
+    ? report.audience
+    : Array.isArray(report)
+    ? report
+    : [];
+
+  const audienceList = selectedPlatform !== "All"
+    ? rawList.filter((a) => (a.platform || "").toLowerCase() === selectedPlatform.toLowerCase())
+    : rawList;
+
+  const totalFollowers = selectedPlatform !== "All" && audienceList.length > 0 ? audienceList.reduce((sum, a) => sum + (Number(a.followers) || 0), 0) : (report.total_followers ?? audienceList.reduce((sum, a) => sum + (Number(a.followers) || 0), 0));
+  const totalReach = selectedPlatform !== "All" && audienceList.length > 0 ? audienceList.reduce((sum, a) => sum + (Number(a.reach) || 0), 0) : (report.total_reach ?? audienceList.reduce((sum, a) => sum + (Number(a.reach) || 0), 0));
+  const totalImpressions = selectedPlatform !== "All" && audienceList.length > 0 ? audienceList.reduce((sum, a) => sum + (Number(a.impressions) || 0), 0) : (report.total_impressions ?? audienceList.reduce((sum, a) => sum + (Number(a.impressions) || 0), 0));
 
   return (
     <div className="space-y-6 pb-16">

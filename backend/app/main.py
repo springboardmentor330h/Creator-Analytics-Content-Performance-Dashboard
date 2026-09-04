@@ -341,6 +341,12 @@ def compute_platform_comparison(creator_id: int = 1):
     result.sort(key=lambda x: x["engagement_rate"], reverse=True)
     return result
 
+def is_valid_platform(platform: Optional[str]) -> bool:
+    if not platform or not isinstance(platform, str):
+        return False
+    return platform.strip().lower() not in ["all", "all platforms", "none", "undefined", "null", ""]
+
+
 # =======================================================
 # 1. default (Users, Search, Auth Login/Register/Me, Home)
 # =======================================================
@@ -352,6 +358,10 @@ def root_endpoint():
 @app.get("/users", tags=["default"], summary="Get Users")
 def get_users_default():
     return USERS
+
+@app.get("/users/me", tags=["default"], summary="Get Current User Profile")
+def get_current_user_profile():
+    return USERS[0]
 
 @app.post("/users", tags=["default"], summary="Create User")
 def create_user_default(user: UserRegister):
@@ -425,8 +435,8 @@ def auth_me_default():
 # 2. content
 # =======================================================
 @app.get("/content", tags=["content"], summary="Get All Content")
-def list_content_tag(platform: Optional[str] = Query(None)):
-    if platform and platform not in ["All", "All Platforms"]:
+def list_content_tag(platform: Optional[str] = None):
+    if is_valid_platform(platform):
         return [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
     return CONTENTS
 
@@ -459,22 +469,30 @@ def delete_content_item_tag(content_id: int):
 # 3. analytics
 # =======================================================
 @app.get("/analytics/summary", tags=["analytics"], summary="Dashboard Summary")
-def get_analytics_summary_tag(platform: Optional[str] = Query(None)):
+def get_analytics_summary_tag(platform: Optional[str] = None):
     filtered = CONTENTS
-    if platform and platform not in ["All", "All Platforms"]:
+    if is_valid_platform(platform):
         filtered = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
+    
+    filtered_rev = REVENUES
+    if is_valid_platform(platform):
+        filtered_rev = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
+
     return {
         "total_views": sum(c.get("views", 0) for c in filtered),
         "total_likes": sum(c.get("likes", 0) for c in filtered),
         "total_comments": sum(c.get("comments", 0) for c in filtered),
         "total_shares": sum(c.get("shares", 0) for c in filtered),
         "total_reach": sum(c.get("reach", 0) for c in filtered),
-        "total_revenue": sum(r.get("amount", 0) for r in REVENUES),
+        "total_revenue": sum(r.get("amount", 0) for r in filtered_rev),
     }
 
 @app.get("/analytics/top-content", tags=["analytics"], summary="Top Performing Content")
-def get_top_content_tag(limit: int = 5):
-    sorted_c = sorted(CONTENTS, key=lambda x: x.get("views", 0), reverse=True)
+def get_top_content_tag(limit: int = 5, platform: Optional[str] = None):
+    filtered = CONTENTS
+    if is_valid_platform(platform):
+        filtered = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
+    sorted_c = sorted(filtered, key=lambda x: x.get("views", 0), reverse=True)
     return sorted_c[:limit]
 
 @app.get("/analytics/platform-performance", tags=["analytics"], summary="Platform Performance")
@@ -486,10 +504,13 @@ def get_platform_comparison_tag():
     return compute_platform_comparison(1)
 
 @app.get("/analytics/chart/engagement", tags=["analytics"], summary="Engagement Chart")
-def get_engagement_chart_tag():
+def get_engagement_chart_tag(platform: Optional[str] = None):
+    filtered = CONTENTS
+    if is_valid_platform(platform):
+        filtered = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
     return [
         {"name": c["content_title"][:15], "engagement": round((c["likes"] + c["comments"] + c["shares"]) / (c["reach"] or 1) * 100, 2)}
-        for c in CONTENTS[:10]
+        for c in filtered[:10]
     ]
 
 @app.get("/analytics/chart/followers", tags=["analytics"], summary="Follower Growth Chart")
@@ -504,7 +525,9 @@ def get_single_content_engagement_tag(content_id: int):
     return {"content_id": content_id, "engagement_rate": rate}
 
 @app.get("/analytics/audience", tags=["analytics"], summary="Audience Analytics")
-def get_analytics_audience_tag():
+def get_analytics_audience_tag(platform: Optional[str] = None):
+    if is_valid_platform(platform):
+        return [a for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()]
     return AUDIENCES
 
 @app.get("/analytics/growth", tags=["analytics"], summary="Follower Growth Analytics")
@@ -515,8 +538,8 @@ def get_analytics_growth_tag():
 # 4. audience
 # =======================================================
 @app.get("/audience", tags=["audience"], summary="Get Audience Demographics")
-def list_audience_tag(platform: Optional[str] = Query(None)):
-    if platform and platform not in ["All", "All Platforms"]:
+def list_audience_tag(platform: Optional[str] = None):
+    if is_valid_platform(platform):
         return [a for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()]
     return AUDIENCES
 
@@ -555,16 +578,23 @@ def get_social_media_platforms():
         {"platform": "Instagram", "connected": True, "handle": "@monika_dev"},
         {"platform": "TikTok", "connected": True, "handle": "@monikacodes"},
         {"platform": "LinkedIn", "connected": True, "handle": "Monika Chowdary"},
-        {"platform": "X", "connected": True, "handle": "@monika_tweets"},
+        {"platform": "X", "connected": True, "handle": "@monikacweets"},
         {"platform": "Facebook", "connected": True, "handle": "Monika Tech Community"}
     ]
 
+@app.get("/social/sync", tags=["social media"], summary="Sync Multi-Platform Data")
+@app.post("/social/sync", tags=["social media"], summary="Sync Multi-Platform Data")
 @app.get("/social-media/sync", tags=["social media"], summary="Sync Multi-Platform Data")
-def sync_social_media():
-    return {"status": "success", "synced_channels": 6, "synced_posts": 46, "last_synced": datetime.now().isoformat()}
+@app.post("/social-media/sync", tags=["social media"], summary="Sync Multi-Platform Data")
+def sync_social_media(payload: Optional[Dict[str, Any]] = Body(None)):
+    platform = payload.get("platform") if payload else "All"
+    return {"status": "success", "synced_channels": 6, "synced_posts": 46, "platform": platform, "last_synced": datetime.now().isoformat()}
 
+@app.get("/social/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
+@app.post("/social/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
 @app.get("/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
-def sync_youtube_tag():
+@app.post("/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
+def sync_youtube_tag(payload: Optional[Dict[str, Any]] = Body(None)):
     return {"status": "success", "synced_videos": 7, "channel": "@monikacreator", "last_synced": datetime.now().isoformat()}
 
 @app.get("/youtube/channel", tags=["social media"], summary="Get YouTube Channel Profile")
@@ -579,8 +609,8 @@ def get_youtube_videos_tag():
 # 6. revenue
 # =======================================================
 @app.get("/revenue", tags=["revenue"], summary="Get Revenue Payouts")
-def list_revenue_tag(platform: Optional[str] = Query(None)):
-    if platform and platform not in ["All", "All Platforms"]:
+def list_revenue_tag(platform: Optional[str] = None):
+    if is_valid_platform(platform):
         return [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
     return REVENUES
 
@@ -589,6 +619,54 @@ def create_revenue_tag(item: RevenueCreate):
     new_r = {"id": len(REVENUES) + 1, "creator_id": 1, **item.dict(), "revenue_date": datetime.now().strftime("%Y-%m-%d")}
     REVENUES.append(new_r)
     return new_r
+
+@app.get("/revenue/analytics/summary", tags=["revenue"], summary="Get Revenue Analytics Summary")
+def get_revenue_analytics_summary(platform: Optional[str] = None):
+    filtered = REVENUES
+    if is_valid_platform(platform):
+        filtered = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
+    amounts = [r.get("amount", 0) for r in filtered]
+    total = sum(amounts)
+    avg = total / len(amounts) if amounts else 0
+    max_val = max(amounts) if amounts else 0
+    return {
+        "total_revenue": total,
+        "avg_revenue": avg,
+        "max_revenue": max_val,
+        "total_count": len(filtered)
+    }
+
+@app.get("/revenue/analytics/by-source", tags=["revenue"], summary="Get Revenue by Source")
+def get_revenue_analytics_by_source(platform: Optional[str] = None):
+    filtered = REVENUES
+    if is_valid_platform(platform):
+        filtered = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
+    src_map = {}
+    for r in filtered:
+        src = r.get("source", "Other")
+        src_map[src] = src_map.get(src, 0) + r.get("amount", 0)
+    return [{"name": k, "value": v} for k, v in src_map.items()]
+
+@app.get("/revenue/analytics/monthly", tags=["revenue"], summary="Get Monthly Revenue")
+def get_revenue_analytics_monthly():
+    return [
+        {"month": "May", "total": 45000},
+        {"month": "Jun", "total": 68000},
+        {"month": "Jul", "total": 92000},
+        {"month": "Aug", "total": 186500},
+        {"month": "Sep", "total": 182000},
+    ]
+
+@app.get("/revenue/analytics/trend", tags=["revenue"], summary="Get Revenue Trend")
+def get_revenue_analytics_trend():
+    return [
+        {"date": "2026-08-01", "amount": 45000},
+        {"date": "2026-08-12", "amount": 60000},
+        {"date": "2026-08-15", "amount": 35000},
+        {"date": "2026-08-22", "amount": 28000},
+        {"date": "2026-09-01", "amount": 88000},
+        {"date": "2026-09-03", "amount": 22000},
+    ]
 
 @app.get("/revenue/{revenue_id}", tags=["revenue"], summary="Get Revenue Item")
 def get_revenue_item_tag(revenue_id: int):
@@ -613,7 +691,9 @@ def delete_revenue_item_tag(revenue_id: int):
 # 7. sponsorships
 # =======================================================
 @app.get("/sponsorships", tags=["sponsorships"], summary="Get All Sponsorship Deals")
-def list_sponsorships_tag():
+def list_sponsorships_tag(platform: Optional[str] = None):
+    if is_valid_platform(platform):
+        return [s for s in SPONSORSHIPS if (s.get("platform") or "").lower() == platform.lower()]
     return SPONSORSHIPS
 
 @app.post("/sponsorships", tags=["sponsorships"], summary="Create Sponsorship Deal")
@@ -684,53 +764,82 @@ def mark_notification_read_tag(notification_id: int):
 # 9. reports
 # =======================================================
 @app.get("/reports", tags=["reports"], summary="Get Creator Performance Report")
-def get_reports_tag():
+def get_reports_tag(platform: Optional[str] = None):
+    filtered_c = CONTENTS
+    if is_valid_platform(platform):
+        filtered_c = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
+
+    filtered_r = REVENUES
+    if is_valid_platform(platform):
+        filtered_r = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
+
+    filtered_s = SPONSORSHIPS
+    if is_valid_platform(platform):
+        filtered_s = [s for s in SPONSORSHIPS if (s.get("platform") or "").lower() == platform.lower()]
+
     return {
         "creator_id": 1,
-        "platform_filter": "All",
+        "platform_filter": platform or "All",
         "generated_at": datetime.now().isoformat(),
-        "total_records": len(CONTENTS),
+        "total_records": len(filtered_c),
         "content_performance": {
-            "total_content": len(CONTENTS),
-            "total_records": len(CONTENTS),
-            "total_views": sum(c.get("views", 0) for c in CONTENTS),
-            "total_likes": sum(c.get("likes", 0) for c in CONTENTS),
-            "total_comments": sum(c.get("comments", 0) for c in CONTENTS),
-            "total_shares": sum(c.get("shares", 0) for c in CONTENTS),
-            "total_reach": sum(c.get("reach", 0) for c in CONTENTS),
-            "content": CONTENTS
+            "total_content": len(filtered_c),
+            "total_records": len(filtered_c),
+            "total_views": sum(c.get("views", 0) for c in filtered_c),
+            "total_likes": sum(c.get("likes", 0) for c in filtered_c),
+            "total_comments": sum(c.get("comments", 0) for c in filtered_c),
+            "total_shares": sum(c.get("shares", 0) for c in filtered_c),
+            "total_reach": sum(c.get("reach", 0) for c in filtered_c),
+            "content": filtered_c
         },
         "revenue_analytics": {
-            "total_revenue": sum(r.get("amount", 0) for r in REVENUES),
-            "total_records": len(REVENUES),
-            "data": REVENUES
+            "total_revenue": sum(r.get("amount", 0) for r in filtered_r),
+            "total_records": len(filtered_r),
+            "data": filtered_r
         },
         "platform_comparison": compute_platform_comparison(1),
         "sponsorships": {
-            "total_records": len(SPONSORSHIPS),
-            "data": SPONSORSHIPS
+            "total_records": len(filtered_s),
+            "data": filtered_s
         }
     }
 
 @app.get("/reports/content", tags=["reports"], summary="Get Content")
-def get_content_report_tag():
+def get_content_report_tag(platform: Optional[str] = None):
+    filtered = CONTENTS
+    if is_valid_platform(platform):
+        filtered = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
     return {
         "creator_id": 1,
-        "total_records": len(CONTENTS),
-        "total_content": len(CONTENTS),
-        "total_views": sum(c.get("views", 0) for c in CONTENTS),
-        "total_likes": sum(c.get("likes", 0) for c in CONTENTS),
-        "total_comments": sum(c.get("comments", 0) for c in CONTENTS),
-        "total_shares": sum(c.get("shares", 0) for c in CONTENTS),
-        "total_reach": sum(c.get("reach", 0) for c in CONTENTS),
-        "data": CONTENTS,
-        "content": CONTENTS
+        "platform_filter": platform or "All",
+        "total_records": len(filtered),
+        "total_content": len(filtered),
+        "total_views": sum(c.get("views", 0) for c in filtered),
+        "total_likes": sum(c.get("likes", 0) for c in filtered),
+        "total_comments": sum(c.get("comments", 0) for c in filtered),
+        "total_shares": sum(c.get("shares", 0) for c in filtered),
+        "total_reach": sum(c.get("reach", 0) for c in filtered),
+        "data": filtered,
+        "content": filtered,
+        "items": filtered
     }
 
 @app.get("/reports/audience", tags=["reports"], summary="Get Audience Demographics Report")
-def get_audience_report_tag():
+def get_audience_report_tag(platform: Optional[str] = None):
+    filtered = AUDIENCES
+    if is_valid_platform(platform):
+        return {
+            "creator_id": 1,
+            "platform_filter": platform,
+            "total_records": len([a for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()]),
+            "total_followers": sum(a.get("followers", 0) for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()),
+            "total_reach": sum(a.get("reach", 0) for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()),
+            "total_impressions": sum(a.get("impressions", 0) for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()),
+            "data": [a for a in AUDIENCES if (a.get("platform") or "").lower() == platform.lower()]
+        }
     return {
         "creator_id": 1,
+        "platform_filter": "All",
         "total_records": len(AUDIENCES),
         "total_followers": sum(a.get("followers", 0) for a in AUDIENCES),
         "total_reach": sum(a.get("reach", 0) for a in AUDIENCES),
@@ -739,18 +848,38 @@ def get_audience_report_tag():
     }
 
 @app.get("/reports/revenue", tags=["reports"], summary="Get Revenue Analytics Report")
-def get_revenue_report_tag():
+def get_revenue_report_tag(platform: Optional[str] = None):
+    filtered = REVENUES
+    if is_valid_platform(platform):
+        filtered = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
     return {
         "creator_id": 1,
-        "total_records": len(REVENUES),
-        "total_revenue": sum(r.get("amount", 0) for r in REVENUES),
-        "data": REVENUES
+        "platform_filter": platform or "All",
+        "total_records": len(filtered),
+        "total_revenue": sum(r.get("amount", 0) for r in filtered),
+        "data": filtered
     }
 
 @app.get("/reports/growth", tags=["reports"], summary="Get Audience Growth Report")
 def get_growth_report_tag(platform: Optional[str] = None):
+    platform_weights = {
+        "youtube": 0.258,
+        "instagram": 0.231,
+        "tiktok": 0.226,
+        "linkedin": 0.110,
+        "x": 0.084,
+        "facebook": 0.091
+    }
+    if is_valid_platform(platform) and platform.lower() in platform_weights:
+        w = platform_weights[platform.lower()]
+        scaled = [
+            {"id": g["id"], "creator_id": 1, "date": g["date"], "followers": int(g["followers"] * w), "reach": int(g["reach"] * w)}
+            for g in GROWTHS
+        ]
+        return {"creator_id": 1, "platform_filter": platform, "total_records": len(scaled), "data": scaled}
     return {
         "creator_id": 1,
+        "platform_filter": "All",
         "total_records": len(GROWTHS),
         "data": GROWTHS
     }
@@ -784,13 +913,19 @@ def list_roles_tag():
     ]
 
 @app.get("/dashboard/overview", tags=["dashboard"], summary="Overview Dashboard Telemetry")
-def dashboard_overview_tag():
+def dashboard_overview_tag(platform: Optional[str] = None):
+    filtered_c = CONTENTS
+    if is_valid_platform(platform):
+        filtered_c = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]
+    filtered_r = REVENUES
+    if is_valid_platform(platform):
+        filtered_r = [r for r in REVENUES if (r.get("platform") or "").lower() == platform.lower() or r.get("platform") == "Multi-Platform"]
     return {
         "creator": USERS[0],
-        "total_views": sum(c.get("views", 0) for c in CONTENTS),
-        "total_posts": len(CONTENTS),
-        "connected_platforms": 6,
-        "total_revenue": sum(r.get("amount", 0) for r in REVENUES)
+        "total_views": sum(c.get("views", 0) for c in filtered_c),
+        "total_posts": len(filtered_c),
+        "connected_platforms": 6 if not is_valid_platform(platform) else 1,
+        "total_revenue": sum(r.get("amount", 0) for r in filtered_r)
     }
 
 if __name__ == "__main__":

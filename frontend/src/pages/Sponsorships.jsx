@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
-import api from "../services/api";
+import api, { getSponsorshipsList } from "../services/api";
+import PlatformSelector from "../components/PlatformSelector";
 import { Handshake, Calendar, DollarSign, CheckCircle2, Clock, RefreshCw, Award, ArrowUpRight, Sparkles } from "lucide-react";
 
 function Sponsorships() {
+  const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadSponsorships = async () => {
+  const loadSponsorships = async (platform = selectedPlatform) => {
     try {
       setLoading(true);
       setError("");
-      const response = await api.get("/sponsorships");
-      setData(response.data);
+      const response = await getSponsorshipsList(platform);
+      setData(response);
     } catch (err) {
       console.error("Sponsorship API error:", err);
       setError("Unable to load sponsorship data.");
@@ -22,10 +24,13 @@ function Sponsorships() {
   };
 
   useEffect(() => {
-    loadSponsorships();
-  }, []);
+    loadSponsorships(selectedPlatform);
+  }, [selectedPlatform]);
 
-  const sponsorshipList = Array.isArray(data) ? data : data?.data || [];
+  const rawList = Array.isArray(data) ? data : data?.data || [];
+  const sponsorshipList = selectedPlatform !== "All"
+    ? rawList.filter((s) => (s.platform || "").toLowerCase() === selectedPlatform.toLowerCase())
+    : rawList;
   const totalValue = sponsorshipList.reduce((sum, s) => sum + (Number(s.contract_value) || 0), 0);
   const paidValue = sponsorshipList
     .filter((s) => s.payment_status === "Paid")
@@ -36,19 +41,27 @@ function Sponsorships() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Brand Sponsorships & Partnerships</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Brand Sponsorships & Partnerships</h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              {selectedPlatform === "All" ? "All Channels" : selectedPlatform}
+            </span>
+          </div>
           <p className="text-xs text-slate-500 mt-1 font-medium">
             Multi-platform brand campaigns, contracted deliverables, and milestone payouts across YouTube, Instagram, TikTok, and LinkedIn.
           </p>
         </div>
 
         <button
-          onClick={loadSponsorships}
+          onClick={() => loadSponsorships(selectedPlatform)}
           className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition shadow-2xs self-start cursor-pointer"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-600" : ""}`} /> Refresh
         </button>
       </div>
+
+      {/* Platform Selector Filter */}
+      <PlatformSelector selectedPlatform={selectedPlatform} onSelectPlatform={setSelectedPlatform} />
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
