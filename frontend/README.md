@@ -1,4 +1,4 @@
-# CreatorIQ â€“ Creator Analytics Dashboard
+# CreatorIQ - Creator Analytics Dashboard
 
 CreatorIQ is a web-based creator analytics dashboard developed using React and Tailwind CSS.
 
@@ -6,7 +6,7 @@ CreatorIQ is a web-based creator analytics dashboard developed using React and T
 
 The frontend provides a dashboard for viewing creator performance and analytics across different platforms.
 
-### Main Features
+## Main Features
 
 - User login and registration
 - Dashboard overview
@@ -33,5 +33,34 @@ The frontend provides a dashboard for viewing creator performance and analytics 
 
 Install the required packages:
 
-```bash
-npm install
+    npm install
+
+Start the frontend:
+
+    npm run dev
+
+The application will normally be available at:
+
+    http://localhost:5173
+
+## Backend
+
+The frontend communicates with the CreatorIQ FastAPI backend through REST APIs.
+
+## Project Structure
+
+    frontend/
+    +-- public/
+    +-- src/
+    ¦   +-- components/
+    ¦   +-- context/
+    ¦   +-- pages/
+    ¦   +-- routes/
+    ¦   +-- services/
+    ¦   +-- api/
+    +-- package.json
+    +-- vite.config.js
+
+## Author
+
+CreatorIQ Analytics Project
