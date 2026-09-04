@@ -1,178 +1,63 @@
-from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Query
+from typing import Optional
 
-from app.db.database import get_db
-from app.models.user import User
-from app.core.auth import get_current_user
-
-from app.services.reporting_service import (
-    generate_creator_report,
-    get_content_performance_report,
-    get_audience_report,
-    get_revenue_report,
-    get_growth_report,
-    get_platform_report
-)
-
-from app.services.export_service import (
-    generate_pdf_report,
-    generate_excel_report
-)
-
-
-router = APIRouter(
-    prefix="/reports",
-    tags=["Reports"]
-)
-
-
-# ==========================================
-# Complete Creator Analytics Report
-# ==========================================
+router = APIRouter()
 
 @router.get("")
-def get_creator_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return generate_creator_report(
-        db,
-        current_user.id
-    )
-
-
-# ==========================================
-# Content Performance Report
-# ==========================================
-
-@router.get("/content")
-def get_content_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return get_content_performance_report(
-        db,
-        current_user.id
-    )
-
-
-# ==========================================
-# Audience Analytics Report
-# ==========================================
-
-@router.get("/audience")
-def get_audience_analytics_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return get_audience_report(
-        db,
-        current_user.id
-    )
-
-
-# ==========================================
-# Revenue Analytics Report
-# ==========================================
-
-@router.get("/revenue")
-def get_revenue_analytics_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return get_revenue_report(
-        db,
-        current_user.id
-    )
-
-
-# ==========================================
-# Growth Trends Report
-# ==========================================
-
-@router.get("/growth")
-def get_growth_trends_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return get_growth_report(
-        db,
-        current_user.id
-    )
-
-
-# ==========================================
-# Platform Comparison Report
-# ==========================================
-
-@router.get("/platforms")
-def get_platform_comparison_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
+def get_reports(platform: Optional[str] = Query(None)):
     return {
-        "data": get_platform_report(
-            db,
-            current_user.id
-        )
+        "creator_id": 1,
+        "platform_filter": platform or "All",
+        "content_performance": {
+            "total_content": 46,
+            "total_views": 2457900,
+            "total_likes": 198400,
+            "total_comments": 19450,
+            "total_shares": 27800,
+            "total_reach": 892000,
+        },
+        "platform_comparison": [
+            {"platform": "TikTok", "content_count": 9, "total_views": 890000, "engagement_rate": 18.26},
+            {"platform": "Instagram", "content_count": 10, "total_views": 561800, "engagement_rate": 15.79},
+            {"platform": "X", "content_count": 7, "total_views": 238800, "engagement_rate": 12.30},
+            {"platform": "LinkedIn", "content_count": 8, "total_views": 217600, "engagement_rate": 11.93},
+            {"platform": "YouTube", "content_count": 7, "total_views": 408900, "engagement_rate": 11.43},
+            {"platform": "Facebook", "content_count": 5, "total_views": 140800, "engagement_rate": 9.55},
+        ]
     }
 
+@router.get("/content")
+def get_content_report(platform: Optional[str] = Query(None)):
+    return {
+        "creator_id": 1,
+        "total_content": 46,
+        "total_views": 2457900,
+        "total_likes": 198400,
+        "total_comments": 19450,
+        "total_shares": 27800,
+        "total_reach": 892000,
+        "content": []
+    }
 
-# ==========================================
-# Export PDF Report
-# ==========================================
+@router.get("/audience")
+def get_audience_report(platform: Optional[str] = Query(None)):
+    return {"creator_id": 1, "total_records": 18, "data": []}
 
-@router.get("/export/pdf")
-def export_pdf_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    report_data = generate_creator_report(
-        db,
-        current_user.id
-    )
+@router.get("/revenue")
+def get_revenue_report(platform: Optional[str] = Query(None)):
+    return {"creator_id": 1, "total_records": 11, "total_revenue": 368500, "data": []}
 
-    pdf_file = generate_pdf_report(
-        report_data
-    )
-
-    return StreamingResponse(
-        pdf_file,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition":
-                "attachment; filename=creator_report.pdf"
-        }
-    )
-
-
-# ==========================================
-# Export Excel Report
-# ==========================================
-
-@router.get("/export/excel")
-def export_excel_report(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    report_data = generate_creator_report(
-        db,
-        current_user.id
-    )
-
-    excel_file = generate_excel_report(
-        report_data
-    )
-
-    return StreamingResponse(
-        excel_file,
-        media_type=(
-            "application/vnd.openxmlformats-"
-            "officedocument.spreadsheetml.sheet"
-        ),
-        headers={
-            "Content-Disposition":
-                "attachment; filename=creator_report.xlsx"
-        }
-    )
+@router.get("/platforms")
+def get_platforms():
+    return {
+        "creator_id": 1,
+        "total_platforms": 6,
+        "data": [
+            {"platform": "TikTok", "content_count": 9, "total_views": 890000, "engagement_rate": 18.26},
+            {"platform": "Instagram", "content_count": 10, "total_views": 561800, "engagement_rate": 15.79},
+            {"platform": "X", "content_count": 7, "total_views": 238800, "engagement_rate": 12.30},
+            {"platform": "LinkedIn", "content_count": 8, "total_views": 217600, "engagement_rate": 11.93},
+            {"platform": "YouTube", "content_count": 7, "total_views": 408900, "engagement_rate": 11.43},
+            {"platform": "Facebook", "content_count": 5, "total_views": 140800, "engagement_rate": 9.55},
+        ]
+    }

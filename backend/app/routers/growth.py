@@ -2,5 +2,5 @@ from fastapi import APIRouter
 router = APIRouter()
 
 @router.get("")
-def list_revenue():
+def list_growth():
     return []

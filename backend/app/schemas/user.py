@@ -1,19 +1,24 @@
-from pydantic import BaseModel, EmailStr, Field
+import uuid
+from pydantic import BaseModel
+from app.models.user import RoleEnum
 
-class UserCreate(BaseModel):
-    full_name: str = Field(..., min_length=3)
-    email: EmailStr
-    password: str = Field(..., min_length=6)
-    role: str
+class UserOut(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    role: RoleEnum
+    is_active: bool
 
-from typing import Optional
+    class Config:
+        from_attributes = True
 
-class UserUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=3)
-    email: Optional[EmailStr] = None
-    password: Optional[str] = Field(None, min_length=6)
-    role: Optional[str] = None
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+# from pydantic import BaseModel, EmailStr
+# from typing import Optional
+# class UserCreate(BaseModel):
+# full_name: str
+# email: EmailStr
+# role: str
+# class UserUpdate(BaseModel):
+# full_name: Optional[str] = None
+# email: Optional[EmailStr] = None
+# role: Optional[str] = None

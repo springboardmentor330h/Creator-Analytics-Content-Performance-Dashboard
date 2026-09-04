@@ -1,0 +1,12 @@
+openapi: 3.1.0
+info:
+  title: CreatorIQ - Multi-Platform Analytics Engine
+  version: 1.0.0
+  description: Multi-platform analytics API for YouTube, Instagram, TikTok, LinkedIn, X, and Facebook.
+paths:
+  /reports:
+    get:
+      summary: Get overview metrics across all platforms
+      responses:
+        '200':
+          description: Successful metrics payload
