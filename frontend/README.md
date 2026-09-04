@@ -1,17 +1,37 @@
-# CreatorIQ Frontend Dashboard
+# CreatorIQ – Creator Analytics Dashboard
 
-Modern, responsive React dashboard built with Tailwind CSS, Recharts, and Lucide Icons for unified multi-platform analytics.
+CreatorIQ is a web-based creator analytics dashboard developed using React and Tailwind CSS.
 
-## Getting Started
+## Project Overview
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+The frontend provides a dashboard for viewing creator performance and analytics across different platforms.
 
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
+### Main Features
 
-3. Open [http://localhost:5173](http://localhost:5173) (or [http://localhost:3000](http://localhost:3000)) in your browser.
+- User login and registration
+- Dashboard overview
+- Content analytics
+- Audience analytics
+- Growth and trends
+- Revenue analytics
+- Platform comparison
+- Sponsorship management
+- Notifications
+- Reports and data export
+- API documentation
+
+## Technologies Used
+
+- React
+- Vite
+- Tailwind CSS
+- Recharts
+- Axios
+- Lucide React
+
+## Running the Project
+
+Install the required packages:
+
+```bash
+npm install
