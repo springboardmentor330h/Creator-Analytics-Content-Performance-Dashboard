@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: creatoriq_db
+    environment:
+      POSTGRES_USER: creatoriq
+      POSTGRES_PASSWORD: creatoriq123
+      POSTGRES_DB: creatoriq
+    ports:
+      - "5432:5432"
+    volumes:
+      - creatoriq_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U creatoriq -d creatoriq"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./creatoriq_backend
+    container_name: creatoriq_backend
+    env_file:
+      - ./creatoriq_backend/.env
+    environment:
+      DATABASE_URL: postgresql://creatoriq:creatoriq123@db:5432/creatoriq
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./creatoriq_frontend
+    container_name: creatoriq_frontend
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  creatoriq_pgdata:

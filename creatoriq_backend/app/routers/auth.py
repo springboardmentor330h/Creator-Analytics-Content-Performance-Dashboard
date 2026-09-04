@@ -14,6 +14,7 @@ from app.core.security import (
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import (
+    ChangePasswordRequest,
     TokenResponse,
     UserRegister,
     UserResponse,
@@ -68,12 +69,6 @@ def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
-    """
-    Login using Swagger OAuth2 Authorize.
-    Username = Email
-    Password = Password
-    """
-
     user = (
         db.query(User)
         .filter(User.email == form_data.username)
@@ -84,21 +79,14 @@ def login(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-            headers={
-                "WWW-Authenticate": "Bearer"
-            },
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not verify_password(
-        form_data.password,
-        user.hashed_password,
-    ):
+    if not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
-            headers={
-                "WWW-Authenticate": "Bearer"
-            },
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     access_token = create_access_token(
@@ -126,3 +114,32 @@ def get_my_profile(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
+
+
+@router.post("/change-password")
+def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not verify_password(
+        body.current_password,
+        current_user.hashed_password,
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    if len(body.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters",
+        )
+
+    # Same hasher as register/login
+    current_user.hashed_password = hash_password(body.new_password)
+    db.add(current_user)
+    db.commit()
+
+    return {"message": "Password updated successfully"}

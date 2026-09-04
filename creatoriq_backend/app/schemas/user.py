@@ -41,6 +41,10 @@ class LoginRequest(BaseModel):
         max_length=72
     )
 
+#change password
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 # ============================================================
 # TOKEN RESPONSE

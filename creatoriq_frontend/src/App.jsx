@@ -18,14 +18,14 @@ import Loading from './components/ui/Loading'
 
 function Private({ children }) {
   const { isAuthenticated, loading } = useAuth()
-  if (loading) return <Loading label="Loading..." />
+  if (loading) return <Loading />
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
 function PublicOnly({ children }) {
   const { isAuthenticated, loading } = useAuth()
-  if (loading) return <Loading label="Loading..." />
+  if (loading) return <Loading />
   if (isAuthenticated) return <Navigate to="/" replace />
   return children
 }

@@ -1,49 +1,59 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import api, { loginRequest, registerRequest } from '../services/api'
 
 const AuthContext = createContext(null)
 
+async function fetchMe() {
+  try {
+    const res = await api.get('/users/me')
+    return res.data
+  } catch {
+    try {
+      const res = await api.get('/auth/me')
+      return res.data
+    } catch {
+      return null
+    }
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [token, setToken] = useState(() => localStorage.getItem('token'))
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
+    let cancelled = false
+    async function init() {
+      if (!token) {
+        if (!cancelled) setLoading(false)
+        return
+      }
+      const me = await fetchMe()
+      if (cancelled) return
+      if (me) setUser(me)
+      else {
+        localStorage.removeItem('token')
+        setToken(null)
+        setUser(null)
+      }
       setLoading(false)
-      return
     }
-    // Prefer /users/me if available; fallback to decoding nothing and keeping token session
-    api
-      .get('/users/me')
-      .then((res) => setUser(res.data))
-      .catch(() => {
-        // Some projects expose profile under different paths
-        api
-          .get('/auth/me')
-          .then((res) => setUser(res.data))
-          .catch(() => localStorage.removeItem('token'))
-      })
-      .finally(() => setLoading(false))
-  }, [])
+    init()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   const login = async (email, password) => {
     const data = await loginRequest(email, password)
-    localStorage.setItem('token', data.access_token)
-    try {
-      const me = await api.get('/users/me')
-      setUser(me.data)
-      return me.data
-    } catch {
-      try {
-        const me = await api.get('/auth/me')
-        setUser(me.data)
-        return me.data
-      } catch {
-        setUser({ email })
-        return { email }
-      }
-    }
+    const access = data.access_token
+    localStorage.setItem('token', access)
+    setToken(access)
+    const me = await fetchMe()
+    const profile = me || { email }
+    setUser(profile)
+    return profile
   }
 
   const register = async (payload) => {
@@ -53,16 +63,29 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token')
+    setToken(null)
     setUser(null)
   }
 
-  return (
-    <AuthContext.Provider
-      value={{ user, loading, login, register, logout, isAuthenticated: !!localStorage.getItem('token') }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      isAuthenticated: !!token,
+    }),
+    [user, loading, token]
   )
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  const ctx = useContext(AuthContext)
+  if (!ctx) {
+    throw new Error('useAuth must be used inside AuthProvider')
+  }
+  return ctx
+}

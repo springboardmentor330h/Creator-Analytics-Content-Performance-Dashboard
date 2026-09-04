@@ -41,6 +41,14 @@ export async function registerRequest(payload) {
   return res.data
 }
 
+export async function changePasswordRequest(currentPassword, newPassword) {
+  const res = await api.post('/auth/change-password', {
+    current_password: currentPassword,
+    new_password: newPassword,
+  })
+  return res.data
+}
+
 export const analyticsAPI = {
   summary: () => api.get('/analytics/summary'),
   topContent: () => api.get('/analytics/top-content'),
@@ -106,6 +114,10 @@ export const socialAPI = {
     api.post('/social/connect', null, {
       params: { platform, account_name },
     }),
+  mockSync: (creator_id, platform, count = 3) =>
+    api.post('/social/mock/sync', null, {
+      params: { creator_id, platform, count },
+    }),
   youtubeSync: (creator_id, channel_id, max_results = 10) =>
     api.post('/social/youtube/sync', null, {
       params: { creator_id, channel_id, max_results },
@@ -113,10 +125,6 @@ export const socialAPI = {
   instagramSync: (creator_id, instagram_username, media_limit = 12) =>
     api.post('/social/instagram/sync', null, {
       params: { creator_id, instagram_username, media_limit },
-    }),
-  mockSync: (creator_id, platform, count = 3) =>
-    api.post('/social/mock/sync', null, {
-      params: { creator_id, platform, count },
     }),
 }
 
