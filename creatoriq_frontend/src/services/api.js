@@ -22,6 +22,11 @@ export const getCreatorRevenue = async (creatorId) => {
   return response.data;
 };
 
+export const updateUser = async (userId, userData) => {
+  const response = await api.put(`/users/${userId}`, userData);
+  return response.data;
+};
+
 export const getRevenueSummary = async (creatorId) => {
   const response = await api.get(
     `/revenue/analytics/summary?creator_id=${creatorId}`
@@ -46,14 +51,40 @@ export const getMonthlyRevenue = async (creatorId) => {
   return response.data;
 };
 
-export const getAllContent = async () => {
-  const response = await api.get("/content/");
+export const getRevenueTrend = async (creatorId) => {
+  const response = await api.get(
+    `/revenue/analytics/trend?creator_id=${creatorId}`
+  );
+
+  return response.data;
+};
+
+export const getAllContent = async (creatorId) => {
+  const response = await api.get("/content/", {
+    params: creatorId ? { creator_id: creatorId } : undefined,
+  });
   return response.data;
 };
 
 export const getYouTubeContentAnalytics = async (videoId) => {
   const response = await api.get(
     `/content-analytics/youtube/${videoId}`
+  );
+
+  return response.data;
+};
+
+export const getPlatformComparison = async (creatorId) => {
+  const response = await api.get(
+    `/analytics/platform-comparison?creator_id=${creatorId}`
+  );
+
+  return response.data;
+};
+
+export const getPlatformPerformance = async (creatorId) => {
+  const response = await api.get(
+    `/analytics/platform-performance?creator_id=${creatorId}`
   );
 
   return response.data;

@@ -133,6 +133,29 @@ body {
   font-size: 0.875rem;
 }
 
+.auth-switch {
+  margin: 1.5rem 0 0;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.auth-switch-button {
+  margin-left: 0.35rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #c4b5fd;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.auth-switch-button:hover {
+  color: #e0e7ff;
+  text-decoration: underline;
+}
+
 .auth-loading {
   min-height: 100vh;
   display: grid;

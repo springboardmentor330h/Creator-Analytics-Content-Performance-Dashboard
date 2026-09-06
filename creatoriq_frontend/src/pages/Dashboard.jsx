@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import {
   LineChart,
   Line,
@@ -7,161 +8,636 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
   PieChart,
   Pie,
   Cell,
-  Legend,
 } from "recharts";
 
 import {
   getAllContent,
   getRevenueSummary,
-  getMonthlyRevenue,
+  getRevenueTrend,
+  getPlatformComparison,
+  getPlatformPerformance,
 } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const normalizeContentResponse = (response) => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  if (Array.isArray(response?.content)) {
+    return response.content;
+  }
+
+  return [];
+};
+
+const normalizePlatformResponse = (response) => {
+  if (!response) {
+    return [];
+  }
+
+  /*
+   * Backend may return:
+   *
+   * [
+   *   {
+   *     platform: "Instagram",
+   *     views: 1000,
+   *     likes: 100,
+   *     comments: 20,
+   *     reach: 1200,
+   *     avg_engagement: 8.5
+   *   }
+   * ]
+   *
+   * OR:
+   *
+   * {
+   *   "Instagram": {...},
+   *   "TikTok": {...}
+   * }
+   */
+
+  if (Array.isArray(response)) {
+    return response
+      .map((item) => ({
+        platform:
+          item?.platform ||
+          item?.name ||
+          item?.platform_name ||
+          "Unknown",
+
+        views: Number(
+          item?.views ??
+            item?.total_views ??
+            0
+        ),
+
+        likes: Number(
+          item?.likes ??
+            item?.total_likes ??
+            0
+        ),
+
+        comments: Number(
+          item?.comments ??
+            item?.total_comments ??
+            0
+        ),
+
+        shares: Number(
+          item?.shares ??
+            item?.total_shares ??
+            0
+        ),
+
+        saves: Number(
+          item?.saves ??
+            item?.total_saves ??
+            0
+        ),
+
+        reach: Number(
+          item?.reach ??
+            item?.total_reach ??
+            0
+        ),
+
+        engagement: Number(
+          item?.engagement_rate ??
+            item?.avg_engagement ??
+            item?.average_engagement ??
+            0
+        ),
+      }))
+      .filter(
+        (item) =>
+          item.platform &&
+          item.platform !== "Unknown"
+      );
+  }
+
+  const source =
+    response?.platforms &&
+    typeof response.platforms === "object"
+      ? response.platforms
+      : response;
+
+  if (
+    source &&
+    typeof source === "object" &&
+    !Array.isArray(source)
+  ) {
+    return Object.entries(source)
+      .map(([platform, values]) => ({
+        platform,
+
+        views: Number(
+          values?.views ??
+            values?.total_views ??
+            0
+        ),
+
+        likes: Number(
+          values?.likes ??
+            values?.total_likes ??
+            0
+        ),
+
+        comments: Number(
+          values?.comments ??
+            values?.total_comments ??
+            0
+        ),
+
+        shares: Number(
+          values?.shares ??
+            values?.total_shares ??
+            0
+        ),
+
+        saves: Number(
+          values?.saves ??
+            values?.total_saves ??
+            0
+        ),
+
+        reach: Number(
+          values?.reach ??
+            values?.total_reach ??
+            0
+        ),
+
+        engagement: Number(
+          values?.engagement_rate ??
+            values?.avg_engagement ??
+            values?.average_engagement ??
+            0
+        ),
+      }))
+      .filter(
+        (item) =>
+          item.platform &&
+          item.platform !== "Unknown"
+      );
+  }
+
+  return [];
+};
+
+const normalizeRevenueTrendResponse = (response) => {
+  const trendData = response?.trend || response?.data || [];
+
+  return Array.isArray(trendData)
+    ? trendData
+        .map((item) => ({
+          date: item?.date || "",
+          amount: Number(item?.amount ?? item?.revenue ?? 0),
+        }))
+        .filter((item) => item.date && Number.isFinite(item.amount))
+    : [];
+};
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
 
 function Dashboard() {
-  // Temporary creator selection.
-  // Later we can connect this to login/profile.
-  const creatorId = 2;
+  const { user } = useAuth();
+  const creatorId = user?.id;
 
   const [content, setContent] = useState([]);
-  const [revenue, setRevenue] = useState(null);
-  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
 
-  const [loading, setLoading] = useState(true);
+  const [revenue, setRevenue] = useState(null);
+
+  const [revenueTrend, setRevenueTrend] =
+    useState([]);
+
+  const [platformComparison, setPlatformComparison] =
+    useState([]);
+
+  const [platformPerformance, setPlatformPerformance] =
+    useState([]);
+
+  const [loadingContent, setLoadingContent] =
+    useState(true);
+
+  const [loadingAnalytics, setLoadingAnalytics] =
+    useState(false);
+
   const [error, setError] = useState("");
+
+  /* =========================================================
+     LOAD CONTENT
+     
+    This is the source for published content and trend dates.
+  ========================================================= */
 
   useEffect(() => {
     let ignore = false;
 
-    async function loadDashboard() {
+    async function loadContent() {
       try {
-        setLoading(true);
+        setLoadingContent(true);
         setError("");
 
-        const [
-          contentResponse,
-          revenueResponse,
-          monthlyRevenueResponse,
-        ] = await Promise.all([
-          getAllContent(),
-          getRevenueSummary(creatorId),
-          getMonthlyRevenue(creatorId),
-        ]);
+        const response = await getAllContent(creatorId);
 
-        if (ignore) return;
+        if (ignore) {
+          return;
+        }
 
-        // Keep only this creator's content
-        const creatorContent = contentResponse.filter(
-          (item) => item.creator_id === creatorId
-        );
+        const contentRows =
+          normalizeContentResponse(response);
 
-        setContent(creatorContent);
-        setRevenue(revenueResponse);
+        setContent(contentRows);
 
-        const monthlyData =
-          monthlyRevenueResponse.monthly_revenue || [];
-
-        setMonthlyRevenue(
-          monthlyData.map((item) => ({
-            month: item.month,
-            revenue: Number(item.amount),
-          }))
-        );
       } catch (err) {
         if (!ignore) {
-          console.error("Dashboard API error:", err);
+          console.error(
+            "Content API error:",
+            err
+          );
+
           setError(
-            "Unable to load dashboard data. Please make sure the FastAPI server is running."
+            "Unable to load content data. Please make sure the FastAPI server is running."
           );
         }
       } finally {
         if (!ignore) {
-          setLoading(false);
+          setLoadingContent(false);
         }
       }
     }
 
-    loadDashboard();
+    if (!creatorId) {
+      setLoadingContent(false);
+      return () => {
+        ignore = true;
+      };
+    }
+
+    loadContent();
 
     return () => {
       ignore = true;
     };
   }, [creatorId]);
 
-  // Calculate content KPIs from real backend content data
-  const totalViews = content.reduce(
-    (sum, item) => sum + Number(item.views || 0),
-    0
-  );
+  /* =========================================================
+     BACKEND ANALYTICS
+     
+     All actual analytics come from FastAPI.
+  ========================================================= */
 
-  const totalLikes = content.reduce(
-    (sum, item) => sum + Number(item.likes || 0),
-    0
-  );
-
-  const totalComments = content.reduce(
-    (sum, item) => sum + Number(item.comments || 0),
-    0
-  );
-
-  const totalEngagement =
-    totalViews > 0
-      ? (((totalLikes + totalComments) / totalViews) * 100).toFixed(2)
-      : "0.00";
-
-  const topContent = [...content]
-    .sort((a, b) => Number(b.views || 0) - Number(a.views || 0))
-    .slice(0, 5);
-
-  const performanceData = content
-    .slice()
-    .sort(
-      (a, b) =>
-        new Date(a.published_date) -
-        new Date(b.published_date)
-    )
-    .slice(-10)
-    .map((item) => ({
-      title:
-        item.content_title?.length > 18
-          ? item.content_title.substring(0, 18) + "..."
-          : item.content_title,
-      views: Number(item.views || 0),
-      likes: Number(item.likes || 0),
-    }));
-
-  const revenueBreakdown = useMemo(() => {
-    if (!monthlyRevenue.length) return [];
-
-    const revenueSources = [
-      { name: "Sponsorship", value: 0, color: "#8b5cf6" },
-      { name: "Ads", value: 0, color: "#f472b6" },
-      { name: "Collabs", value: 0, color: "#22d3ee" },
-      { name: "Affiliate", value: 0, color: "#34d399" },
-      { name: "Subs", value: 0, color: "#60a5fa" },
-    ];
-
-    const totals = monthlyRevenue.reduce((sum, item) => sum + Number(item.revenue || 0), 0);
-    const shares = [0.26, 0.18, 0.22, 0.16, 0.18];
-
-    shares.forEach((share, index) => {
-      revenueSources[index].value = Number((totals * share).toFixed(2));
-    });
-
-    const remainder = Number((totals - revenueSources.reduce((sum, item) => sum + item.value, 0)).toFixed(2));
-    if (remainder !== 0) {
-      revenueSources[revenueSources.length - 1].value = Number((revenueSources[revenueSources.length - 1].value + remainder).toFixed(2));
+  useEffect(() => {
+    if (!creatorId) {
+      return;
     }
 
-    return revenueSources;
-  }, [monthlyRevenue]);
+    let ignore = false;
+
+    async function loadDashboardAnalytics() {
+      try {
+        setLoadingAnalytics(true);
+        setError("");
+
+        const [
+          revenueResponse,
+          revenueTrendResponse,
+          platformComparisonResponse,
+          platformPerformanceResponse,
+        ] = await Promise.all([
+          getRevenueSummary(creatorId),
+          getRevenueTrend(creatorId),
+          getPlatformComparison(creatorId),
+          getPlatformPerformance(creatorId),
+        ]);
+
+        if (ignore) {
+          return;
+        }
+
+        /*
+         * Revenue comes directly from backend.
+         */
+        setRevenue(revenueResponse);
+
+        setRevenueTrend(
+          normalizeRevenueTrendResponse(revenueTrendResponse)
+        );
+
+        /*
+         * Platform comparison comes directly
+         * from backend analytics.
+         */
+        setPlatformComparison(
+          normalizePlatformResponse(
+            platformComparisonResponse
+          )
+        );
+
+        /*
+         * Platform performance comes directly
+         * from backend analytics.
+         */
+        setPlatformPerformance(
+          normalizePlatformResponse(
+            platformPerformanceResponse
+          )
+        );
+      } catch (err) {
+        if (!ignore) {
+          console.error(
+            "Dashboard analytics API error:",
+            err
+          );
+
+          setError(
+            "Unable to load dashboard analytics. Please make sure the FastAPI analytics endpoints are available."
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setLoadingAnalytics(false);
+        }
+      }
+    }
+
+    loadDashboardAnalytics();
+
+    return () => {
+      ignore = true;
+    };
+  }, [creatorId]);
+
+  /* =========================================================
+     BACKEND PLATFORM DATA
+     
+     The KPI values are now taken from backend analytics,
+     not calculated from individual content rows.
+  ========================================================= */
+
+  const selectedBackendPerformance =
+    useMemo(() => {
+      const rows =
+        platformPerformance.length > 0
+          ? platformPerformance
+          : platformComparison;
+
+      if (rows.length === 0) {
+        return null;
+      }
+
+      return rows.reduce(
+        (totals, item) => ({
+          platform: "All",
+
+          views:
+            totals.views +
+            Number(item.views || 0),
+
+          likes:
+            totals.likes +
+            Number(item.likes || 0),
+
+          comments:
+            totals.comments +
+            Number(item.comments || 0),
+
+          shares:
+            totals.shares +
+            Number(item.shares || 0),
+
+          saves:
+            totals.saves +
+            Number(item.saves || 0),
+
+          reach:
+            totals.reach +
+            Number(item.reach || 0),
+
+          engagement: 0,
+        }),
+        {
+          platform: "All",
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          saves: 0,
+          reach: 0,
+          engagement: 0,
+        }
+      );
+    }, [
+      platformPerformance,
+      platformComparison,
+    ]);
+
+  /*
+   * For All Platforms, calculate the aggregate engagement
+   * percentage from the backend platform totals.
+   *
+   * For a specific platform, use the engagement value
+   * returned by backend analytics whenever available.
+   */
+  const backendEngagement = useMemo(() => {
+    if (!selectedBackendPerformance) {
+      return 0;
+    }
+
+    const views =
+      Number(
+        selectedBackendPerformance.views
+      ) || 0;
+
+    const likes =
+      Number(
+        selectedBackendPerformance.likes
+      ) || 0;
+
+    const comments =
+      Number(
+        selectedBackendPerformance.comments
+      ) || 0;
+
+    const shares =
+      Number(
+        selectedBackendPerformance.shares
+      ) || 0;
+
+    const saves =
+      Number(
+        selectedBackendPerformance.saves
+      ) || 0;
+
+    if (views <= 0) {
+      return 0;
+    }
+
+    /*
+     * This is based exclusively on values
+     * returned by the backend.
+     */
+    return (
+      ((likes +
+        comments +
+        shares +
+        saves) /
+        views) *
+      100
+    );
+  }, [
+    selectedBackendPerformance,
+  ]);
+
+  const totalViews =
+    Number(
+      selectedBackendPerformance?.views || 0
+    );
+
+  const totalLikes =
+    Number(
+      selectedBackendPerformance?.likes || 0
+    );
+
+  const totalReach =
+    Number(
+      selectedBackendPerformance?.reach || 0
+    );
+
+  const totalEngagement =
+    Number(backendEngagement).toFixed(2);
+
+  /* =========================================================
+     PERFORMANCE TREND
+     
+     This chart uses real backend content records.
+     
+     Your current backend does not expose a dedicated
+     dashboard monthly performance endpoint, so the
+     frontend groups the real /content/ records by month.
+     
+     No numbers are generated or hardcoded.
+  ========================================================= */
+
+  const performanceData = useMemo(() => {
+    const monthlyMap = {};
+
+    content.forEach((item) => {
+      if (!item?.published_date) {
+        return;
+      }
+
+      const date = new Date(
+        item.published_date
+      );
+
+      if (
+        Number.isNaN(date.getTime())
+      ) {
+        return;
+      }
+
+      const monthKey = `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+      if (!monthlyMap[monthKey]) {
+        monthlyMap[monthKey] = {
+          month: monthKey,
+          views: 0,
+          likes: 0,
+        };
+      }
+
+      monthlyMap[monthKey].views += Number(
+        item?.views || 0
+      );
+
+      monthlyMap[monthKey].likes += Number(
+        item?.likes || 0
+      );
+    });
+
+    return Object.values(monthlyMap)
+      .sort((a, b) =>
+        a.month.localeCompare(
+          b.month
+        )
+      )
+      .map((item) => ({
+        ...item,
+        label: new Date(
+          `${item.month}-01`
+        ).toLocaleDateString(
+          "en-IN",
+          {
+            month: "short",
+            year: "numeric",
+          }
+        ),
+      }));
+  }, [content]);
+
+  /* =========================================================
+     PLATFORM COMPARISON
+     
+     Already returned by backend.
+  ========================================================= */
+
+  const sortedPlatformComparison =
+    useMemo(() => {
+      return [
+        ...platformComparison,
+      ].sort(
+        (a, b) =>
+          Number(b.views || 0) -
+          Number(a.views || 0)
+      );
+    }, [platformComparison]);
+
+  /* =========================================================
+     BEST PLATFORM
+     
+     Based on backend platform comparison.
+  ========================================================= */
+
+  const bestPlatform =
+    sortedPlatformComparison[0];
+
+  const loading =
+    loadingContent ||
+    loadingAnalytics;
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
 
   return (
     <div className="dashboard-shell px-3 py-4 md:px-5 md:py-6">
       <div className="mx-auto max-w-7xl space-y-6">
+
+        {/* =========================
+            HERO
+        ========================== */}
+
         <div className="dashboard-hero">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-200">
                 Performance overview
@@ -176,12 +652,12 @@ function Dashboard() {
               </p>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/20 backdrop-blur-sm">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              Creator ID: {creatorId}
-            </div>
           </div>
         </div>
+
+        {/* =========================
+            ERROR
+        ========================== */}
 
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
@@ -189,124 +665,267 @@ function Dashboard() {
           </div>
         )}
 
+        {/* =========================
+            KPI CARDS
+        ========================== */}
+
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+
+          {/* Views */}
+
           <div className="stat-card stat-card-indigo">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-indigo-100">Total Views</p>
-              <span className="stat-icon">👁️</span>
-            </div>
-            <h2 className="mt-5 text-3xl font-bold text-white">
-              {loading ? "..." : totalViews.toLocaleString()}
-            </h2>
-            <p className="mt-2 text-sm text-indigo-100/90">From content API</p>
-          </div>
 
-          <div className="stat-card stat-card-emerald">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-emerald-50">Total Likes</p>
-              <span className="stat-icon">👍</span>
-            </div>
-            <h2 className="mt-5 text-3xl font-bold text-white">
-              {loading ? "..." : totalLikes.toLocaleString()}
-            </h2>
-            <p className="mt-2 text-sm text-emerald-50/90">From content API</p>
-          </div>
+              <p className="text-sm font-medium text-indigo-100">
+                Total Views
+              </p>
 
-          <div className="stat-card stat-card-sky">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-sky-50">Engagement</p>
-              <span className="stat-icon">⚡</span>
+              <span className="stat-icon">
+                👁️
+              </span>
             </div>
-            <h2 className="mt-5 text-3xl font-bold text-white">
-              {loading ? "..." : `${totalEngagement}%`}
-            </h2>
-            <p className="mt-2 text-sm text-sky-50/90">Likes + comments / views</p>
-          </div>
 
-          <div className="stat-card stat-card-dark">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-violet-100">Total Revenue</p>
-              <span className="stat-icon">💰</span>
-            </div>
             <h2 className="mt-5 text-3xl font-bold text-white">
               {loading
                 ? "..."
-                : `₹${Number(revenue?.total_revenue || 0).toLocaleString("en-IN")}`}
+                : totalViews.toLocaleString()}
             </h2>
-            <p className="mt-2 text-sm text-violet-100/90">From revenue API</p>
+
+            <p className="mt-2 text-sm text-indigo-100/90">
+              From backend analytics
+            </p>
+          </div>
+
+          {/* Likes */}
+
+          <div className="stat-card stat-card-emerald">
+            <div className="flex items-center justify-between">
+
+              <p className="text-sm font-medium text-emerald-50">
+                Total Likes
+              </p>
+
+              <span className="stat-icon">
+                👍
+              </span>
+            </div>
+
+            <h2 className="mt-5 text-3xl font-bold text-white">
+              {loading
+                ? "..."
+                : totalLikes.toLocaleString()}
+            </h2>
+
+            <p className="mt-2 text-sm text-emerald-50/90">
+              From backend analytics
+            </p>
+          </div>
+
+          {/* Engagement */}
+
+          <div className="stat-card stat-card-sky">
+            <div className="flex items-center justify-between">
+
+              <p className="text-sm font-medium text-sky-50">
+                Engagement
+              </p>
+
+              <span className="stat-icon">
+                ⚡
+              </span>
+            </div>
+
+            <h2 className="mt-5 text-3xl font-bold text-white">
+              {loading
+                ? "..."
+                : `${totalEngagement}%`}
+            </h2>
+
+            <p className="mt-2 text-sm text-sky-50/90">
+              Backend platform analytics
+            </p>
+          </div>
+
+          {/* Revenue */}
+
+          <div className="stat-card stat-card-dark">
+            <div className="flex items-center justify-between">
+
+              <p className="text-sm font-medium text-violet-100">
+                Total Revenue
+              </p>
+
+              <span className="stat-icon">
+                💰
+              </span>
+            </div>
+
+            <h2 className="mt-5 text-3xl font-bold text-white">
+              {loading
+                ? "..."
+                : `₹${Number(
+                    revenue?.total_revenue ||
+                      revenue?.totalRevenue ||
+                      revenue?.amount ||
+                      0
+                  ).toLocaleString(
+                    "en-IN"
+                  )}`}
+            </h2>
+
+            <p className="mt-2 text-sm text-violet-100/90">
+              From revenue API
+            </p>
           </div>
         </div>
 
+        {/* =========================
+            CHARTS
+        ========================== */}
+
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+          {/* Performance Trends */}
+
           <div className="dashboard-panel">
+
             <div className="mb-5 flex items-center justify-between">
+
               <div>
                 <h2 className="text-lg font-semibold text-slate-800">
                   Performance Trends
                 </h2>
+
                 <p className="mt-1 text-sm text-slate-500">
-                  Views and likes from creator content
+                  Monthly views and likes from your content
                 </p>
               </div>
-              <span className="chart-badge chart-badge-live">Live</span>
+
+              <span className="chart-badge chart-badge-live">
+                Live
+              </span>
             </div>
 
             <div className="h-80">
+
               {loading ? (
                 <div className="flex h-full items-center justify-center text-slate-400">
                   Loading chart...
                 </div>
-              ) : performanceData.length === 0 ? (
+              ) : performanceData.length ===
+                0 ? (
                 <div className="flex h-full items-center justify-center text-slate-400">
                   No content data available
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={performanceData}>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <LineChart
+                    data={performanceData}
+                  >
                     <defs>
-                      <linearGradient id="viewsLine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#4f46e5" />
-                        <stop offset="100%" stopColor="#8b5cf6" />
+
+                      <linearGradient
+                        id="viewsLine"
+                        x1="0"
+                        y1="0"
+                        x2="1"
+                        y2="0"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#4f46e5"
+                        />
+
+                        <stop
+                          offset="100%"
+                          stopColor="#8b5cf6"
+                        />
                       </linearGradient>
-                      <linearGradient id="likesLine" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="100%" stopColor="#34d399" />
+
+                      <linearGradient
+                        id="likesLine"
+                        x1="0"
+                        y1="0"
+                        x2="1"
+                        y2="0"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#10b981"
+                        />
+
+                        <stop
+                          offset="100%"
+                          stopColor="#34d399"
+                        />
                       </linearGradient>
+
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />
+
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#dbeafe"
+                    />
+
                     <XAxis
-                      dataKey="title"
-                      tick={{ fontSize: 11, fill: "#475569" }}
+                      dataKey="label"
+                      tick={{
+                        fontSize: 11,
+                        fill: "#475569",
+                      }}
                       axisLine={false}
                       tickLine={false}
                     />
+
                     <YAxis
-                      tick={{ fontSize: 11, fill: "#475569" }}
+                      tick={{
+                        fontSize: 11,
+                        fill: "#475569",
+                      }}
                       axisLine={false}
                       tickLine={false}
                     />
+
                     <Tooltip
                       contentStyle={{
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
+                        background:
+                          "#fff",
+                        border:
+                          "1px solid #e2e8f0",
                         borderRadius: 12,
                         color: "#0f172a",
-                        boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)",
+                        boxShadow:
+                          "0 20px 40px rgba(15, 23, 42, 0.08)",
                       }}
                     />
+
+                    <Legend />
+
                     <Line
                       type="monotone"
                       dataKey="views"
+                      name="Views"
                       stroke="url(#viewsLine)"
                       strokeWidth={3}
-                      dot={{ r: 3, fill: "#4f46e5" }}
+                      dot={{
+                        r: 3,
+                        fill: "#4f46e5",
+                      }}
                     />
+
                     <Line
                       type="monotone"
                       dataKey="likes"
+                      name="Likes"
                       stroke="url(#likesLine)"
                       strokeWidth={3}
-                      dot={{ r: 3, fill: "#10b981" }}
+                      dot={{
+                        r: 3,
+                        fill: "#10b981",
+                      }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -314,113 +933,306 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* Revenue Trend */}
+
           <div className="dark-analytics-panel">
+
             <div className="mb-5 flex items-center justify-between">
+
               <div>
                 <h2 className="text-2xl font-extrabold text-white">
-                  Monthly Revenue Trend
+                  Revenue Trend
                 </h2>
+
+                <p className="mt-1 text-sm text-slate-400">
+                  Overview of creator revenue report
+                </p>
               </div>
             </div>
 
             <div className="h-[360px] pt-2">
+
               {loading ? (
                 <div className="flex h-full items-center justify-center text-slate-400">
                   Loading chart...
                 </div>
-              ) : revenueBreakdown.length === 0 ? (
+              ) : revenueTrend.length ===
+                0 ? (
                 <div className="flex h-full items-center justify-center text-slate-400">
                   No revenue data available
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={revenueBreakdown}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={120}
-                      paddingAngle={3}
-                      stroke="rgba(15, 23, 42, 0.9)"
-                      strokeWidth={2}
-                    >
-                      {revenueBreakdown.map((entry) => (
-                        <Cell key={entry.name} fill={entry.color} />
-                      ))}
-                    </Pie>
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                >
+                  <LineChart data={revenueTrend}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="rgba(148, 163, 184, 0.2)"
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11, fill: "#cbd5e1" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11, fill: "#cbd5e1" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
                     <Tooltip
-                      formatter={(value) => [`₹${Number(value).toLocaleString("en-IN")}`, "Revenue"]}
+                      formatter={(value) => [
+                        `₹${Number(
+                          value
+                        ).toLocaleString(
+                          "en-IN"
+                        )}`,
+                        "Revenue",
+                      ]}
                       contentStyle={{
-                        background: "#fff",
-                        border: "1px solid #e2e8f0",
+                        background:
+                          "#fff",
+                        border:
+                          "1px solid #e2e8f0",
                         borderRadius: 12,
                         color: "#0f172a",
-                        boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)",
+                        boxShadow:
+                          "0 20px 40px rgba(15, 23, 42, 0.08)",
                       }}
                     />
-                    <Legend
-                      wrapperStyle={{ paddingTop: 12, color: "#dbeafe" }}
-                      formatter={(name) => <span style={{ color: "#dbeafe", fontSize: 12 }}>{name}</span>}
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      name="Revenue"
+                      stroke="#a78bfa"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#8b5cf6" }}
+                      activeDot={{ r: 6 }}
                     />
-                  </PieChart>
+                  </LineChart>
                 </ResponsiveContainer>
               )}
             </div>
           </div>
         </div>
 
+        {/* =========================
+            PLATFORM COMPARISON
+        ========================== */}
+
         <div className="dark-list-panel mt-6">
+
           <div className="mb-5 flex items-center justify-between">
+
             <div>
               <h2 className="text-2xl font-extrabold text-white">
-                Top Performing Content
+                Platform Comparison
               </h2>
+
+              <p className="mt-1 text-sm text-slate-400">
+                Compare creator performance across platforms
+              </p>
             </div>
+
           </div>
 
           {loading ? (
-            <p className="text-slate-400">Loading content...</p>
-          ) : topContent.length === 0 ? (
-            <p className="text-slate-400">No content available for this creator.</p>
+            <p className="text-slate-400">
+              Loading platform comparison...
+            </p>
+          ) : sortedPlatformComparison.length ===
+            0 ? (
+            <p className="text-slate-400">
+              No platform comparison data available.
+            </p>
           ) : (
-            <div className="space-y-3">
-              {topContent.map((item, index) => {
-                const views = Number(item.views || 0);
-                const likes = Number(item.likes || 0);
-                const comments = Number(item.comments || 0);
-                const engagementRate = views > 0 ? ((likes + comments) / views) * 100 : 0;
-                const platformIcon = item.platform === "YouTube" ? "▶" : item.platform === "Instagram" ? "◎" : item.platform === "TikTok" ? "♪" : "◉";
+            <div className="overflow-x-auto">
 
-                return (
-                  <div key={item.id || index} className="content-rank-card">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="content-rank-thumb">{platformIcon}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-base font-semibold text-white">{item.content_title}</div>
-                        <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-300">
-                          <span>@ {item.platform}</span>
-                          <span>•</span>
-                          <span>{Number(views).toLocaleString()} views</span>
-                          <span>•</span>
-                          <span>{Number(likes).toLocaleString()} likes</span>
-                          <span>•</span>
-                          <span>{Number(comments).toLocaleString()} comments</span>
-                        </div>
-                      </div>
-                    </div>
+              <table className="w-full min-w-[760px] text-left">
 
-                    <div className="content-engagement-badge">
-                      {engagementRate.toFixed(2)}%
-                    </div>
-                  </div>
-                );
-              })}
+                <thead>
+                  <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-400">
+
+                    <th className="px-4 py-3">
+                      Platform
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Views
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Likes
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Comments
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Reach
+                    </th>
+
+                    <th className="px-4 py-3">
+                      Engagement
+                    </th>
+
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {sortedPlatformComparison.map(
+                    (item, index) => {
+
+                      return (
+                        <tr
+                          key={`${item.platform}-${index}`}
+                          className="border-b border-white/5 transition hover:bg-white/5"
+                        >
+
+                          <td className="px-4 py-4">
+
+                            <div className="flex items-center gap-3">
+
+                              <span
+                                className={`h-2.5 w-2.5 rounded-full ${
+                                  "bg-indigo-400"
+                                }`}
+                              />
+
+                              <span className="font-semibold text-white">
+                                {item.platform}
+                              </span>
+
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {Number(
+                              item.views || 0
+                            ).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {Number(
+                              item.likes || 0
+                            ).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {Number(
+                              item.comments || 0
+                            ).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm text-slate-200">
+                            {Number(
+                              item.reach || 0
+                            ).toLocaleString()}
+                          </td>
+
+                          <td className="px-4 py-4 text-sm font-semibold text-emerald-300">
+                            {Number(
+                              item.engagement ||
+                                0
+                            ).toFixed(2)}
+                            %
+                          </td>
+
+                        </tr>
+                      );
+                    }
+                  )}
+
+                </tbody>
+              </table>
             </div>
           )}
         </div>
+
+        {/* =========================
+            PERFORMANCE SNAPSHOT
+        ========================== */}
+
+        <div className="dashboard-panel">
+
+          <div className="mb-5">
+
+            <h2 className="text-lg font-semibold text-slate-800">
+              Creator Performance Snapshot
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-500">
+              A quick overview of your backend performance
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+            {/* Content count */}
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+
+              <p className="text-sm font-medium text-slate-500">
+                Published Content
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-800">
+                {loading
+                  ? "..."
+                  : content.length.toLocaleString()}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Across all connected platforms
+              </p>
+            </div>
+
+            {/* Reach */}
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+
+              <p className="text-sm font-medium text-slate-500">
+                Total Reach
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-800">
+                {loading
+                  ? "..."
+                  : totalReach.toLocaleString()}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                From backend analytics
+              </p>
+            </div>
+
+            {/* Best platform */}
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+
+              <p className="text-sm font-medium text-slate-500">
+                Leading Platform
+              </p>
+
+              <p className="mt-2 text-2xl font-bold text-slate-800">
+                {loading
+                  ? "..."
+                  : bestPlatform?.platform ||
+                    "—"}
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Highest views from backend platform comparison
+              </p>
+            </div>
+
+          </div>
+        </div>
+
       </div>
     </div>
   );

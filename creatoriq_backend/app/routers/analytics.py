@@ -42,19 +42,27 @@ def top_content(
     db: Session = Depends(get_db),
 ):
     return get_top_content(db)
-
+#
 @router.get("/platform-performance")
 def platform_performance(
+    creator_id: int | None = None,
     db: Session = Depends(get_db),
 ):
-    return get_platform_performance(db)
-
+    return get_platform_performance(
+        db,
+        creator_id,
+    )
+#
 @router.get("/platform-comparison")
 def platform_comparison(
+    creator_id: int | None = None,
     db: Session = Depends(get_db),
 ):
-    return get_platform_comparison(db)
-
+    return get_platform_comparison(
+        db,
+        creator_id,
+    )
+    
 @router.get("/chart/engagement")
 def engagement_chart(
     db: Session = Depends(get_db),

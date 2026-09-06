@@ -52,6 +52,17 @@ export function AuthProvider({ children }) {
     setUser(currentUser.data);
   }
 
+  async function register(fullName, email, password) {
+    await api.post("/auth/register", {
+      full_name: fullName,
+      email,
+      password,
+      role: "creator",
+    });
+
+    await login(email, password);
+  }
+
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -59,7 +70,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, user, login, logout, checkingSession }}>
+    <AuthContext.Provider value={{ token, user, login, register, logout, checkingSession }}>
       {children}
     </AuthContext.Provider>
   );

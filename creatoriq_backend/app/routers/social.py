@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -8,9 +8,7 @@ from app.services.social_media import (
     get_connected_platforms,
     synchronize_platform,
 )
-from app.services.youtube_service import (
-    synchronize_youtube_videos,
-)
+from app.services.youtube_service import synchronize_youtube_videos
 
 
 router = APIRouter(
@@ -19,16 +17,27 @@ router = APIRouter(
 )
 
 
+# ---------------------------------------------------------
+# Request schemas
+# ---------------------------------------------------------
+
 class SocialConnectRequest(BaseModel):
     platform: str
-    account_name: str
+    account_name: str = Field(min_length=1)
+
 
 class SocialSyncRequest(BaseModel):
     platform: str
+    creator_id: int = Field(gt=0)
+
 
 class YouTubeSyncRequest(BaseModel):
     video_ids: list[str]
 
+
+# ---------------------------------------------------------
+# Connect a social platform
+# ---------------------------------------------------------
 
 @router.post("/connect")
 def connect_social_platform(
@@ -48,6 +57,10 @@ def connect_social_platform(
     return result
 
 
+# ---------------------------------------------------------
+# Get connected platforms
+# ---------------------------------------------------------
+
 @router.get("/platforms")
 def get_platforms():
     return {
@@ -55,29 +68,41 @@ def get_platforms():
     }
 
 
+# ---------------------------------------------------------
+# Synchronize social-media platform data
+# ---------------------------------------------------------
+
 @router.post("/sync")
 def sync_platform(
     request: SocialSyncRequest,
     db: Session = Depends(get_db),
 ):
-    if request.platform not in get_connected_platforms():
+    try:
+        result = synchronize_platform(
+            db,
+            request.platform,
+            request.creator_id,
+        )
+
+        return result
+
+    except ValueError as exc:
         raise HTTPException(
             status_code=400,
-            detail="Platform is not connected",
-        )
+            detail=str(exc),
+        ) from exc
 
-    result = synchronize_platform(
-        db,
-        request.platform,
-    )
-
-    if result is None:
+    except Exception as exc:
+        print("SOCIAL SYNC ERROR:", repr(exc))
         raise HTTPException(
-            status_code=404,
-            detail="No mock data available for this platform",
+            status_code=500,
+            detail=str(exc),
         )
 
-    return result
+
+# ---------------------------------------------------------
+# Synchronize YouTube videos
+# ---------------------------------------------------------
 
 @router.post("/youtube/sync")
 def sync_youtube(

@@ -74,9 +74,17 @@ def get_top_content(
 
     return results[:limit]
 
+#
+def get_platform_performance(
+    db: Session,
+    creator_id: int | None = None,
+):
+    query = db.query(Content)
 
-def get_platform_performance(db: Session):
-    contents = db.query(Content).all()
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
+
+    contents = query.all()
 
     platform_data = {}
 
@@ -130,9 +138,15 @@ def get_platform_performance(db: Session):
     )
 
     return results
-
-def get_platform_comparison(db: Session):
-    platform_results = get_platform_performance(db)
+#
+def get_platform_comparison(
+    db: Session,
+    creator_id: int | None = None,
+):
+    platform_results = get_platform_performance(
+        db,
+        creator_id,
+    )
 
     return {
         item["platform"]: {

@@ -26,15 +26,32 @@ def create_content(
     return new_content
 
 
+# @router.get("/")
+# def get_all_content(
+#     db: Session = Depends(get_db),
+# ):
+#     contents = db.query(Content).all()
+
+#     return contents
+
+#
 @router.get("/")
 def get_all_content(
+    creator_id: int | None = None,
+    platform: str | None = None,
     db: Session = Depends(get_db),
 ):
-    contents = db.query(Content).all()
+    query = db.query(Content)
 
-    return contents
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
 
+    if platform is not None:
+        query = query.filter(Content.platform == platform)
 
+    return query.all()
+
+#
 @router.get("/{content_id}")
 def get_content(
     content_id: int,

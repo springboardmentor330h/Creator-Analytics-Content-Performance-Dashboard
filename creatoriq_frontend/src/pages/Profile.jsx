@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { updateUser } from "../services/api";
 
 function Profile() {
+  const { user } = useAuth();
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const [settings, setSettings] = useState({
-    name: "Creator",
-    email: "creator@example.com",
-    notifications: true,
-    emailAlerts: true,
-    performanceAlerts: true,
+    name: "",
+    email: "",
   });
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setSettings({
+      name: user.full_name || "",
+      email: user.email || "",
+    });
+  }, [user]);
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
@@ -20,11 +33,40 @@ function Profile() {
     }));
 
     setSaved(false);
+    setError("");
   };
 
-  const handleSave = (event) => {
+  const handleSave = async (event) => {
     event.preventDefault();
-    setSaved(true);
+
+    if (!user?.id) {
+      setError("Unable to identify the current account.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError("");
+
+      const response = await updateUser(user.id, {
+        full_name: settings.name,
+        email: settings.email,
+      });
+
+      const updatedUser = response?.data || response;
+
+      setSettings((previous) => ({
+        ...previous,
+        name: updatedUser.full_name || previous.name,
+        email: updatedUser.email || previous.email,
+      }));
+      setSaved(true);
+    } catch (err) {
+      console.error("Profile update error:", err);
+      setError(err.response?.data?.detail || "Unable to save profile changes.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -44,6 +86,12 @@ function Profile() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="rounded-[24px] border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 shadow-sm">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSave} className="space-y-6">
           <div className="dashboard-panel">
@@ -65,63 +113,30 @@ function Profile() {
             </div>
           </div>
 
-          <div className="dashboard-panel dashboard-panel-violet">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-800">Notification Preferences</h2>
-              <p className="mt-1 text-sm text-slate-500">Choose which notifications you want to receive.</p>
-            </div>
-
-            <div className="space-y-5">
-              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <div>
-                  <p className="font-medium text-slate-800">Notifications</p>
-                  <p className="text-sm text-slate-500">Enable CreatorIQ notifications.</p>
-                </div>
-                <input type="checkbox" name="notifications" checked={settings.notifications} onChange={handleChange} className="h-5 w-5 accent-violet-600" />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <div>
-                  <p className="font-medium text-slate-800">Email Alerts</p>
-                  <p className="text-sm text-slate-500">Receive important alerts through email.</p>
-                </div>
-                <input type="checkbox" name="emailAlerts" checked={settings.emailAlerts} onChange={handleChange} className="h-5 w-5 accent-violet-600" />
-              </label>
-
-              <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <div>
-                  <p className="font-medium text-slate-800">Performance Alerts</p>
-                  <p className="text-sm text-slate-500">Receive alerts when content performance changes.</p>
-                </div>
-                <input type="checkbox" name="performanceAlerts" checked={settings.performanceAlerts} onChange={handleChange} className="h-5 w-5 accent-violet-600" />
-              </label>
-            </div>
-          </div>
-
           <div className="dashboard-panel">
             <h2 className="text-xl font-semibold text-slate-800">Account</h2>
             <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-[20px] border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm text-slate-500">Dashboard</p>
-                <p className="mt-1 font-semibold text-slate-800">CreatorIQ</p>
+                <p className="mt-1 font-semibold text-slate-800">{user?.role || "Creator"}</p>
               </div>
 
               <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-700">API Status</p>
-                <p className="mt-1 font-semibold text-emerald-700">Connected</p>
+                <p className="mt-1 font-semibold text-emerald-700">{user ? "Connected" : "Unavailable"}</p>
               </div>
 
               <div className="rounded-[20px] border border-emerald-200 bg-emerald-50 p-4">
                 <p className="text-sm text-emerald-700">Account Status</p>
-                <p className="mt-1 font-semibold text-emerald-700">Active</p>
+                <p className="mt-1 font-semibold text-emerald-700">{user ? "Active" : "Unavailable"}</p>
               </div>
             </div>
           </div>
 
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             {saved && <p className="text-sm font-medium text-emerald-600">Settings saved successfully.</p>}
-            <button type="submit" className="rounded-xl bg-violet-600 px-6 py-3 font-medium text-white shadow-lg shadow-violet-500/20 transition hover:bg-violet-700">
-              Save Settings
+            <button type="submit" disabled={saving || !user} className="rounded-xl bg-violet-600 px-6 py-3 font-medium text-white shadow-lg shadow-violet-500/20 transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60">
+              {saving ? "Saving..." : "Save Profile"}
             </button>
           </div>
         </form>

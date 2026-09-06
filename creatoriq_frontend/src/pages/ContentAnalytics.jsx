@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAllContent } from "../services/api";
-
-const CREATOR_ID = 2;
+import { useAuth } from "../context/AuthContext";
 
 const PLATFORM_STYLES = {
   YouTube: "bg-red-500/10 text-red-300 border-red-500/20",
@@ -13,6 +12,8 @@ const PLATFORM_STYLES = {
 };
 
 function ContentAnalytics() {
+  const { user } = useAuth();
+  const creatorId = user?.id;
   const [content, setContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -24,12 +25,8 @@ function ContentAnalytics() {
         setLoading(true);
         setError("");
 
-        const data = await getAllContent();
-        const creatorContent = Array.isArray(data)
-          ? data.filter((item) => Number(item.creator_id) === CREATOR_ID)
-          : [];
-
-        setContent(creatorContent);
+        const data = await getAllContent(creatorId);
+        setContent(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Content analytics error:", err);
         setError("Unable to load content analytics from the backend.");
@@ -38,8 +35,13 @@ function ContentAnalytics() {
       }
     };
 
+    if (!creatorId) {
+      setLoading(false);
+      return;
+    }
+
     loadContent();
-  }, []);
+  }, [creatorId]);
 
   const platforms = useMemo(() => {
     return ["All", ...Array.from(new Set(content.map((item) => item.platform).filter(Boolean)))];
@@ -170,10 +172,6 @@ function ContentAnalytics() {
               <p className="mt-2 text-sm text-indigo-100/90">Analyze content performance across platforms</p>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/20 backdrop-blur-sm">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              Creator {CREATOR_ID}
-            </div>
           </div>
         </div>
 
@@ -490,412 +488,3 @@ function formatNumber(value) {
 
 export default ContentAnalytics;
 
-
-
-// import { useEffect, useMemo, useState } from "react";
-
-// import {
-//   getAllContent,
-// } from "../services/api";
-
-// const CREATOR_ID = 2;
-
-// function ContentAnalytics() {
-//   const [content, setContent] = useState([]);
-//   const [loading, setLoading] = useState(true);
-//   const [error, setError] = useState("");
-
-//   useEffect(() => {
-//     const loadContent = async () => {
-//       try {
-//         setLoading(true);
-//         setError("");
-
-//         const data = await getAllContent();
-
-//         const creatorContent = Array.isArray(data)
-//           ? data.filter(
-//               (item) => Number(item.creator_id) === CREATOR_ID
-//             )
-//           : [];
-
-//         setContent(creatorContent);
-//       } catch (err) {
-//         console.error("Content analytics error:", err);
-
-//         setError(
-//           "Unable to load content analytics from the backend."
-//         );
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     loadContent();
-//   }, []);
-
-//   const metrics = useMemo(() => {
-//     const totalViews = content.reduce(
-//       (sum, item) => sum + Number(item.views || 0),
-//       0
-//     );
-
-//     const totalLikes = content.reduce(
-//       (sum, item) => sum + Number(item.likes || 0),
-//       0
-//     );
-
-//     const totalComments = content.reduce(
-//       (sum, item) => sum + Number(item.comments || 0),
-//       0
-//     );
-
-//     const totalShares = content.reduce(
-//       (sum, item) => sum + Number(item.shares || 0),
-//       0
-//     );
-
-//     const totalSaves = content.reduce(
-//       (sum, item) => sum + Number(item.saves || 0),
-//       0
-//     );
-
-//     const totalReach = content.reduce(
-//       (sum, item) => sum + Number(item.reach || 0),
-//       0
-//     );
-
-//     const engagementRate =
-//       totalViews > 0
-//         ? (
-//             ((totalLikes +
-//               totalComments +
-//               totalShares +
-//               totalSaves) /
-//               totalViews) *
-//             100
-//           ).toFixed(2)
-//         : "0.00";
-
-//     return {
-//       totalViews,
-//       totalLikes,
-//       totalComments,
-//       totalShares,
-//       totalSaves,
-//       totalReach,
-//       engagementRate,
-//     };
-//   }, [content]);
-
-//   const topContent = useMemo(() => {
-//     return [...content]
-//       .sort(
-//         (a, b) =>
-//           Number(b.views || 0) -
-//           Number(a.views || 0)
-//       )
-//       .slice(0, 5);
-//   }, [content]);
-
-//   const formatNumber = (value) => {
-//     return new Intl.NumberFormat("en-IN").format(
-//       Number(value || 0)
-//     );
-//   };
-
-//   const formatPercentage = (value) => {
-//     return `${value}%`;
-//   };
-
-//   if (loading) {
-//     return (
-//       <div className="p-8">
-//         <h1 className="text-3xl font-bold text-white">
-//           Content Analytics
-//         </h1>
-
-//         <p className="mt-3 text-slate-400">
-//           Loading real content data from CreatorIQ...
-//         </p>
-//       </div>
-//     );
-//   }
-
-//   if (error) {
-//     return (
-//       <div className="p-8">
-//         <h1 className="text-3xl font-bold text-white">
-//           Content Analytics
-//         </h1>
-
-//         <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 p-5 text-red-300">
-//           {error}
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="min-h-full bg-slate-950 p-6 text-white md:p-8">
-//       {/* Header */}
-//       <div className="mb-8">
-//         <h1 className="text-3xl font-bold">
-//           Content Analytics
-//         </h1>
-
-//         <p className="mt-2 text-slate-400">
-//           Real content performance data for Creator {CREATOR_ID}
-//         </p>
-//       </div>
-
-//       {/* Empty state */}
-//       {content.length === 0 ? (
-//         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-10 text-center">
-//           <h2 className="text-xl font-semibold">
-//             No content available
-//           </h2>
-
-//           <p className="mt-2 text-slate-400">
-//             There is currently no content data for Creator{" "}
-//             {CREATOR_ID}.
-//           </p>
-//         </div>
-//       ) : (
-//         <>
-//           {/* KPI Cards */}
-//           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-//             <MetricCard
-//               title="Total Views"
-//               value={formatNumber(metrics.totalViews)}
-//               subtitle="Across all content"
-//             />
-
-//             <MetricCard
-//               title="Total Likes"
-//               value={formatNumber(metrics.totalLikes)}
-//               subtitle="Audience interactions"
-//             />
-
-//             <MetricCard
-//               title="Comments"
-//               value={formatNumber(metrics.totalComments)}
-//               subtitle="Total comments"
-//             />
-
-//             <MetricCard
-//               title="Engagement Rate"
-//               value={formatPercentage(
-//                 metrics.engagementRate
-//               )}
-//               subtitle="Calculated from content metrics"
-//             />
-//           </div>
-
-//           {/* Secondary metrics */}
-//           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-3">
-//             <MetricCard
-//               title="Total Reach"
-//               value={formatNumber(metrics.totalReach)}
-//               subtitle="Combined content reach"
-//             />
-
-//             <MetricCard
-//               title="Shares"
-//               value={formatNumber(metrics.totalShares)}
-//               subtitle="Content shares"
-//             />
-
-//             <MetricCard
-//               title="Saves"
-//               value={formatNumber(metrics.totalSaves)}
-//               subtitle="Content saves"
-//             />
-//           </div>
-
-//           {/* Performance chart */}
-//           <div className="mt-8">
-//             <PerformanceSection content={content} />
-//           </div>
-
-//           {/* Top content table */}
-//           <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
-//             <div className="mb-6">
-//               <h2 className="text-xl font-semibold">
-//                 Top Performing Content
-//               </h2>
-
-//               <p className="mt-1 text-sm text-slate-400">
-//                 Ranked by views using real backend data
-//               </p>
-//             </div>
-
-//             <div className="overflow-x-auto">
-//               <table className="w-full min-w-[800px]">
-//                 <thead>
-//                   <tr className="border-b border-slate-800 text-left text-sm text-slate-400">
-//                     <th className="px-4 py-3">
-//                       Content
-//                     </th>
-
-//                     <th className="px-4 py-3">
-//                       Platform
-//                     </th>
-
-//                     <th className="px-4 py-3">
-//                       Views
-//                     </th>
-
-//                     <th className="px-4 py-3">
-//                       Likes
-//                     </th>
-
-//                     <th className="px-4 py-3">
-//                       Comments
-//                     </th>
-
-//                     <th className="px-4 py-3">
-//                       Reach
-//                     </th>
-//                   </tr>
-//                 </thead>
-
-//                 <tbody>
-//                   {topContent.map((item) => (
-//                     <tr
-//                       key={item.id}
-//                       className="border-b border-slate-800/70 transition hover:bg-slate-800/40"
-//                     >
-//                       <td className="max-w-[300px] px-4 py-4">
-//                         <div className="truncate font-medium text-white">
-//                           {item.content_title ||
-//                             "Untitled Content"}
-//                         </div>
-
-//                         <div className="mt-1 text-xs text-slate-500">
-//                           {item.published_date || "Unknown date"}
-//                         </div>
-//                       </td>
-
-//                       <td className="px-4 py-4">
-//                         <span className="rounded-full bg-purple-500/10 px-3 py-1 text-xs font-medium text-purple-300">
-//                           {item.platform || "Unknown"}
-//                         </span>
-//                       </td>
-
-//                       <td className="px-4 py-4 font-medium">
-//                         {formatNumber(item.views)}
-//                       </td>
-
-//                       <td className="px-4 py-4 text-slate-300">
-//                         {formatNumber(item.likes)}
-//                       </td>
-
-//                       <td className="px-4 py-4 text-slate-300">
-//                         {formatNumber(item.comments)}
-//                       </td>
-
-//                       <td className="px-4 py-4 text-slate-300">
-//                         {formatNumber(item.reach)}
-//                       </td>
-//                     </tr>
-//                   ))}
-//                 </tbody>
-//               </table>
-//             </div>
-//           </div>
-//         </>
-//       )}
-//     </div>
-//   );
-// }
-
-// function MetricCard({
-//   title,
-//   value,
-//   subtitle,
-// }) {
-//   return (
-//     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 transition hover:border-purple-500/30">
-//       <p className="text-sm font-medium text-slate-400">
-//         {title}
-//       </p>
-
-//       <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-//         {value}
-//       </p>
-
-//       <p className="mt-2 text-xs text-slate-500">
-//         {subtitle}
-//       </p>
-//     </div>
-//   );
-// }
-
-// function PerformanceSection({ content }) {
-//   const sortedContent = [...content]
-//     .sort(
-//       (a, b) =>
-//         new Date(a.published_date || 0) -
-//         new Date(b.published_date || 0)
-//     )
-//     .slice(-10);
-
-//   const maxViews = Math.max(
-//     ...sortedContent.map(
-//       (item) => Number(item.views || 0)
-//     ),
-//     1
-//   );
-
-//   return (
-//     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-//       <div className="mb-6">
-//         <h2 className="text-xl font-semibold">
-//           Content Performance Trend
-//         </h2>
-
-//         <p className="mt-1 text-sm text-slate-400">
-//           Views across recent published content
-//         </p>
-//       </div>
-
-//       <div className="space-y-5">
-//         {sortedContent.map((item) => {
-//           const views = Number(item.views || 0);
-
-//           const width =
-//             (views / maxViews) * 100;
-
-//           return (
-//             <div key={item.id}>
-//               <div className="mb-2 flex items-center justify-between gap-4">
-//                 <span className="max-w-[70%] truncate text-sm text-slate-300">
-//                   {item.content_title ||
-//                     "Untitled Content"}
-//                 </span>
-
-//                 <span className="text-sm font-medium text-purple-300">
-//                   {new Intl.NumberFormat("en-IN").format(
-//                     views
-//                   )}
-//                 </span>
-//               </div>
-
-//               <div className="h-2 overflow-hidden rounded-full bg-slate-800">
-//                 <div
-//                   className="h-full rounded-full bg-purple-500 transition-all duration-500"
-//                   style={{
-//                     width: `${width}%`,
-//                   }}
-//                 />
-//               </div>
-//             </div>
-//           );
-//         })}
-//       </div>
-//     </div>
-//   );
-// }
-
-// export default ContentAnalytics;
