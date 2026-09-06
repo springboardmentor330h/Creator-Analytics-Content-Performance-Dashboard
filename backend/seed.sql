@@ -278,7 +278,14 @@ INSERT INTO revenues (creator_id, platform, amount, revenue_date, source, descri
 (1, 'Instagram', 48000, '2026-09-01', 'Brand Sponsorship', 'AudioTech Pro Wireless Earbuds Carousel Feature'),
 (1, 'TikTok', 32000, '2026-09-02', 'Creator Rewards', 'TikTok Creator Rewards Program Viral Payout'),
 (1, 'X', 15000, '2026-09-02', 'Subscriptions & Tips', 'X Super Follows & Monetized Thread Sponsorship'),
-(1, 'Facebook', 22000, '2026-09-03', 'Meta In-Stream Ads', 'Facebook Stars & In-Stream Video Ad Revenue');
+(1, 'Facebook', 22000, '2026-09-03', 'Meta In-Stream Ads', 'Facebook Stars & In-Stream Video Ad Revenue'),
+(1, 'Facebook', 45000, '2026-08-28', 'Brand Sponsorship', 'Meta Horizon Creator Program Live Series Payout'),
+(1, 'Facebook', 16500, '2026-09-02', 'Fan Subscriptions', 'Creator Supporter Group Monthly Subscriptions'),
+(1, 'X', 22000, '2026-08-25', 'Brand Sponsorship', 'QuickNode Web3 Integration Thread Series'),
+(1, 'X', 18000, '2026-09-04', 'Ad Revenue Share', 'X Premium Creator Ad Revenue Share Payout'),
+(1, 'LinkedIn', 52000, '2026-08-20', 'Brand Sponsorship', 'Enterprise SaaS Co B2B Video Integration'),
+(1, 'LinkedIn', 28000, '2026-09-03', 'Newsletter Sponsorship', 'Weekly Tech Architecture Newsletter Issue Ad'),
+(1, 'YouTube', 65000, '2026-08-20', 'Brand Sponsorship', 'JetBrains Tools Next-Gen IDE Showcase Integration');
 
 -- Active Sponsorship Contracts
 INSERT INTO sponsorships (creator_id, platform, brand_name, campaign, contract_value, start_date, end_date, status, payment_status) VALUES
@@ -288,7 +295,12 @@ INSERT INTO sponsorships (creator_id, platform, brand_name, campaign, contract_v
 (1, 'LinkedIn', 'Enterprise SaaS Co', 'Executive B2B Tech Series', 40000, '2026-09-01', '2026-09-30', 'Active', 'Pending'),
 (1, 'Instagram', 'AudioTech Pro', 'Wireless Studio Audio Equipment', 48000, '2026-09-01', '2026-09-25', 'Active', 'Paid'),
 (1, 'TikTok', 'Voxel AI', 'Generative UI Code Assistant Challenge', 38000, '2026-09-02', '2026-09-28', 'Active', 'Pending'),
-(1, 'X', 'SecureCode Vault', 'DevSecOps Awareness Thread Series', 18000, '2026-09-03', '2026-09-18', 'Active', 'Paid');
+(1, 'X', 'SecureCode Vault', 'DevSecOps Awareness Thread Series', 18000, '2026-09-03', '2026-09-18', 'Active', 'Paid'),
+(1, 'Facebook', 'Meta Horizon Creator Program', 'Developer Community Live Series', 45000, '2026-08-20', '2026-09-20', 'Active', 'Paid'),
+(1, 'Facebook', 'NordicVPN Tech', 'Cybersecurity Tips Video Sponsorship', 26000, '2026-09-01', '2026-09-28', 'Active', 'Pending'),
+(1, 'X', 'QuickNode Web3', 'High Performance RPC Integration Threads', 22000, '2026-08-25', '2026-09-25', 'Active', 'Paid'),
+(1, 'LinkedIn', 'DataDog Systems', 'Full-Stack Observability Masterclass Series', 52000, '2026-09-02', '2026-10-02', 'Active', 'Pending'),
+(1, 'YouTube', 'JetBrains Tools', 'Next-Gen IDE Workflow Showcase Video', 65000, '2026-08-15', '2026-09-15', 'Active', 'Paid');
 
 -- Notifications
 INSERT INTO notifications (creator_id, notification_type, title, message, is_read) VALUES

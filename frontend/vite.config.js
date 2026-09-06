@@ -2,6 +2,20 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+const apiProxy = {
+  target: 'http://127.0.0.1:8000',
+  changeOrigin: true,
+  bypass: (req) => {
+    const isHtml =
+      req.headers['sec-fetch-dest'] === 'document' ||
+      req.headers['sec-fetch-mode'] === 'navigate' ||
+      (req.headers && req.headers.accept && req.headers.accept.includes('text/html'));
+    if (isHtml) {
+      return '/index.html';
+    }
+  },
+};
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -11,19 +25,20 @@ export default defineConfig({
       '/docs': { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/openapi.json': { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/redoc': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/auth': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/reports': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/content': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/audience': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/revenue': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/growth': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/sponsorships': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/notifications': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/analytics': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/social-media': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/youtube': { target: 'http://127.0.0.1:8000', changeOrigin: true },
-      '/users': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/api': apiProxy,
+      '/auth': apiProxy,
+      '/reports': apiProxy,
+      '/content': apiProxy,
+      '/audience': apiProxy,
+      '/revenue': apiProxy,
+      '/growth': apiProxy,
+      '/sponsorships': apiProxy,
+      '/notifications': apiProxy,
+      '/analytics': apiProxy,
+      '/social-media': apiProxy,
+      '/social': apiProxy,
+      '/youtube': apiProxy,
+      '/users': apiProxy,
     },
   },
 })

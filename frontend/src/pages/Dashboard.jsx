@@ -29,25 +29,39 @@ import {
   ArrowUpRight,
   Flame,
   Zap,
+  CheckCircle2,
 } from "lucide-react";
 
 function Dashboard() {
   const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [refreshNotice, setRefreshNotice] = useState("");
 
-  const loadDashboard = async (platform = selectedPlatform) => {
+  const loadDashboard = async (platform = selectedPlatform, isManualRefresh = false) => {
     try {
-      setLoading(true);
+      if (isManualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
+      setRefreshNotice("");
       const result = await getDashboardReport(platform);
       setData(result);
+      if (isManualRefresh) {
+        const timeStr = new Date().toLocaleTimeString();
+        setRefreshNotice(`Analytics data refreshed successfully at ${timeStr}`);
+        setTimeout(() => setRefreshNotice(""), 4000);
+      }
     } catch (err) {
       console.error("Dashboard API error:", err);
       setError("Unable to load dashboard data. Please try again.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -163,13 +177,23 @@ function Dashboard() {
         </div>
 
         <button
-          onClick={() => loadDashboard(selectedPlatform)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition shadow-2xs self-start cursor-pointer"
+          onClick={() => loadDashboard(selectedPlatform, true)}
+          disabled={loading || refreshing}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition shadow-2xs self-start cursor-pointer disabled:opacity-60"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-indigo-600" : "text-slate-500"}`} />
-          <span>Refresh Data</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-indigo-600" : "text-slate-500"}`} />
+          <span>{refreshing ? "Refreshing..." : "Refresh Data"}</span>
         </button>
       </div>
+
+      {refreshNotice && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center justify-between transition-all">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{refreshNotice}</span>
+          </div>
+        </div>
+      )}
 
       {/* Platform Selector */}
       <PlatformSelector selectedPlatform={selectedPlatform} onSelectPlatform={setSelectedPlatform} />

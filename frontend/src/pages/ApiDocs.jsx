@@ -42,7 +42,7 @@ function ApiDocs() {
         <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-xs text-slate-500">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-mono text-slate-700 font-medium">http://localhost:3000/docs</span>
+            <span className="font-mono text-slate-700 font-medium">http://localhost:8000/docs</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1 text-slate-600">

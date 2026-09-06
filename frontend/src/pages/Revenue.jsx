@@ -1,26 +1,39 @@
 import { useEffect, useState } from "react";
 import { getRevenueReport } from "../services/api";
 import PlatformSelector from "../components/PlatformSelector";
-import { DollarSign, TrendingUp, CreditCard, Receipt, RefreshCw, Wallet, ShieldCheck, ArrowUpRight } from "lucide-react";
+import { DollarSign, TrendingUp, CreditCard, Receipt, RefreshCw, Wallet, ShieldCheck, ArrowUpRight, CheckCircle2 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 function Revenue() {
   const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [refreshNotice, setRefreshNotice] = useState("");
 
-  const loadRevenue = async (platform = selectedPlatform) => {
+  const loadRevenue = async (platform = selectedPlatform, isManualRefresh = false) => {
     try {
-      setLoading(true);
+      if (isManualRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError("");
+      setRefreshNotice("");
       const result = await getRevenueReport(platform);
       setData(result);
+      if (isManualRefresh) {
+        const timeStr = new Date().toLocaleTimeString();
+        setRefreshNotice(`Revenue & monetization telemetry refreshed at ${timeStr}`);
+        setTimeout(() => setRefreshNotice(""), 4000);
+      }
     } catch (err) {
       console.error("Revenue API error:", err);
       setError("Unable to load revenue analytics.");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -68,12 +81,21 @@ function Revenue() {
         </div>
 
         <button
-          onClick={() => loadRevenue(selectedPlatform)}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition shadow-2xs self-start cursor-pointer"
+          onClick={() => loadRevenue(selectedPlatform, true)}
+          disabled={loading || refreshing}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200/90 rounded-xl hover:bg-slate-50 transition shadow-2xs self-start cursor-pointer disabled:opacity-60"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-emerald-600" : ""}`} /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-emerald-600" : "text-slate-500"}`} />
+          <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
         </button>
       </div>
+
+      {refreshNotice && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center gap-2 transition-all">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{refreshNotice}</span>
+        </div>
+      )}
 
       {/* Platform Selector */}
       <PlatformSelector selectedPlatform={selectedPlatform} onSelectPlatform={setSelectedPlatform} />

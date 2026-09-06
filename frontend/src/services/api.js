@@ -49,20 +49,20 @@ export const setAuthToken = (token) => {
 
 // Dashboard
 export const getDashboardReport = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/reports", { params });
   return response.data;
 };
 
 // Content Analytics - GET /reports/content
 export const getContentReport = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/reports/content", { params });
   return response.data;
 };
 
 export const getContentList = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/content", { params });
   return response.data;
 };
@@ -74,20 +74,20 @@ export const createContent = async (data) => {
 
 // Audience Analytics
 export const getAudienceReport = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/reports/audience", { params });
   return response.data;
 };
 
 // Revenue
 export const getRevenueReport = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/reports/revenue", { params });
   return response.data;
 };
 
 export const getRevenueList = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/revenue", { params });
   return response.data;
 };
@@ -99,7 +99,7 @@ export const createRevenue = async (data) => {
 
 // Sponsorships
 export const getSponsorshipsList = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/sponsorships", { params });
   return response.data;
 };
@@ -121,20 +121,20 @@ export const deleteSponsorship = async (id) => {
 
 // Growth & Trends
 export const getGrowthReport = async (platform) => {
-  const params = platform && platform !== "All" ? { platform } : {};
+  const params = { _t: Date.now(), ...(platform && platform !== "All" ? { platform } : {}) };
   const response = await api.get("/reports/growth", { params });
   return response.data;
 };
 
 // Platform Comparison
 export const getPlatformReport = async () => {
-  const response = await api.get("/reports/platforms");
+  const response = await api.get("/reports/platforms", { params: { _t: Date.now() } });
   return response.data;
 };
 
 // Notifications
 export const getNotifications = async () => {
-  const response = await api.get("/notifications");
+  const response = await api.get("/notifications", { params: { _t: Date.now() } });
   return response.data;
 };
 

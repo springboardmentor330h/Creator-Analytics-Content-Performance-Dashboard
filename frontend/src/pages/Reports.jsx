@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   getDashboardReport,
   downloadPdfReport,
@@ -29,14 +29,15 @@ function Reports() {
   }, [selectedPlatform]);
 
   const loadReport = async (platform = selectedPlatform) => {
+    const targetPlatform = typeof platform === "string" ? platform : selectedPlatform;
     setLoading(true);
     setError("");
     setMessage("");
 
     try {
-      const data = await getDashboardReport(platform);
+      const data = await getDashboardReport(targetPlatform);
       setReport(data);
-      setMessage(`Latest ${platform === "All" ? "cross-channel" : platform} analytics compiled successfully.`);
+      setMessage(`Latest ${targetPlatform === "All" ? "cross-channel" : targetPlatform} analytics compiled successfully.`);
     } catch (err) {
       console.error("Report API error:", err);
       setError("Unable to load report.");
@@ -129,7 +130,7 @@ function Reports() {
             <p className="text-xs text-slate-500 mt-1">Aggregate all content, audience, and revenue data into an on-screen preview.</p>
           </div>
           <button
-            onClick={loadReport}
+            onClick={() => loadReport(selectedPlatform)}
             disabled={loading}
             className="mt-4 w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50"
           >
