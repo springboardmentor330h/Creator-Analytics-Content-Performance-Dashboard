@@ -34,10 +34,11 @@ class ContentItem(Base):
 
     __tablename__ = "content_items"
     __table_args__ = (
-        UniqueConstraint("platform", "content_id", name="uq_content_items_platform_content_id"),
+        UniqueConstraint("creator_id", "platform", "content_id", name="uq_content_items_creator_platform_content_id"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     platform = Column(String(32), nullable=False, index=True)
     content_id = Column(String(255), nullable=False)
     title = Column(String(500), nullable=False)
@@ -49,3 +50,5 @@ class ContentItem(Base):
     reach = Column(BigInteger, nullable=False, default=0, server_default="0")
     published_at = Column(DateTime(timezone=True), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    creator = relationship("User", back_populates="content_items")

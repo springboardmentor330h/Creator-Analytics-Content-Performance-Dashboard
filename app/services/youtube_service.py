@@ -360,6 +360,7 @@ class YouTubeService:
             unified_record = (
                 db.query(ContentItem)
                 .filter(
+                    ContentItem.creator_id == creator_id,
                     ContentItem.platform == "YouTube",
                     ContentItem.content_id == item["external_content_id"],
                 )
@@ -383,6 +384,7 @@ class YouTubeService:
             else:
                 db.add(
                     ContentItem(
+                        creator_id=creator_id,
                         platform="YouTube",
                         content_id=item["external_content_id"],
                         **unified_values,

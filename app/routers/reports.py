@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.security import get_current_user
 from app.models.content import ContentItem
 
 router = APIRouter(prefix="/reports", tags=["Multi-platform Reports"])
@@ -28,8 +29,8 @@ def _normalise_platform(platform: str) -> str:
     raise HTTPException(status_code=422, detail="platform must be ALL, YouTube, Instagram, LinkedIn, or Twitter")
 
 
-def _filtered_query(db: Session, platform: str):
-    query = db.query(ContentItem)
+def _filtered_query(db: Session, platform: str, creator_id: int):
+    query = db.query(ContentItem).filter(ContentItem.creator_id == creator_id)
     return query if platform == "ALL" else query.filter(ContentItem.platform == platform)
 
 
@@ -40,11 +41,12 @@ def _engagement_rate(likes: int, comments: int, shares: int, denominator: int) -
 @router.get("/summary/me")
 def get_my_summary(
     platform: PlatformFilter = Query("ALL"),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return dashboard KPIs calculated from ``content_items`` in PostgreSQL."""
     selected_platform = _normalise_platform(platform)
-    totals = _filtered_query(db, selected_platform).with_entities(
+    totals = _filtered_query(db, selected_platform, int(current_user_id)).with_entities(
         func.coalesce(func.sum(ContentItem.views), 0),
         func.coalesce(func.sum(ContentItem.likes), 0),
         func.coalesce(func.sum(ContentItem.comments), 0),
@@ -71,6 +73,7 @@ def get_my_summary(
 def get_my_trends(
     platform: PlatformFilter = Query("ALL"),
     range: Literal["7d", "30d", "90d"] = Query("30d"),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return one chart point per published day for the selected rolling period."""
@@ -80,7 +83,7 @@ def get_my_trends(
     start_date = today - timedelta(days=days - 1)
     published_day = func.date(ContentItem.published_at)
     rows = (
-        _filtered_query(db, selected_platform)
+        _filtered_query(db, selected_platform, int(current_user_id))
         .filter(published_day >= start_date)
         .with_entities(
             published_day.label("date"),
@@ -119,7 +122,10 @@ def get_my_trends(
 
 
 @router.get("/platform-comparison")
-def get_platform_comparison(db: Session = Depends(get_db)):
+def get_platform_comparison(
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """Compare all dashboard platforms using the same engagement calculation."""
     rows = (
         db.query(
@@ -131,7 +137,7 @@ def get_platform_comparison(db: Session = Depends(get_db)):
             func.coalesce(func.sum(ContentItem.reach), 0).label("total_reach"),
             func.count(ContentItem.id).label("post_count"),
         )
-        .filter(ContentItem.platform.in_(PLATFORMS))
+        .filter(ContentItem.creator_id == int(current_user_id), ContentItem.platform.in_(PLATFORMS))
         .group_by(ContentItem.platform)
         .all()
     )
@@ -156,12 +162,12 @@ def get_platform_comparison(db: Session = Depends(get_db)):
     return response
 
 
-def _platform_analytics_response(platform: str, range_value: str, db: Session) -> dict:
+def _platform_analytics_response(platform: str, range_value: str, db: Session, current_user_id: str) -> dict:
     """Compose the summary and time-series responses used by platform detail pages."""
     return {
         "platform": platform,
-        "summary": get_my_summary(platform=platform, db=db),
-        "trends": get_my_trends(platform=platform, range=range_value, db=db)["data"],
+        "summary": get_my_summary(platform=platform, db=db, current_user_id=current_user_id),
+        "trends": get_my_trends(platform=platform, range=range_value, db=db, current_user_id=current_user_id)["data"],
     }
 
 
@@ -172,9 +178,10 @@ def _platform_analytics_response(platform: str, range_value: str, db: Session) -
 )
 def get_instagram_analytics(
     range: Literal["7d", "30d", "90d"] = Query("30d", description="Analytics time range"),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _platform_analytics_response("Instagram", range, db)
+    return _platform_analytics_response("Instagram", range, db, current_user_id)
 
 
 @router.get(
@@ -184,6 +191,7 @@ def get_instagram_analytics(
 )
 def get_linkedin_analytics(
     range: Literal["7d", "30d", "90d"] = Query("30d", description="Analytics time range"),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return _platform_analytics_response("LinkedIn", range, db)
+    return _platform_analytics_response("LinkedIn", range, db, current_user_id)

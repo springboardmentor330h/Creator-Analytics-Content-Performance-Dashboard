@@ -9,6 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import hash_password
 from app.db.database import Base, engine, get_db
 from app.models.content import Content
 from app.models.user import User
@@ -89,7 +90,7 @@ def ensure_demo_creator_and_content(db: Session, creator_id: int = 1) -> None:
             id=creator_id,
             email=f"demo{creator_id}@creatoriq.com",
             full_name="Demo Creator",
-            hashed_password="placeholder",
+            hashed_password=hash_password("password"),
             role="creator",
             is_active=True,
         )

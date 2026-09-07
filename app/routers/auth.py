@@ -4,6 +4,9 @@ from pydantic import BaseModel
 from app.db.database import get_db
 from app.models import User
 from app.core.security import verify_password, create_access_token
+from app.models.user import UserRole
+from app.schemas.user import UserCreate
+from app.services.user_service import UserService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -33,6 +36,24 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         data={"sub": str(user.id), "email": user.email, "role": user.role}
     )
 
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user_id": user.id,
+        "name": user.full_name,
+        "full_name": user.full_name,
+    }
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+def register(payload: UserCreate, db: Session = Depends(get_db)):
+    """Create a creator account and return its authenticated session."""
+    creator_payload = payload.model_copy(update={"role": UserRole.CREATOR})
+    user = UserService.create(db, creator_payload)
+    access_token = create_access_token(
+        data={"sub": str(user.id), "email": user.email, "role": user.role}
+    )
     return {
         "access_token": access_token,
         "token_type": "bearer",

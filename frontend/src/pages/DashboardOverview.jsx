@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { api } from '../services/api';
@@ -12,7 +13,8 @@ function Metric({ label, value, color }) {
 }
 
 export default function DashboardOverview() {
-  const [platform, setPlatform] = useState('ALL');
+  const [searchParams] = useSearchParams();
+  const [platform, setPlatform] = useState(() => searchParams.get('platform') || 'ALL');
   const [range, setRange] = useState('30d');
   const [summary, setSummary] = useState(null);
   const [trends, setTrends] = useState([]);

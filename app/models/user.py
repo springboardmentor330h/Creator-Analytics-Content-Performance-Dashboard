@@ -44,3 +44,4 @@ class User(Base):
     sponsorships = relationship("Sponsorship", back_populates="user", cascade="all, delete-orphan")
     
     contents = relationship("Content", back_populates="creator")
+    content_items = relationship("ContentItem", back_populates="creator", cascade="all, delete-orphan")

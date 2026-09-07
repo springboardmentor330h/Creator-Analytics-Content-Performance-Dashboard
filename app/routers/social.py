@@ -2,6 +2,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.security import get_current_user
 from app.schemas.social import (
     InstagramManualPostRequest,
     InstagramSyncRequest,
@@ -18,8 +19,9 @@ from app.services.youtube_service import YouTubeService
 router = APIRouter(prefix="/social", tags=["Social Media Integration"])
 
 
-def _save_manual_platform_post(db: Session, platform: str, payload: InstagramManualPostRequest | LinkedInManualPostRequest):
+def _save_manual_platform_post(db: Session, platform: str, payload: InstagramManualPostRequest | LinkedInManualPostRequest, creator_id: int):
     existing = db.query(ContentItem).filter(
+    ContentItem.creator_id == creator_id,
         ContentItem.platform == platform,
         ContentItem.content_id == payload.content_id,
     ).one_or_none()
@@ -28,7 +30,7 @@ def _save_manual_platform_post(db: Session, platform: str, payload: InstagramMan
             status_code=status.HTTP_409_CONFLICT,
             detail=f"{platform} content_id already exists. Use a new content_id to avoid double-counting.",
         )
-    item = ContentItem(platform=platform, **payload.model_dump())
+    item = ContentItem(creator_id=creator_id, platform=platform, **payload.model_dump())
     db.add(item)
     db.commit()
     db.refresh(item)
@@ -54,6 +56,7 @@ def _save_manual_platform_posts(
     db: Session,
     platform: str,
     payloads: list[InstagramManualPostRequest] | list[LinkedInManualPostRequest],
+    creator_id: int,
 ):
     """Validate a batch first, then write it as one transaction."""
     content_ids = [payload.content_id for payload in payloads]
@@ -65,6 +68,7 @@ def _save_manual_platform_posts(
         )
 
     existing_ids = [row[0] for row in db.query(ContentItem.content_id).filter(
+        ContentItem.creator_id == creator_id,
         ContentItem.platform == platform,
         ContentItem.content_id.in_(content_ids),
     ).all()]
@@ -74,7 +78,7 @@ def _save_manual_platform_posts(
             detail={"message": "One or more content_ids already exist; no posts were added.", "content_ids": existing_ids},
         )
 
-    items = [ContentItem(platform=platform, **payload.model_dump()) for payload in payloads]
+    items = [ContentItem(creator_id=creator_id, platform=platform, **payload.model_dump()) for payload in payloads]
     try:
         db.add_all(items)
         db.commit()
@@ -207,30 +211,32 @@ def sync_instagram_data(payload: InstagramSyncRequest, db: Session = Depends(get
 
 
 @router.post("/instagram/manual-post", status_code=status.HTTP_201_CREATED)
-def add_instagram_manual_post(payload: InstagramManualPostRequest, db: Session = Depends(get_db)):
+def add_instagram_manual_post(payload: InstagramManualPostRequest, current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """Enter Instagram post metrics manually from Swagger; no Graph API token required."""
-    return _save_manual_platform_post(db, "Instagram", payload)
+    return _save_manual_platform_post(db, "Instagram", payload, int(current_user_id))
 
 
 @router.post("/linkedin/manual-post", status_code=status.HTTP_201_CREATED)
-def add_linkedin_manual_post(payload: LinkedInManualPostRequest, db: Session = Depends(get_db)):
+def add_linkedin_manual_post(payload: LinkedInManualPostRequest, current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """Enter LinkedIn post metrics manually from Swagger; no LinkedIn API access required."""
-    return _save_manual_platform_post(db, "LinkedIn", payload)
+    return _save_manual_platform_post(db, "LinkedIn", payload, int(current_user_id))
 
 
 @router.post("/instagram/bulk-manual-posts", status_code=status.HTTP_201_CREATED)
 def add_instagram_manual_posts_bulk(
     payload: list[InstagramManualPostRequest] = Body(..., min_length=1),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Add multiple Instagram posts from Swagger in one database transaction."""
-    return _save_manual_platform_posts(db, "Instagram", payload)
+    return _save_manual_platform_posts(db, "Instagram", payload, int(current_user_id))
 
 
 @router.post("/linkedin/bulk-manual-posts", status_code=status.HTTP_201_CREATED)
 def add_linkedin_manual_posts_bulk(
     payload: list[LinkedInManualPostRequest] = Body(..., min_length=1),
+    current_user_id: str = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Add multiple LinkedIn posts from Swagger in one database transaction."""
-    return _save_manual_platform_posts(db, "LinkedIn", payload)
+    return _save_manual_platform_posts(db, "LinkedIn", payload, int(current_user_id))

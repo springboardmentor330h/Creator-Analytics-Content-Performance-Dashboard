@@ -36,14 +36,14 @@ PLATFORM_CONFIG = {
 
 
 def make_records():
-    """Generate 48 deterministic records distributed across the last 90 days."""
+    """Generate 80 deterministic records distributed across the last 90 days."""
     randomizer = random.Random(20260903)
     now = datetime.now(timezone.utc).replace(hour=14, minute=0, second=0, microsecond=0)
     records = []
-    # Twelve posts on every network, staggered to make charts informative.
+    # Twenty posts on every network, staggered to make charts informative.
     for platform_index, (platform, config) in enumerate(PLATFORM_CONFIG.items()):
-        for post_index in range(12):
-            days_ago = 2 + ((post_index * 8 + platform_index * 3) % 89)
+        for post_index in range(20):
+            days_ago = 2 + ((post_index * 5 + platform_index * 2) % 89)
             published_at = now - timedelta(days=days_ago, hours=post_index % 5)
             # Older posts have naturally accumulated more impressions, with occasional viral lifts.
             age_factor = 0.85 + (days_ago / 145)
@@ -71,6 +71,7 @@ def make_records():
                 shares = int(views * randomizer.uniform(0.001, 0.009))
             content_id = f"{config['prefix']}-{published_at:%Y%m%d}-{post_index + 1:02d}"
             records.append({
+                "creator_id": 1,
                 "platform": platform,
                 "content_id": content_id,
                 "title": config["titles"][post_index % len(config["titles"])],
@@ -92,6 +93,7 @@ def seed() -> int:
         inserted = updated = 0
         for values in make_records():
             item = db.query(ContentItem).filter(
+                ContentItem.creator_id == values["creator_id"],
                 ContentItem.platform == values["platform"],
                 ContentItem.content_id == values["content_id"],
             ).one_or_none()
@@ -105,6 +107,10 @@ def seed() -> int:
         db.commit()
         total = db.query(ContentItem).count()
         print(f"Multi-platform seed complete: {inserted} inserted, {updated} updated ({total} total content_items).")
+        print(f"\nContent breakdown:")
+        for platform in PLATFORM_CONFIG.keys():
+            count = db.query(ContentItem).filter(ContentItem.platform == platform).count()
+            print(f"  {platform}: {count} content items")
         return total
     except Exception:
         db.rollback()
