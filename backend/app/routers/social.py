@@ -5,7 +5,10 @@ from datetime import date
 
 from app.db.database import get_db
 from app.models.content import Content
-from app.services.social_media import sync_platform_data
+from app.services.social_media import (
+    sync_platform_data,
+    sync_instagram_data
+)
 from app.services.youtube_service import save_youtube_video
 
 
@@ -126,4 +129,71 @@ def sync_youtube(
         raise HTTPException(
             status_code=500,
             detail=f"YouTube synchronization failed: {str(e)}"
+        )
+
+
+# Instagram synchronization
+@router.post("/instagram/sync")
+def sync_instagram(
+    db: Session = Depends(get_db)
+):
+    try:
+        platform_data = sync_instagram_data()
+
+        if not platform_data:
+            raise HTTPException(
+                status_code=404,
+                detail="Instagram data not found"
+            )
+
+        synced_records = []
+
+        for index, item in enumerate(platform_data, start=1):
+
+            external_id = f"IG-MOCK-{index}"
+
+            existing_content = db.query(Content).filter(
+                Content.platform == "Instagram",
+                Content.external_content_id == external_id
+            ).first()
+
+            if existing_content:
+                continue
+
+            content = Content(
+                creator_id=1,
+                platform="Instagram",
+                external_content_id=external_id,
+                content_title=item["content_title"],
+                views=item["views"],
+                likes=item["likes"],
+                comments=item["comments"],
+                shares=item["shares"],
+                saves=0,
+                watch_time=0,
+                reach=item["reach"],
+                published_date=date.today()
+            )
+
+            db.add(content)
+            synced_records.append(item["content_title"])
+
+        db.commit()
+
+        return {
+            "platform": "Instagram",
+            "status": "success",
+            "records_synced": len(synced_records),
+            "content": synced_records
+        }
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Instagram synchronization failed: {str(e)}"
         )

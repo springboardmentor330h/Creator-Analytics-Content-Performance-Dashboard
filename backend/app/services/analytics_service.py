@@ -4,6 +4,8 @@ from app.models.content import Content
 from app.models.audience import Audience
 from app.models.growth import Growth
 from app.models.revenue import Revenue
+
+
 def calculate_engagement_rate(content):
     total_engagement = (
         content.likes
@@ -18,13 +20,17 @@ def calculate_engagement_rate(content):
         engagement_rate = (total_engagement / content.reach) * 100
 
     return total_engagement, round(engagement_rate, 2)
+
+
 def get_top_content(db: Session):
     contents = db.query(Content).all()
 
     results = []
 
     for content in contents:
-        total_engagement, engagement_rate = calculate_engagement_rate(content)
+        total_engagement, engagement_rate = calculate_engagement_rate(
+            content
+        )
 
         results.append({
             "content_title": content.content_title,
@@ -41,13 +47,29 @@ def get_top_content(db: Session):
     )
 
     return results[:5]
-def get_platform_performance(db: Session):
-    contents = db.query(Content).all()
+
+
+def get_platform_performance(
+    db: Session,
+    platform: str | None = None
+):
+    query = db.query(Content)
+
+    # If a specific platform is selected,
+    # only use content from that platform.
+    if platform and platform.lower() != "all":
+        query = query.filter(
+            Content.platform.ilike(platform)
+        )
+
+    contents = query.all()
 
     platforms = {}
 
     for content in contents:
-        total_engagement, engagement_rate = calculate_engagement_rate(content)
+        total_engagement, engagement_rate = calculate_engagement_rate(
+            content
+        )
 
         if content.platform not in platforms:
             platforms[content.platform] = {
@@ -55,6 +77,7 @@ def get_platform_performance(db: Session):
                 "total_views": 0,
                 "total_likes": 0,
                 "total_comments": 0,
+                "total_shares": 0,
                 "total_reach": 0,
                 "engagement_rates": []
             }
@@ -62,7 +85,9 @@ def get_platform_performance(db: Session):
         platforms[content.platform]["total_views"] += content.views
         platforms[content.platform]["total_likes"] += content.likes
         platforms[content.platform]["total_comments"] += content.comments
+        platforms[content.platform]["total_shares"] += content.shares
         platforms[content.platform]["total_reach"] += content.reach
+
         platforms[content.platform]["engagement_rates"].append(
             engagement_rate
         )
@@ -82,13 +107,17 @@ def get_platform_performance(db: Session):
             "total_views": platform_data["total_views"],
             "total_likes": platform_data["total_likes"],
             "total_comments": platform_data["total_comments"],
+            "total_shares": platform_data["total_shares"],
             "total_reach": platform_data["total_reach"],
             "average_engagement_rate": round(
-                average_engagement_rate, 2
+                average_engagement_rate,
+                2
             )
         })
 
     return results
+
+
 def get_dashboard_summary(db: Session):
     contents = db.query(Content).all()
 
@@ -133,11 +162,14 @@ def get_dashboard_summary(db: Session):
         "total_views": total_views,
         "total_reach": total_reach,
         "average_engagement_rate": round(
-            average_engagement_rate, 2
+            average_engagement_rate,
+            2
         ),
         "best_platform": best_platform_data["platform"],
         "top_content": top_content_data.content_title
     }
+
+
 def get_kpi_summary(db: Session):
     contents = db.query(Content).all()
     audience_data = db.query(Audience).all()
@@ -171,11 +203,16 @@ def get_kpi_summary(db: Session):
         "total_reach": total_reach,
         "total_followers": total_followers,
         "average_engagement_rate": round(
-            average_engagement_rate, 2
+            average_engagement_rate,
+            2
         )
     }
+
+
 def get_engagement_chart(db: Session):
-    contents = db.query(Content).order_by(Content.published_date.asc()).all()
+    contents = db.query(Content).order_by(
+        Content.published_date.asc()
+    ).all()
 
     labels = []
     values = []
@@ -190,8 +227,12 @@ def get_engagement_chart(db: Session):
         "labels": labels,
         "values": values
     }
+
+
 def get_follower_chart(db: Session):
-    growth_data = db.query(Growth).order_by(Growth.date.asc()).all()
+    growth_data = db.query(Growth).order_by(
+        Growth.date.asc()
+    ).all()
 
     labels = []
     values = []
@@ -204,12 +245,17 @@ def get_follower_chart(db: Session):
         "labels": labels,
         "values": values
     }
+
+
 def get_platform_comparison(db: Session):
     return get_platform_performance(db)
+
 def get_revenue_summary(db: Session):
     revenues = db.query(Revenue).all()
 
-    total_revenue = sum(revenue.amount for revenue in revenues)
+    total_revenue = sum(
+        revenue.amount for revenue in revenues
+    )
 
     average_revenue = (
         total_revenue / len(revenues)

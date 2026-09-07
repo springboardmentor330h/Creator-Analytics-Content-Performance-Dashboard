@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -17,6 +17,7 @@ from app.services.analytics_service import (
     get_monthly_revenue
 )
 
+
 router = APIRouter(
     prefix="/analytics",
     tags=["Analytics"]
@@ -28,7 +29,9 @@ def get_content_engagement(
     id: int,
     db: Session = Depends(get_db)
 ):
-    content = db.query(Content).filter(Content.id == id).first()
+    content = db.query(Content).filter(
+        Content.id == id
+    ).first()
 
     if not content:
         raise HTTPException(
@@ -36,7 +39,9 @@ def get_content_engagement(
             detail="Content not found"
         )
 
-    total_engagement, engagement_rate = calculate_engagement_rate(content)
+    total_engagement, engagement_rate = calculate_engagement_rate(
+        content
+    )
 
     return {
         "content_id": content.id,
@@ -57,9 +62,13 @@ def get_top_performing_content(
 
 @router.get("/platform-performance")
 def platform_performance(
+    platform: str | None = Query(default=None),
     db: Session = Depends(get_db)
 ):
-    return get_platform_performance(db)
+    return get_platform_performance(
+        db,
+        platform
+    )
 
 
 @router.get("/summary")
@@ -74,16 +83,21 @@ def engagement_chart(
     db: Session = Depends(get_db)
 ):
     return get_engagement_chart(db)
+
+
 @router.get("/chart/followers")
 def follower_chart(
     db: Session = Depends(get_db)
 ):
     return get_follower_chart(db)
+
+
 @router.get("/platform-comparison")
 def platform_comparison(
     db: Session = Depends(get_db)
 ):
     return get_platform_comparison(db)
+
 @router.get("/revenue/summary")
 def revenue_summary(
     db: Session = Depends(get_db)

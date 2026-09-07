@@ -35,7 +35,6 @@ MOCK_PLATFORM_DATA = {
             "reach": 10000
         }
     ]
-
 }
 
 
@@ -45,3 +44,7 @@ def get_platform_data(platform: str):
 
 def sync_platform_data(platform: str):
     return get_platform_data(platform)
+
+
+def sync_instagram_data():
+    return get_platform_data("Instagram")
