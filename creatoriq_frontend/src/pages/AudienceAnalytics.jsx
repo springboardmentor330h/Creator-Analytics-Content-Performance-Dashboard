@@ -13,18 +13,25 @@ import {
   Pie,
   Cell,
   Legend,
+  LabelList,
 } from "recharts";
 
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function AudienceAnalytics() {
-  const creatorId = 1;
+  const { user } = useAuth();
+  const creatorId = user?.id;
 
   const [audienceData, setAudienceData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!creatorId) {
+      return;
+    }
+
     const fetchAudienceAnalytics = async () => {
       try {
         setLoading(true);
@@ -98,7 +105,7 @@ function AudienceAnalytics() {
             </h2>
 
             <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-              There is currently no audience data for Creator {creatorId}.
+              There is currently no audience data for this creator.
             </p>
           </div>
         </div>
@@ -160,8 +167,7 @@ function AudienceAnalytics() {
               </h1>
 
               <p className="mt-2 text-sm text-indigo-100/90">
-                Audience insights and engagement behavior for Creator{" "}
-                {creatorId}
+                Audience insights and engagement behavior for Creator
               </p>
             </div>
 
@@ -320,61 +326,111 @@ function AudienceAnalytics() {
 
           {/* Countries */}
           <div className="dashboard-panel">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-slate-800">
-                Top Countries
-              </h2>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Top Countries
+                </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Geographic distribution of the audience
-              </p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Geographic distribution of the audience
+                </p>
+              </div>
+
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-700">
+                Top {countryData.length}
+              </span>
             </div>
 
-            <div className="space-y-3">
-              {countryData.map((item, index) => (
-                <div
-                  key={`${item.country}-${index}`}
-                  className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={countryData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
+                  barCategoryGap="28%"
                 >
-                  <span className="font-medium text-slate-700">
-                    {item.country}
-                  </span>
-
-                  <span className="rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-700">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
+                  <CartesianGrid horizontal={false} stroke="#e2e8f0" strokeDasharray="4 4" />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#cbd5e1" }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="country"
+                    axisLine={false}
+                    tickLine={false}
+                    width={118}
+                    tick={{ fontSize: 12, fill: "#f8fafc", fontWeight: 600 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "#eef2ff" }}
+                    formatter={(value) => [Number(value).toLocaleString(), "Audience"]}
+                    contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}
+                  />
+                  <Bar dataKey="count" name="Audience" fill="#6366f1" radius={[0, 8, 8, 0]} maxBarSize={24}>
+                    <LabelList dataKey="count" position="right" fill="#f8fafc" fontSize={12} fontWeight={700} formatter={(value) => Number(value).toLocaleString()} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
           {/* Cities */}
           <div className="dashboard-panel">
-            <div className="mb-5">
-              <h2 className="text-lg font-semibold text-slate-800">
-                Top Cities
-              </h2>
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">
+                  Top Cities
+                </h2>
 
-              <p className="mt-1 text-sm text-slate-500">
-                Cities with the highest audience presence
-              </p>
+                <p className="mt-1 text-sm text-slate-300">
+                  Cities with the highest audience presence
+                </p>
+              </div>
+
+              <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-700">
+                Top {cityData.length}
+              </span>
             </div>
 
-            <div className="space-y-3">
-              {cityData.map((item, index) => (
-                <div
-                  key={`${item.city}-${index}`}
-                  className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3"
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={cityData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 12, left: 8, bottom: 4 }}
+                  barCategoryGap="28%"
                 >
-                  <span className="font-medium text-slate-700">
-                    {item.city}
-                  </span>
-
-                  <span className="rounded-full bg-cyan-100 px-3 py-1 text-sm font-semibold text-cyan-700">
-                    {item.count}
-                  </span>
-                </div>
-              ))}
+                  <CartesianGrid horizontal={false} stroke="#e2e8f0" strokeDasharray="4 4" />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "#cbd5e1" }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="city"
+                    axisLine={false}
+                    tickLine={false}
+                    width={118}
+                    tick={{ fontSize: 12, fill: "#f8fafc", fontWeight: 600 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: "#ecfeff" }}
+                    formatter={(value) => [Number(value).toLocaleString(), "Audience"]}
+                    contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}
+                  />
+                  <Bar dataKey="count" name="Audience" fill="#06b6d4" radius={[0, 8, 8, 0]} maxBarSize={24}>
+                    <LabelList dataKey="count" position="right" fill="#f8fafc" fontSize={12} fontWeight={700} formatter={(value) => Number(value).toLocaleString()} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>

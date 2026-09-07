@@ -33,6 +33,7 @@ class SocialSyncRequest(BaseModel):
 
 class YouTubeSyncRequest(BaseModel):
     video_ids: list[str]
+    creator_id: int = Field(gt=0)
 
 
 # ---------------------------------------------------------
@@ -119,6 +120,7 @@ def sync_youtube(
         result = synchronize_youtube_videos(
             db,
             request.video_ids,
+            request.creator_id,
         )
 
         return result

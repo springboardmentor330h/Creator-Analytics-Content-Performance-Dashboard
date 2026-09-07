@@ -265,12 +265,12 @@ function ContentAnalytics() {
             </div>
 
             <section className="content-table-card">
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800">Top Performing Content</h2>
-                  <p className="mt-1 text-sm text-slate-500">Ranked by views</p>
+                  <h2 className="text-xl font-bold text-white">Top Performing Content</h2>
+                  <p className="mt-1 text-sm text-slate-300">Your highest-reach content, ranked by views</p>
                 </div>
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Top 5</span>
+                <span className="w-fit rounded-full border border-violet-300/30 bg-violet-400/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-violet-200">Top 5</span>
               </div>
 
               <div className="overflow-x-auto">
@@ -291,21 +291,21 @@ function ContentAnalytics() {
                       const engagement = views > 0 ? (((Number(item.likes || 0) + Number(item.comments || 0) + Number(item.shares || 0) + Number(item.saves || 0)) / views) * 100).toFixed(2) : "0.00";
 
                       return (
-                        <tr key={item.id}>
+                        <tr key={item.id} className="group">
                           <td>
                             <div className="flex items-center gap-3">
-                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-sm font-bold text-violet-700">{index + 1}</span>
+                              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-300/30 bg-violet-400/15 text-sm font-bold text-violet-200">{index + 1}</span>
                               <div className="min-w-0">
-                                <div className="max-w-[320px] truncate font-semibold text-slate-800">{item.content_title || "Untitled Content"}</div>
-                                <div className="mt-1 text-xs text-slate-500">{item.published_date || "Unknown date"}</div>
+                                <div className="max-w-[320px] truncate font-semibold text-white group-hover:text-violet-200">{item.content_title || "Untitled Content"}</div>
+                                <div className="mt-1 text-xs text-slate-400">Published {item.published_date || "Unknown date"}</div>
                               </div>
                             </div>
                           </td>
                           <td><PlatformBadge platform={item.platform} /></td>
-                          <td>{formatNumber(item.views)}</td>
-                          <td>{formatNumber(item.likes)}</td>
-                          <td><span className="font-semibold text-violet-700">{engagement}%</span></td>
-                          <td>{formatNumber(item.reach)}</td>
+                          <td><span className="font-bold text-white">{formatNumber(item.views)}</span><span className="mt-1 block text-[11px] uppercase tracking-wide text-slate-400">Views</span></td>
+                          <td><span className="font-semibold text-emerald-300">{formatNumber(item.likes)}</span><span className="mt-1 block text-[11px] uppercase tracking-wide text-slate-400">Likes</span></td>
+                          <td><span className="inline-flex rounded-full bg-violet-400/15 px-2.5 py-1 font-bold text-violet-200">{engagement}%</span><span className="mt-1 block text-[11px] uppercase tracking-wide text-slate-400">Rate</span></td>
+                          <td><span className="font-semibold text-sky-200">{formatNumber(item.reach)}</span><span className="mt-1 block text-[11px] uppercase tracking-wide text-slate-400">Reach</span></td>
                         </tr>
                       );
                     })}
@@ -315,26 +315,27 @@ function ContentAnalytics() {
             </section>
 
             <section className="content-table-card mt-6">
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-800">Recent Content</h2>
-                  <p className="mt-1 text-sm text-slate-500">Latest published content</p>
+                  <h2 className="text-xl font-bold text-white">Recent Content</h2>
+                  <p className="mt-1 text-sm text-slate-300">Latest published content from your analytics</p>
                 </div>
+                <span className="w-fit rounded-full border border-sky-300/30 bg-sky-400/15 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-sky-200">Latest 5</span>
               </div>
 
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {recentContent.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm">
+                  <div key={item.id} className="group flex items-center justify-between gap-4 rounded-2xl border border-slate-600/70 bg-slate-800/70 p-4 shadow-lg shadow-slate-950/20 transition hover:border-sky-300/50 hover:bg-slate-800">
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-slate-800">{item.content_title || "Untitled Content"}</div>
+                      <div className="truncate font-semibold text-white group-hover:text-sky-200">{item.content_title || "Untitled Content"}</div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <PlatformBadge platform={item.platform} />
-                        <span className="text-xs text-slate-500">{item.published_date}</span>
+                        <span className="text-xs font-medium text-slate-300">{item.published_date || "Unknown date"}</span>
                       </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-semibold text-slate-800">{formatNumber(item.views)}</p>
-                      <p className="text-xs text-slate-500">views</p>
+                    <div className="shrink-0 rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-right">
+                      <p className="text-lg font-bold text-sky-100">{formatNumber(item.views)}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-300">Views</p>
                     </div>
                   </div>
                 ))}

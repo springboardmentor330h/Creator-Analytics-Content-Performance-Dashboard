@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  AreaChart,
+  Area,
   LineChart,
   Line,
   XAxis,
@@ -822,53 +824,55 @@ function Dashboard() {
                   width="100%"
                   height="100%"
                 >
-                  <LineChart
+                  <AreaChart
                     data={performanceData}
+                    margin={{ top: 10, right: 8, left: -12, bottom: 0 }}
                   >
                     <defs>
 
                       <linearGradient
-                        id="viewsLine"
+                        id="viewsArea"
                         x1="0"
                         y1="0"
-                        x2="1"
-                        y2="0"
+                        x2="0"
+                        y2="1"
                       >
                         <stop
                           offset="0%"
                           stopColor="#4f46e5"
+                          stopOpacity={0.32}
                         />
 
                         <stop
                           offset="100%"
-                          stopColor="#8b5cf6"
+                          stopColor="#818cf8"
+                          stopOpacity={0.03}
                         />
                       </linearGradient>
 
                       <linearGradient
-                        id="likesLine"
+                        id="likesArea"
                         x1="0"
                         y1="0"
-                        x2="1"
-                        y2="0"
+                        x2="0"
+                        y2="1"
                       >
                         <stop
                           offset="0%"
-                          stopColor="#10b981"
+                          stopColor="#059669"
+                          stopOpacity={0.3}
                         />
 
                         <stop
                           offset="100%"
                           stopColor="#34d399"
+                          stopOpacity={0.03}
                         />
                       </linearGradient>
 
                     </defs>
 
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      stroke="#dbeafe"
-                    />
+                    <CartesianGrid strokeDasharray="4 6" stroke="#e2e8f0" vertical={false} />
 
                     <XAxis
                       dataKey="label"
@@ -881,15 +885,34 @@ function Dashboard() {
                     />
 
                     <YAxis
+                      yAxisId="views"
                       tick={{
                         fontSize: 11,
                         fill: "#475569",
                       }}
                       axisLine={false}
                       tickLine={false}
+                      width={42}
+                    />
+
+                    <YAxis
+                      yAxisId="likes"
+                      orientation="right"
+                      tick={{
+                        fontSize: 11,
+                        fill: "#64748b",
+                      }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={38}
                     />
 
                     <Tooltip
+                      formatter={(value, name) => [
+                        Number(value).toLocaleString("en-IN"),
+                        name,
+                      ]}
+                      labelFormatter={(label) => `Month: ${label}`}
                       contentStyle={{
                         background:
                           "#fff",
@@ -902,32 +925,37 @@ function Dashboard() {
                       }}
                     />
 
-                    <Legend />
+                    <Legend
+                      verticalAlign="top"
+                      align="right"
+                      height={30}
+                      iconType="circle"
+                    />
 
-                    <Line
+                    <Area
                       type="monotone"
+                      yAxisId="views"
                       dataKey="views"
                       name="Views"
-                      stroke="url(#viewsLine)"
-                      strokeWidth={3}
-                      dot={{
-                        r: 3,
-                        fill: "#4f46e5",
-                      }}
+                      stroke="#4f46e5"
+                      strokeWidth={2.5}
+                      fill="url(#viewsArea)"
+                      fillOpacity={1}
+                      activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                     />
 
-                    <Line
+                    <Area
                       type="monotone"
+                      yAxisId="likes"
                       dataKey="likes"
                       name="Likes"
-                      stroke="url(#likesLine)"
-                      strokeWidth={3}
-                      dot={{
-                        r: 3,
-                        fill: "#10b981",
-                      }}
+                      stroke="#059669"
+                      strokeWidth={2.5}
+                      fill="url(#likesArea)"
+                      fillOpacity={1}
+                      activeDot={{ r: 6, strokeWidth: 2, stroke: "#fff" }}
                     />
-                  </LineChart>
+                  </AreaChart>
                 </ResponsiveContainer>
               )}
             </div>

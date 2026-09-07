@@ -1,28 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router";
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function GrowthTrends() {
-  const { creatorId } = useParams();
+  const { user } = useAuth();
 
   const [growthData, setGrowthData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const activeCreatorId = creatorId || "1";
+  const activeCreatorId = user?.id;
 
   useEffect(() => {
+    if (!activeCreatorId) {
+      setLoading(false);
+      return;
+    }
+
     const fetchGrowthData = async () => {
       try {
         setLoading(true);
@@ -127,7 +133,7 @@ function GrowthTrends() {
                 Growth analytics
               </p>
               <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">Growth & Trends</h1>
-              <p className="mt-2 text-sm text-indigo-100/90">Growth analytics for Creator {activeCreatorId}</p>
+              <p className="mt-2 text-sm text-indigo-100/90">Growth analytics for Creator</p>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/20 backdrop-blur-sm">
@@ -140,7 +146,7 @@ function GrowthTrends() {
         {growthData.length === 0 ? (
           <div className="rounded-[28px] border border-slate-200 bg-white/90 p-10 text-center shadow-[0_18px_40px_rgba(148,163,184,0.12)]">
             <h2 className="text-xl font-semibold text-slate-800">No growth data available</h2>
-            <p className="mt-2 text-slate-500">There is currently no growth analytics data available for Creator {activeCreatorId}.</p>
+            <p className="mt-2 text-slate-500">There is currently no growth analytics data available for this creator.</p>
           </div>
         ) : (
           <>
@@ -188,20 +194,35 @@ function GrowthTrends() {
 
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={growthData}>
+                    <BarChart data={growthData} barCategoryGap="28%">
                       <defs>
-                        <linearGradient id="growthFollowers" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#2563eb" />
+                        <linearGradient id="growthFollowers" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#4f46e5" />
                           <stop offset="100%" stopColor="#60a5fa" />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: "#475569" }} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }} />
-                      <Legend />
-                      <Line type="monotone" dataKey="followers" name="Followers" stroke="url(#growthFollowers)" strokeWidth={3} dot={{ r: 3, fill: "#2563eb" }} />
-                    </LineChart>
+                      <CartesianGrid vertical={false} stroke="#e2e8f0" strokeDasharray="4 4" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 11, fill: "#475569" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickMargin={10}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: "#475569" }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(value) => Number(value).toLocaleString()}
+                        width={68}
+                      />
+                      <Tooltip
+                        cursor={{ fill: "#eef2ff" }}
+                        formatter={(value) => [Number(value).toLocaleString(), "Followers"]}
+                        contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}
+                      />
+                      <Bar dataKey="followers" name="Followers" fill="url(#growthFollowers)" radius={[8, 8, 2, 2]} maxBarSize={42} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>

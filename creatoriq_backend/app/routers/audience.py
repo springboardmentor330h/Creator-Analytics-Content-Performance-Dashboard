@@ -2,25 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.auth import get_current_user
 from app.models.audience import Audience
+from app.models.user import User
 from app.schemas.audience import (
     AudienceCreate,
     AudienceUpdate,
 )
-# from app.services.audience_service import (
-#     get_total_followers,
-#     get_total_reach,
-#     get_total_impressions,
-#     get_gender_distribution,
-#     get_age_distribution,
-#     get_top_countries,
-#     get_top_cities,
-#     get_device_distribution,
-#     get_growth_trend,
-#     get_audience_trends as build_audience_trends,
-# )
 
-#
 from app.services.audience_service import (
     get_total_followers,
     get_total_reach,
@@ -35,8 +24,6 @@ from app.services.audience_service import (
     get_growth_trend,
     get_audience_trends as build_audience_trends,
 )
-
-
 
 router = APIRouter(
     tags=["Audience Analytics"],
@@ -156,7 +143,14 @@ def delete_audience(
 def get_audience_analytics(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if creator_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only access your own audience analytics.",
+        )
+
     return {
         "creator_id": creator_id,
 
@@ -217,7 +211,14 @@ def get_audience_analytics(
 def get_growth_analytics(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    if creator_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only access your own growth analytics.",
+        )
+
     return get_growth_trend(
         db,
         creator_id,
@@ -238,61 +239,3 @@ def get_audience_trends(
         creator_id,
     )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# @router.get("/analytics/audience")
-# def get_audience_analytics(
-#     db: Session = Depends(get_db),
-# ):
-#     top_countries = get_top_countries(db)
-#     top_cities = get_top_cities(db)
-#     device_distribution = get_device_distribution(db)
-
-#     return {
-#         "total_followers": get_total_followers(db),
-#         "total_reach": get_total_reach(db),
-#         "total_impressions": get_total_impressions(db),
-#         "gender_distribution": get_gender_distribution(db),
-#         "age_distribution": get_age_distribution(db),
-#         "top_countries": top_countries,
-#         "top_cities": top_cities,
-#         "device_usage": device_distribution,
-#     }
-
-
-# # ---------------------------------
-# # GROWTH ANALYTICS
-# # ---------------------------------
-
-# @router.get("/analytics/growth")
-# def get_growth_analytics(
-#     db: Session = Depends(get_db),
-# ):
-#     return get_growth_trend(db)
-
-
-# # ---------------------------------
-# # AUDIENCE TRENDS
-# # ---------------------------------
-
-# @router.get("/analytics/audience-trends")
-# def get_audience_trends(
-#     db: Session = Depends(get_db),
-# ):
-#     return build_audience_trends(db)

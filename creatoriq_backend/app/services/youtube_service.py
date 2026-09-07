@@ -157,7 +157,7 @@ def get_youtube_videos(
 def synchronize_youtube_videos(
     db: Session,
     video_ids: list[str],
-    creator_id: int = 1,
+    creator_id: int,
 ):
     videos = get_youtube_videos(video_ids)
 

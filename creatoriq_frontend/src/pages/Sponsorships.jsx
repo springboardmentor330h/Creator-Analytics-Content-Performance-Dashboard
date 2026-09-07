@@ -83,7 +83,7 @@ function Sponsorships() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.28em] text-indigo-200">Partnerships</p>
               <h1 className="mt-3 text-3xl font-bold text-white md:text-4xl">Sponsorships</h1>
-              <p className="mt-2 text-sm text-indigo-100/90">Sponsorship information for Creator 2</p>
+              <p className="mt-2 text-sm text-indigo-100/90">Sponsorship information for Creator</p>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-lg shadow-slate-950/20 backdrop-blur-sm">
