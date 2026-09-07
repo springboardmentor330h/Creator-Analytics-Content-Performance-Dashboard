@@ -12,6 +12,7 @@ import Sponsorships from "./pages/Sponsorships";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
 import ProfileSettings from "./pages/ProfileSettings";
+import PlatformComparison from "./pages/PlatformComparison";
 
 export default function App() {
   return (
@@ -89,6 +90,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <ProfileSettings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/platform-comparison"
+            element={
+              <PrivateRoute>
+                <PlatformComparison />
               </PrivateRoute>
             }
           />

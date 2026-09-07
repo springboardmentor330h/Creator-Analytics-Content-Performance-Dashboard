@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 const items = [
   { label: "Overview", path: "/dashboard" },
   { label: "Content Analytics", path: "/content-analytics" },
+  { label: "Platform Comparison", path: "/platform-comparison" },
   { label: "Audience", path: "/audience-analytics" },
   { label: "Growth & Trends", path: "/growth-trends" },
   { label: "Revenue", path: "/revenue" },
