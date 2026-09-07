@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 
@@ -68,6 +69,8 @@ function ContentAnalytics() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
+        {/* Top Performing Content */}
+
         <div className="rounded-xl bg-white p-6 shadow">
           <h2 className="mb-5 text-xl font-semibold text-slate-800">
             Top Performing Content
@@ -99,15 +102,21 @@ function ContentAnalytics() {
 
                 <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
 
+                  {/* Views */}
+
                   <div>
                     <p className="text-slate-400">
                       Views
                     </p>
 
                     <p className="font-semibold text-slate-700">
-                      {Number(item.views).toLocaleString()}
+                      {item.views == null
+                        ? "N/A"
+                        : Number(item.views).toLocaleString()}
                     </p>
                   </div>
+
+                  {/* Likes */}
 
                   <div>
                     <p className="text-slate-400">
@@ -118,6 +127,8 @@ function ContentAnalytics() {
                       {Number(item.likes).toLocaleString()}
                     </p>
                   </div>
+
+                  {/* Reach */}
 
                   <div>
                     <p className="text-slate-400">
@@ -135,6 +146,7 @@ function ContentAnalytics() {
           </div>
         </div>
 
+        {/* Reach Analysis */}
 
         <div className="rounded-xl bg-white p-6 shadow">
 
@@ -189,3 +201,5 @@ function ContentAnalytics() {
 }
 
 export default ContentAnalytics;
+
+

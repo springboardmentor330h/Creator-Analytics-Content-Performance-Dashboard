@@ -33,19 +33,19 @@ class TopPerformingContentResponse(BaseModel):
     content_id: int
     title: str
     platform: str
-    views: int
+    views: int | None = None
     likes: int
     comments: int
-    shares: int
-    saves: int
-    reach: int
+    shares: int | None = None
+    saves: int  | None = None
+    reach: int  | None = None
     engagement_rate: float
 
 class ReachAnalysisResponse(BaseModel):
     content_id: int
     title: str
     platform: str
-    reach: int
+    reach: int | None = None
 
 class PerformanceTrendsResponse(BaseModel):
     content_id: int
@@ -72,7 +72,7 @@ class PlatformPerformanceResponse(BaseModel):
     total_views: int
     total_likes: int
     total_comments: int
-    total_reach: int
+    total_reach: int | None = None
     average_engagement_rate: float
 
 #Replaced the summary response
@@ -81,7 +81,7 @@ class SummaryResponse(BaseModel):
     total_likes: int
     total_comments: int
     total_shares: int
-    total_reach: int
+    total_reach: int | None = None
     total_followers: int
     average_engagement_rate: float
 

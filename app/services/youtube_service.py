@@ -223,10 +223,10 @@ def transform_video_data(video: dict):
         "comments": int(statistics.get("commentCount", 0)),
 
         # Not provided by the YouTube Data API statistics endpoint
-        "shares": 0,
-        "saves": 0,
-        "watch_time": 0,
-        "reach": 0,
+        "shares": None,
+        "saves": None,
+        "watch_time": None,
+        "reach": None,
 
         "published_date": published_at[:10]
     }

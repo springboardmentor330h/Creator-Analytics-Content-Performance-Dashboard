@@ -234,15 +234,17 @@ def get_platform_performance_api(
     response_model=SummaryResponse
 )
 def get_dashboard_summary_api(
+    platform: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     creator_id = current_user.id
 
     return get_dashboard_summary(
-        db=db,
-        creator_id=creator_id
-    )
+    db=db,
+    creator_id=creator_id,
+    platform=platform
+)
 
 
 # --------------------------------------------------

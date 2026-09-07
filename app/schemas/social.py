@@ -27,3 +27,13 @@ class YouTubeSyncResponse(BaseModel):
     platform: str
     status: str
     records_synced: int
+
+class InstagramSyncResponse(BaseModel):
+
+    platform: str
+    status: str
+    records_synced: int
+
+class InstagramSyncRequest(BaseModel):
+    instagram_user_id: str
+    max_results: int = 10

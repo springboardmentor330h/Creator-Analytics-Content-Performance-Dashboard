@@ -59,9 +59,15 @@ function AudienceAnalytics() {
           Audience Analytics
         </h1>
 
-        <p className="mt-2 text-slate-500">
-          Understand your audience demographics and reach.
-        </p>
+       <p className="mt-2 text-slate-500">
+  Understand your overall creator audience, demographics, and reach.
+</p>
+
+<div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+  Audience demographics are shown at the creator level.
+  Platform-specific demographic data is displayed only when
+  available from the connected social media API.
+</div>
       </div>
 
       {/* KPI Cards */}

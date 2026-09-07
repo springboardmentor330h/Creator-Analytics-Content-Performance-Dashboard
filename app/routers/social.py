@@ -4,7 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.models.content import Content
+
 
 from app.schemas.social import (
     SocialConnectRequest,
@@ -12,7 +15,9 @@ from app.schemas.social import (
     SocialSyncRequest,
     SocialSyncResponse,
     YouTubeSyncRequest,
-    YouTubeSyncResponse
+    YouTubeSyncResponse,
+    InstagramSyncRequest,
+    InstagramSyncResponse
 )
 
 from app.services.social_media import get_platform_data
@@ -23,6 +28,12 @@ from app.services.youtube_service import (
     YouTubeAPIError
 )
 
+from app.services.instagram_service import (
+    get_instagram_media,
+    get_instagram_media_insights,
+    transform_instagram_media,
+    InstagramAPIError,
+)
 
 router = APIRouter(
     prefix="/social",
@@ -88,7 +99,7 @@ def sync_platform(
             engagement_rate = 0
 
         content = Content(
-            creator_id=1,
+            creator_id=current_user.id,
             content_title=data["content_title"],
             platform=data["platform"],
             content_type="Social Media",
@@ -115,13 +126,11 @@ def sync_platform(
     }
 
 
-@router.post(
-    "/youtube/sync",
-    response_model=YouTubeSyncResponse
-)
+@router.post("/youtube/sync", response_model=YouTubeSyncResponse)
 def sync_youtube(
     request: YouTubeSyncRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     
 
@@ -159,6 +168,7 @@ def sync_youtube(
             existing_content = (
                 db.query(Content)
                 .filter(
+                    Content.creator_id == current_user.id,
                     Content.platform == data["platform"],
                     Content.external_content_id == data["external_content_id"]
                 )
@@ -166,13 +176,14 @@ def sync_youtube(
             )
 
             # Calculate engagement rate
-            if data["reach"] > 0:
+                        # Calculate engagement rate
+            if data["reach"] is not None and data["reach"] > 0:
 
                 total_engagement = (
-                    data["likes"]
-                    + data["comments"]
-                    + data["shares"]
-                    + data["saves"]
+                    (data["likes"] or 0)
+                    + (data["comments"] or 0)
+                    + (data["shares"] or 0)
+                    + (data["saves"] or 0)
                 )
 
                 engagement_rate = (
@@ -181,7 +192,6 @@ def sync_youtube(
 
             else:
                 engagement_rate = 0.0
-
             # If record already exists, update it
             if existing_content:
 
@@ -203,7 +213,7 @@ def sync_youtube(
             else:
 
                 content = Content(
-                    creator_id=1,
+                    creator_id=current_user.id,
                     content_title=data["content_title"],
                     platform=data["platform"],
                     external_content_id=data["external_content_id"],
@@ -258,4 +268,118 @@ def sync_youtube(
         raise HTTPException(
             status_code=500,
             detail=f"YouTube synchronization failed: {str(e)}"
+        )
+
+
+@router.post(
+    "/instagram/sync",
+    response_model=InstagramSyncResponse
+)
+def sync_instagram(
+    request: InstagramSyncRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        media_response = get_instagram_media(
+          user_id=request.instagram_user_id,
+          limit=request.max_results
+        )
+        media_items = media_response.get("data", [])
+
+        if not media_items:
+            raise HTTPException(
+                status_code=404,
+                detail="No Instagram media found"
+            )
+
+        records_synced = 0
+
+        for media in media_items:
+            media_id = media.get("id")
+
+            if not media_id:
+                continue
+
+            insights = get_instagram_media_insights(media_id)
+
+            data = transform_instagram_media(
+                media,
+                insights
+            )
+
+            existing_content = (
+                db.query(Content)
+                .filter(
+                   Content.creator_id == current_user.id,
+                   Content.platform == data["platform"],
+                   Content.external_content_id
+                   == data["external_content_id"]
+                )
+                .first()
+            )
+
+            # Instagram content already exists → update it
+            if existing_content:
+                existing_content.content_title = data["content_title"]
+                existing_content.views = data["views"]
+                existing_content.likes = data["likes"]
+                existing_content.comments = data["comments"]
+                existing_content.shares = data["shares"]
+                existing_content.saves = data["saves"]
+                existing_content.reach = data["reach"]
+
+            # New Instagram content → insert it
+            else:
+                content = Content(
+                    creator_id=current_user.id,
+                    content_title=data["content_title"],
+                    platform=data["platform"],
+                    external_content_id=data["external_content_id"],
+                    content_type="Instagram Media",
+                    views=data["views"],
+                    likes=data["likes"],
+                    comments=data["comments"],
+                    shares=data["shares"],
+                    saves=data["saves"],
+                    watch_time=data["watch_time"],
+                    reach=data["reach"],
+                    published_date=data["published_date"],
+                    engagement_rate=0.0,
+                )
+
+                db.add(content)
+
+            records_synced += 1
+
+        db.commit()
+
+        return {
+            "platform": "Instagram",
+            "status": "success",
+            "records_synced": records_synced
+        }
+
+    except HTTPException:
+        raise
+
+    except InstagramAPIError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=str(e)
+        )
+
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Instagram synchronization failed: {str(e)}"
         )

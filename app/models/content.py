@@ -24,13 +24,13 @@ class Content(Base):
     external_content_id = Column(String(255), nullable=True)
     content_type = Column(String(50), nullable=False)
 
-    views = Column(Integer, default=0)
+    views = Column(Integer,nullable=True, default=None)
     likes = Column(Integer, default=0)
     comments = Column(Integer, default=0)
     shares = Column(Integer, default=0)
     saves = Column(Integer, default=0)
 
-    watch_time = Column(Integer, default=0)
+    watch_time = Column(Integer,nullable=True, default=None)
     reach = Column(Integer, default=0)
     published_date = Column(Date, nullable=False)
 

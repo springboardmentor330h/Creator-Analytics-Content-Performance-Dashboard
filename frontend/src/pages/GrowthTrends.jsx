@@ -57,8 +57,14 @@ function GrowthTrends() {
         </h1>
 
         <p className="mt-2 text-slate-500">
-          Track follower growth and daily performance.
-        </p>
+  Track overall creator follower growth and daily performance.
+</p>
+
+<div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+  Growth trends are shown at the creator level.
+  Platform-specific follower growth is displayed only when
+  historical growth data is available from the connected social media API.
+</div>
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow">

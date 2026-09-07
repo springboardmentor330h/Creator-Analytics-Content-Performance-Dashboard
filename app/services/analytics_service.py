@@ -7,7 +7,6 @@ from app.models.growth import Growth
 # --------------------------------------------------
 # CONTENT ENGAGEMENT
 # --------------------------------------------------
-
 def get_engagement_data(
     db: Session,
     content_id: int,
@@ -32,10 +31,22 @@ def get_engagement_data(
         + (content.saves or 0)
     )
 
-    if (content.reach or 0) > 0:
-        engagement_rate = (
-            total_engagement / content.reach
-        ) * 100
+    if content.platform == "YouTube":
+        if (content.views or 0) > 0:
+            engagement_rate = (
+                total_engagement / content.views
+            ) * 100
+        else:
+            engagement_rate = 0
+
+    elif content.platform == "Instagram":
+        if (content.reach or 0) > 0:
+            engagement_rate = (
+                total_engagement / content.reach
+            ) * 100
+        else:
+            engagement_rate = 0
+
     else:
         engagement_rate = 0
 
@@ -45,9 +56,11 @@ def get_engagement_data(
         "views": content.views,
         "reach": content.reach,
         "total_engagement": total_engagement,
-        "engagement_rate": round(engagement_rate, 2)
+        "engagement_rate": round(
+            engagement_rate,
+            2
+        )
     }
-
 
 # --------------------------------------------------
 # CONTENT COMPARISON
@@ -98,14 +111,41 @@ def get_top_performing_content(
 ):
     contents = (
         db.query(Content)
-        .filter(Content.creator_id == creator_id)
-        .order_by(Content.engagement_rate.desc())
-        .limit(limit)
+        .filter(
+            Content.creator_id == creator_id,
+            Content.external_content_id.isnot(None)
+        )
         .all()
     )
 
-    return [
-        {
+    results = []
+
+    for content in contents:
+
+        total_engagement = (
+            (content.likes or 0)
+            + (content.comments or 0)
+            + (content.shares or 0)
+            + (content.saves or 0)
+        )
+
+        if content.platform == "YouTube":
+            denominator = content.views or 0
+
+        elif content.platform == "Instagram":
+            denominator = content.reach or 0
+
+        else:
+            denominator = 0
+
+        if denominator > 0:
+            engagement_rate = (
+                total_engagement / denominator
+            ) * 100
+        else:
+            engagement_rate = 0
+
+        results.append({
             "content_id": content.id,
             "title": content.content_title,
             "platform": content.platform,
@@ -115,12 +155,18 @@ def get_top_performing_content(
             "shares": content.shares,
             "saves": content.saves,
             "reach": content.reach,
-            "engagement_rate": content.engagement_rate
-        }
-        for content in contents
-    ]
+            "engagement_rate": round(
+                engagement_rate,
+                2
+            )
+        })
 
+    results.sort(
+        key=lambda item: item["engagement_rate"],
+        reverse=True
+    )
 
+    return results[:limit]
 # --------------------------------------------------
 # REACH ANALYSIS
 # --------------------------------------------------
@@ -132,7 +178,10 @@ def get_reach_analysis(
 ):
     contents = (
         db.query(Content)
-        .filter(Content.creator_id == creator_id)
+        .filter(
+            Content.creator_id == creator_id,
+            Content.external_content_id.isnot(None)
+        )
         .order_by(Content.reach.desc())
         .limit(limit)
         .all()
@@ -147,8 +196,6 @@ def get_reach_analysis(
         }
         for content in contents
     ]
-
-
 # --------------------------------------------------
 # PERFORMANCE TRENDS
 # --------------------------------------------------
@@ -223,7 +270,10 @@ def get_platform_performance(
 ):
     contents = (
         db.query(Content)
-        .filter(Content.creator_id == creator_id)
+        .filter(
+            Content.creator_id == creator_id,
+            Content.external_content_id.isnot(None)
+        )
         .all()
     )
 
@@ -238,6 +288,7 @@ def get_platform_performance(
                 "total_likes": 0,
                 "total_comments": 0,
                 "total_reach": 0,
+                "has_reach_data": False,
                 "engagement_rates": []
             }
 
@@ -253,12 +304,43 @@ def get_platform_performance(
             content.comments or 0
         )
 
-        platform_data[platform]["total_reach"] += (
-            content.reach or 0
+        # Reach is currently available from Instagram,
+        # but not from the current YouTube integration.
+        if content.platform == "Instagram":
+            if content.reach is not None:
+                platform_data[platform]["total_reach"] += content.reach
+                platform_data[platform]["has_reach_data"] = True
+
+        total_engagement = (
+            (content.likes or 0)
+            + (content.comments or 0)
+            + (content.shares or 0)
+            + (content.saves or 0)
         )
 
+        # YouTube engagement rate uses views
+        if content.platform == "YouTube":
+            if (content.views or 0) > 0:
+                engagement_rate = (
+                    total_engagement / content.views
+                ) * 100
+            else:
+                engagement_rate = 0
+
+        # Instagram engagement rate uses reach
+        elif content.platform == "Instagram":
+            if (content.reach or 0) > 0:
+                engagement_rate = (
+                    total_engagement / content.reach
+                ) * 100
+            else:
+                engagement_rate = 0
+
+        else:
+            engagement_rate = 0
+
         platform_data[platform]["engagement_rates"].append(
-            content.engagement_rate or 0
+            engagement_rate
         )
 
     result = []
@@ -278,7 +360,11 @@ def get_platform_performance(
             "total_views": data["total_views"],
             "total_likes": data["total_likes"],
             "total_comments": data["total_comments"],
-            "total_reach": data["total_reach"],
+            "total_reach": (
+                data["total_reach"]
+                if data["has_reach_data"]
+                else None
+            ),
             "average_engagement_rate": round(
                 average_engagement_rate,
                 2
@@ -287,19 +373,38 @@ def get_platform_performance(
 
     return result
 
-
 # --------------------------------------------------
 # DASHBOARD SUMMARY
 # --------------------------------------------------
 
 def get_dashboard_summary(
     db: Session,
-    creator_id: int
+    creator_id: int,
+    platform: str | None = None
 ):
-    contents = (
+    query = (
         db.query(Content)
-        .filter(Content.creator_id == creator_id)
-        .all()
+        .filter(
+            Content.creator_id == creator_id,
+            Content.external_content_id.isnot(None)
+        )
+    )
+
+    # "all" means all real API-synced platforms
+    if platform and platform.lower() != "all":
+        query = query.filter(
+            Content.platform == platform
+        )
+
+    contents = query.all()
+
+    print(
+        "DEBUG:",
+        platform,
+        "records:",
+        len(contents),
+        "views:",
+        sum(content.views or 0 for content in contents)
     )
 
     total_views = sum(
@@ -322,25 +427,73 @@ def get_dashboard_summary(
         for content in contents
     )
 
-    total_reach = sum(
-        content.reach or 0
+    if platform and platform.lower() != "all":
+       if platform.lower() == "youtube":
+           total_reach = None
+       else:
+         total_reach = sum(
+            content.reach
+            for content in contents
+            if content.reach is not None
+        )
+    else:
+       total_reach = sum(
+        content.reach
         for content in contents
-    )
+        if content.reach is not None
+       )
+
+    # --------------------------------------------------
+    # ENGAGEMENT RATE
+    # --------------------------------------------------
 
     if contents:
-        average_engagement_rate = (
-            sum(
-                content.engagement_rate or 0
-                for content in contents
+        engagement_rates = []
+
+        for content in contents:
+            total_engagement = (
+                (content.likes or 0)
+                + (content.comments or 0)
+                + (content.shares or 0)
+                + (content.saves or 0)
             )
-            / len(contents)
+
+            if content.platform == "YouTube":
+                denominator = content.views or 0
+
+            elif content.platform == "Instagram":
+                denominator = content.reach or 0
+
+            else:
+                denominator = 0
+
+            if denominator > 0:
+                engagement_rate = (
+                    total_engagement / denominator
+                ) * 100
+
+                engagement_rates.append(
+                    engagement_rate
+                )
+
+        average_engagement_rate = (
+            sum(engagement_rates) / len(engagement_rates)
+            if engagement_rates
+            else 0
         )
+
     else:
         average_engagement_rate = 0
 
+    # --------------------------------------------------
+    # LATEST FOLLOWER COUNT
+    # --------------------------------------------------
+
     latest_growth = (
         db.query(Growth)
-        .filter(Growth.creator_id == creator_id)
+        .filter(
+            Growth.creator_id == creator_id
+        )
         .order_by(
             Growth.date.desc(),
             Growth.id.desc()
@@ -354,6 +507,10 @@ def get_dashboard_summary(
         else 0
     )
 
+    # --------------------------------------------------
+    # FINAL SUMMARY
+    # --------------------------------------------------
+
     return {
         "total_views": total_views,
         "total_likes": total_likes,
@@ -366,7 +523,6 @@ def get_dashboard_summary(
             2
         )
     }
-
 
 # --------------------------------------------------
 # ENGAGEMENT CHART
@@ -432,7 +588,10 @@ def get_platform_comparison(
 ):
     contents = (
         db.query(Content)
-        .filter(Content.creator_id == creator_id)
+        .filter(
+            Content.creator_id == creator_id,
+            Content.external_content_id.isnot(None)
+        )
         .all()
     )
 
@@ -466,9 +625,31 @@ def get_platform_comparison(
             content.comments or 0
         )
 
-        platform_data[platform]["engagement_rates"].append(
-            content.engagement_rate or 0
+        # Calculate engagement rate from actual metrics
+        total_engagement = (
+            (content.likes or 0)
+            + (content.comments or 0)
+            + (content.shares or 0)
+            + (content.saves or 0)
         )
+
+        if platform == "YouTube":
+            denominator = content.views or 0
+
+        elif platform == "Instagram":
+            denominator = content.reach or 0
+
+        else:
+            denominator = 0
+
+        if denominator > 0:
+            engagement_rate = (
+                total_engagement / denominator
+            ) * 100
+
+            platform_data[platform]["engagement_rates"].append(
+                engagement_rate
+            )
 
     result = []
 
@@ -495,4 +676,3 @@ def get_platform_comparison(
         })
 
     return result
-    

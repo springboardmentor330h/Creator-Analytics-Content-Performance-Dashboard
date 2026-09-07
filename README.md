@@ -88,6 +88,7 @@ The frontend does not duplicate backend analytics logic. It consumes the existin
 ## External Integration
 
 * YouTube Data API v3
+* Instagram Graph API
 
 ## Reporting
 
@@ -167,6 +168,11 @@ Metrics include:
 * Platform synchronization
 * YouTube API integration
 * YouTube content synchronization
+* Instagram Graph API integration
+* Instagram content synchronization
+* Multi-platform content analytics
+* Platform comparison
+* Platform-specific dashboard filtering
 
 ## Notifications
 
@@ -495,6 +501,9 @@ GET /reports/creator/excel
 
 ```text
 POST /social/youtube/sync
+## Instagram
+
+POST /social/instagram/sync
 ```
 
 ---
@@ -696,6 +705,7 @@ creatoriq/
 │       ├── excel_service.py
 │       ├── social_media.py
 │       └── youtube_service.py
+|       |__instagram_service.py 
 │
 └── tests/
 ```
@@ -929,3 +939,56 @@ The React frontend provides:
 The application connects the React dashboard to the existing FastAPI backend through Axios and displays project data retrieved from PostgreSQL.
 
 The system supports creator analytics, content performance, audience insights, growth trends, revenue tracking, sponsorships, notifications, YouTube integration, and exportable PDF/Excel reports.
+
+
+# Multi-Platform Social Media Integration
+
+CreatorIQ has been extended from a YouTube-based implementation to a multi-platform architecture by integrating Instagram alongside YouTube.
+
+The implementation uses a common CreatorIQ content structure so that data from different social media platforms can be processed by the same database and analytics services.
+
+## Supported Platforms
+
+- YouTube
+- Instagram
+
+## Common CreatorIQ Data Structure
+
+Social media content is transformed into a common structure containing:
+
+- Platform
+- External Content ID
+- Content Title
+- Views
+- Likes
+- Comments
+- Shares
+- Saves
+- Reach
+- Watch Time
+- Published Date
+
+Platform-specific metrics that are not available through an API are represented as unavailable rather than being assigned assumed values.
+
+## Multi-Platform Data Workflow
+
+The synchronization architecture follows the same reusable workflow for each supported platform:
+
+```text
+Social Media API
+       ↓
+Fetch Creator / Content Data
+       ↓
+Extract Available Metrics
+       ↓
+Transform to Common CreatorIQ Format
+       ↓
+Validate Data
+       ↓
+Check for Duplicate Content
+       ↓
+Store / Update PostgreSQL
+       ↓
+Existing CreatorIQ Analytics
+       ↓
+React Dashboard
