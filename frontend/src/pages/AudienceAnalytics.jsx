@@ -32,8 +32,8 @@ function AudienceAnalytics() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold text-[#2563eb]">
           Audience Analytics
         </h1>
 
@@ -46,8 +46,8 @@ function AudienceAnalytics() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold text-[#2563eb]">
           Audience Analytics
         </h1>
 
@@ -60,8 +60,8 @@ function AudienceAnalytics() {
 
   if (!audienceData) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold text-[#2563eb]">
           Audience Analytics
         </h1>
 
@@ -73,73 +73,80 @@ function AudienceAnalytics() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
       {/* Page Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Audience Analytics
         </h1>
 
-        <p className="mt-2 text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           Understand your audience demographics, reach,
           and distribution.
         </p>
       </div>
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
         {/* Total Followers */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Total Followers
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {audienceData.total_followers?.toLocaleString()}
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
+            {(audienceData.total_followers || 0).toLocaleString()}
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Total audience followers
           </p>
+
         </div>
 
         {/* Total Impressions */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Total Impressions
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {audienceData.total_impressions?.toLocaleString()}
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
+            {(audienceData.total_impressions || 0).toLocaleString()}
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Total audience impressions
           </p>
+
         </div>
 
         {/* Total Reach */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Total Reach
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {audienceData.total_reach?.toLocaleString()}
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
+            {(audienceData.total_reach || 0).toLocaleString()}
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Total audience reach
           </p>
+
         </div>
 
       </div>
 
       {/* Age Distribution */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Age Distribution
         </h2>
 
@@ -148,27 +155,32 @@ function AudienceAnalytics() {
           {Object.entries(
             audienceData.age_distribution || {}
           ).map(([ageGroup, value]) => (
+
             <div
               key={ageGroup}
-              className="rounded-lg bg-gray-50 p-5 text-center"
+              className="rounded-xl bg-[#DBEAFE] p-5 text-center shadow-sm"
             >
-              <p className="text-sm text-gray-500">
+
+              <p className="text-sm font-medium text-[#2563eb]">
                 {ageGroup}
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-gray-800">
+              <p className="mt-2 text-2xl font-bold text-[#2563eb]">
                 {value}
               </p>
+
             </div>
+
           ))}
 
         </div>
+
       </div>
 
       {/* Gender Distribution */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Gender Distribution
         </h2>
 
@@ -177,42 +189,47 @@ function AudienceAnalytics() {
           {Object.entries(
             audienceData.gender_distribution || {}
           ).map(([gender, value]) => (
+
             <div
               key={gender}
-              className="rounded-lg bg-gray-50 p-5"
+              className="rounded-xl bg-[#DBEAFE] p-5 shadow-sm"
             >
+
               <div className="flex items-center justify-between">
 
-                <p className="font-medium text-gray-700">
+                <p className="font-medium text-[#2563eb]">
                   {gender}
                 </p>
 
-                <p className="text-2xl font-bold text-gray-800">
+                <p className="text-2xl font-bold text-[#2563eb]">
                   {value}%
                 </p>
 
               </div>
 
-              <div className="mt-3 h-3 overflow-hidden rounded-full bg-gray-200">
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-blue-200">
 
                 <div
-                  className="h-full rounded-full bg-gray-800"
+                  className="h-full rounded-full bg-[#2563eb]"
                   style={{
                     width: `${value}%`,
                   }}
                 />
 
               </div>
+
             </div>
+
           ))}
 
         </div>
+
       </div>
 
       {/* Device Distribution */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Device Distribution
         </h2>
 
@@ -221,29 +238,32 @@ function AudienceAnalytics() {
           {Object.entries(
             audienceData.device_distribution || {}
           ).map(([device, value]) => (
+
             <div
               key={device}
-              className="rounded-lg bg-gray-50 p-5 text-center"
+              className="rounded-xl bg-[#DBEAFE] p-5 text-center shadow-sm"
             >
 
-              <p className="text-sm text-gray-500">
+              <p className="text-sm font-medium text-[#2563eb]">
                 {device}
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-gray-800">
+              <p className="mt-2 text-2xl font-bold text-[#2563eb]">
                 {value}
               </p>
 
             </div>
+
           ))}
 
         </div>
+
       </div>
 
       {/* Top Countries */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Top Countries
         </h2>
 
@@ -252,14 +272,16 @@ function AudienceAnalytics() {
           <table className="w-full text-left">
 
             <thead>
-              <tr className="border-b text-sm text-gray-500">
-                <th className="px-4 py-3">
+              <tr className="border-b">
+
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Country
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Audience
                 </th>
+
               </tr>
             </thead>
 
@@ -267,12 +289,13 @@ function AudienceAnalytics() {
 
               {(audienceData.top_countries || []).map(
                 ([country, value], index) => (
+
                   <tr
                     key={index}
                     className="border-b last:border-b-0"
                   >
 
-                    <td className="px-4 py-4 font-medium text-gray-800">
+                    <td className="px-4 py-4 text-gray-700">
                       {country}
                     </td>
 
@@ -281,6 +304,7 @@ function AudienceAnalytics() {
                     </td>
 
                   </tr>
+
                 )
               )}
 
@@ -289,12 +313,13 @@ function AudienceAnalytics() {
           </table>
 
         </div>
+
       </div>
 
       {/* Top Cities */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Top Cities
         </h2>
 
@@ -303,13 +328,13 @@ function AudienceAnalytics() {
           <table className="w-full text-left">
 
             <thead>
-              <tr className="border-b text-sm text-gray-500">
+              <tr className="border-b">
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   City
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Audience
                 </th>
 
@@ -320,12 +345,13 @@ function AudienceAnalytics() {
 
               {(audienceData.top_cities || []).map(
                 ([city, value], index) => (
+
                   <tr
                     key={index}
                     className="border-b last:border-b-0"
                   >
 
-                    <td className="px-4 py-4 font-medium text-gray-800">
+                    <td className="px-4 py-4 text-gray-700">
                       {city}
                     </td>
 
@@ -334,6 +360,7 @@ function AudienceAnalytics() {
                     </td>
 
                   </tr>
+
                 )
               )}
 
@@ -342,6 +369,7 @@ function AudienceAnalytics() {
           </table>
 
         </div>
+
       </div>
 
     </div>

@@ -103,8 +103,8 @@ function Reports() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Reports
         </h1>
 
@@ -117,8 +117,8 @@ function Reports() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Reports
         </h1>
 
@@ -130,25 +130,26 @@ function Reports() {
   }
 
   return (
-    <div>
-      {/* Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
+      {/* Page Heading */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Reports
         </h1>
 
-        <p className="mt-2 text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           Generate and export your creator analytics reports.
         </p>
       </div>
 
       {/* Export Buttons */}
-      <div className="mb-8 flex flex-wrap gap-4">
+      <div className="mb-6 flex flex-wrap gap-4">
 
         <button
           onClick={handlePdfExport}
           disabled={exporting !== ''}
-          className="rounded-lg bg-gray-900 px-6 py-3 font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl bg-[#2563eb] px-6 py-3 font-medium text-white shadow-sm transition duration-300 hover:bg-blue-700 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
         >
           {exporting === 'pdf'
             ? 'Generating PDF...'
@@ -158,7 +159,7 @@ function Reports() {
         <button
           onClick={handleExcelExport}
           disabled={exporting !== ''}
-          className="rounded-lg border border-gray-300 bg-white px-6 py-3 font-medium text-gray-800 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-xl border border-blue-200 bg-[#DBEAFE] px-6 py-3 font-medium text-[#2563eb] shadow-sm transition duration-300 hover:bg-blue-100 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
         >
           {exporting === 'excel'
             ? 'Generating Excel...'
@@ -169,34 +170,35 @@ function Reports() {
 
       {/* Report */}
       {report ? (
-        <div className="space-y-8">
+
+        <div className="space-y-6">
 
           {/* Content Performance */}
           {report.content_performance && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-              <h2 className="mb-6 text-xl font-bold text-gray-800">
+              <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
                 Content Performance
               </h2>
 
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-                <div>
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-xl bg-[#DBEAFE] p-5">
+                  <p className="text-sm font-bold text-[#2563eb]">
                     Total Views
                   </p>
 
-                  <p className="mt-1 text-2xl font-bold text-gray-800">
+                  <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                     {report.content_performance.total_views?.toLocaleString()}
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-xl bg-[#DBEAFE] p-5">
+                  <p className="text-sm font-bold text-[#2563eb]">
                     Total Reach
                   </p>
 
-                  <p className="mt-1 text-2xl font-bold text-gray-800">
+                  <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                     {report.content_performance.total_reach?.toLocaleString()}
                   </p>
                 </div>
@@ -208,30 +210,30 @@ function Reports() {
 
           {/* Engagement */}
           {report.engagement && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-              <h2 className="mb-6 text-xl font-bold text-gray-800">
+              <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
                 Engagement
               </h2>
 
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-                <div>
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-xl bg-[#DBEAFE] p-5">
+                  <p className="text-sm font-bold text-[#2563eb]">
                     Total Engagement
                   </p>
 
-                  <p className="mt-1 text-2xl font-bold text-gray-800">
+                  <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                     {report.engagement.total_engagement?.toLocaleString()}
                   </p>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-xl bg-[#DBEAFE] p-5">
+                  <p className="text-sm font-bold text-[#2563eb]">
                     Engagement Rate
                   </p>
 
-                  <p className="mt-1 text-2xl font-bold text-gray-800">
+                  <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                     {report.engagement.engagement_rate}%
                   </p>
                 </div>
@@ -243,20 +245,22 @@ function Reports() {
 
           {/* Audience */}
           {report.audience && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-              <h2 className="mb-6 text-xl font-bold text-gray-800">
+              <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
                 Audience Analytics
               </h2>
 
-              <div>
-                <p className="text-sm text-gray-500">
+              <div className="rounded-xl bg-[#DBEAFE] p-5">
+
+                <p className="text-sm font-bold text-[#2563eb]">
                   Total Followers
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-gray-800">
+                <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                   {report.audience.total_followers?.toLocaleString()}
                 </p>
+
               </div>
 
             </div>
@@ -264,20 +268,22 @@ function Reports() {
 
           {/* Revenue */}
           {report.revenue && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-              <h2 className="mb-6 text-xl font-bold text-gray-800">
+              <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
                 Revenue Analytics
               </h2>
 
-              <div>
-                <p className="text-sm text-gray-500">
+              <div className="rounded-xl bg-[#DBEAFE] p-5">
+
+                <p className="text-sm font-bold text-[#2563eb]">
                   Total Revenue
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-gray-800">
+                <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                   ₹{report.revenue.total_revenue?.toLocaleString()}
                 </p>
+
               </div>
 
             </div>
@@ -285,33 +291,39 @@ function Reports() {
 
           {/* Growth */}
           {report.growth && (
-            <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-              <h2 className="mb-6 text-xl font-bold text-gray-800">
+              <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
                 Growth Trends
               </h2>
 
-              <div>
-                <p className="text-sm text-gray-500">
+              <div className="rounded-xl bg-[#DBEAFE] p-5">
+
+                <p className="text-sm font-bold text-[#2563eb]">
                   Latest Followers
                 </p>
 
-                <p className="mt-1 text-2xl font-bold text-gray-800">
+                <p className="mt-2 text-2xl font-extrabold text-[#2563eb]">
                   {report.growth.latest_followers?.toLocaleString()}
                 </p>
+
               </div>
 
             </div>
           )}
 
         </div>
+
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <p className="text-gray-500">
             No report data found.
           </p>
         </div>
+
       )}
+
     </div>
   )
 }

@@ -38,8 +38,8 @@ function Sponsorships() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Sponsorships
         </h1>
 
@@ -52,8 +52,8 @@ function Sponsorships() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Sponsorships
         </h1>
 
@@ -65,41 +65,47 @@ function Sponsorships() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
       {/* Page Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Sponsorships
         </h1>
 
-        <p className="mt-2 text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           Manage and track your sponsorship campaigns.
         </p>
       </div>
 
-      {/* Summary Card */}
-      <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        {/* Total Sponsorships */}
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Total Sponsorships
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
             {totalSponsorships}
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Total sponsorship records
           </p>
+
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        {/* Active Campaigns */}
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Active Campaigns
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
             {
               sponsorships.filter(
                 (item) =>
@@ -108,51 +114,55 @@ function Sponsorships() {
             }
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Currently active sponsorships
           </p>
+
         </div>
 
       </div>
 
       {/* Sponsorship Table */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Sponsorship Details
         </h2>
 
         {sponsorships.length === 0 ? (
+
           <p className="py-8 text-center text-gray-500">
             No sponsorship records found.
           </p>
+
         ) : (
+
           <table className="w-full text-left">
 
             <thead>
-              <tr className="border-b text-sm text-gray-500">
+              <tr className="border-b">
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Brand
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Campaign
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Amount
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Status
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Start Date
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   End Date
                 </th>
 
@@ -160,25 +170,27 @@ function Sponsorships() {
             </thead>
 
             <tbody>
+
               {sponsorships.map((sponsorship, index) => (
+
                 <tr
                   key={sponsorship.id || index}
                   className="border-b last:border-b-0"
                 >
 
-                  <td className="px-4 py-4 font-medium text-gray-800">
+                  <td className="px-4 py-4 text-gray-700">
                     {sponsorship.brand_name ||
                       sponsorship.brand ||
                       '-'}
                   </td>
 
-                  <td className="px-4 py-4 text-gray-600">
+                  <td className="px-4 py-4 text-gray-700">
                     {sponsorship.campaign_name ||
                       sponsorship.campaign ||
                       '-'}
                   </td>
 
-                  <td className="px-4 py-4 text-gray-600">
+                  <td className="px-4 py-4 text-gray-700">
                     {sponsorship.amount != null
                       ? `₹${sponsorship.amount.toLocaleString()}`
                       : '-'}
@@ -197,13 +209,17 @@ function Sponsorships() {
                   </td>
 
                 </tr>
+
               ))}
+
             </tbody>
 
           </table>
+
         )}
 
       </div>
+
     </div>
   )
 }

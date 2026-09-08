@@ -48,8 +48,8 @@ function GrowthTrends() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Growth & Trends
         </h1>
 
@@ -62,8 +62,8 @@ function GrowthTrends() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Growth & Trends
         </h1>
 
@@ -75,22 +75,23 @@ function GrowthTrends() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
       {/* Page Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Growth & Trends
         </h1>
 
-        <p className="mt-2 text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           Track follower growth and audience reach over time.
         </p>
       </div>
 
       {/* Follower Growth Chart */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Follower Growth
         </h2>
 
@@ -127,9 +128,9 @@ function GrowthTrends() {
       </div>
 
       {/* Daily Growth Chart */}
-      <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Daily Follower Growth
         </h2>
 
@@ -166,9 +167,9 @@ function GrowthTrends() {
       </div>
 
       {/* Audience Reach Trend */}
-      <div className="mt-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Audience Reach Trend
         </h2>
 
@@ -214,30 +215,30 @@ function GrowthTrends() {
       </div>
 
       {/* Growth Details Table */}
-      <div className="mt-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Growth Details
         </h2>
 
         <table className="w-full text-left">
 
           <thead>
-            <tr className="border-b text-sm text-gray-500">
+            <tr className="border-b">
 
-              <th className="px-4 py-3">
+              <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                 Date
               </th>
 
-              <th className="px-4 py-3">
+              <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                 Followers
               </th>
 
-              <th className="px-4 py-3">
+              <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                 Daily Growth
               </th>
 
-              <th className="px-4 py-3">
+              <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                 Growth %
               </th>
 
@@ -245,35 +246,40 @@ function GrowthTrends() {
           </thead>
 
           <tbody>
+
             {growthData.map((item, index) => (
+
               <tr
                 key={index}
                 className="border-b last:border-b-0"
               >
 
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 text-gray-700">
                   {item.date}
                 </td>
 
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 text-gray-600">
                   {item.followers?.toLocaleString()}
                 </td>
 
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 text-gray-600">
                   {item.daily_growth?.toLocaleString()}
                 </td>
 
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 text-gray-600">
                   {item.growth_percentage}%
                 </td>
 
               </tr>
+
             ))}
+
           </tbody>
 
         </table>
 
       </div>
+
     </div>
   )
 }

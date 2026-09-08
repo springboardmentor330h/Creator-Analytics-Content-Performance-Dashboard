@@ -41,8 +41,8 @@ function Notifications() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Notifications
         </h1>
 
@@ -55,8 +55,8 @@ function Notifications() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Notifications
         </h1>
 
@@ -68,41 +68,47 @@ function Notifications() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
       {/* Page Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Notifications
         </h1>
 
-        <p className="mt-2 text-gray-500">
+        <p className="mt-1 text-sm text-gray-500">
           View your performance, engagement, and revenue alerts.
         </p>
       </div>
 
-      {/* Summary */}
-      <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        {/* Total Notifications */}
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Total Notifications
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
             {notifications.length}
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             All notifications
           </p>
+
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
+        {/* Unread Notifications */}
+        <div className="rounded-2xl bg-[#DBEAFE] p-6 shadow-sm transition duration-300 hover:shadow-md">
+
+          <p className="text-sm font-bold text-[#2563eb]">
             Unread Notifications
           </p>
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
+          <h2 className="mt-3 text-3xl font-extrabold text-[#2563eb]">
             {
               notifications.filter(
                 (notification) =>
@@ -112,36 +118,43 @@ function Notifications() {
             }
           </h2>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             Notifications that need attention
           </p>
+
         </div>
 
       </div>
 
       {/* Notification List */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
+        <h2 className="mb-5 text-lg font-bold text-[#2563eb]">
           Notification List
         </h2>
 
         {notifications.length === 0 ? (
+
           <p className="py-8 text-center text-gray-500">
             No notifications found.
           </p>
+
         ) : (
+
           <div className="space-y-4">
 
             {notifications.map((notification, index) => (
+
               <div
                 key={notification.id || index}
-                className="rounded-lg border border-gray-200 p-5"
+                className="rounded-xl border border-gray-200 bg-slate-50 p-5 transition duration-300 hover:shadow-sm"
               >
+
                 <div className="flex items-start justify-between gap-4">
 
                   <div>
-                    <h3 className="font-semibold text-gray-800">
+
+                    <h3 className="font-semibold text-[#2563eb]">
                       {notification.title ||
                         notification.notification_type ||
                         'Notification'}
@@ -152,6 +165,7 @@ function Notifications() {
                         notification.description ||
                         'No message available.'}
                     </p>
+
                   </div>
 
                   <span
@@ -191,13 +205,17 @@ function Notifications() {
                   )}
 
                 </div>
+
               </div>
+
             ))}
 
           </div>
+
         )}
 
       </div>
+
     </div>
   )
 }

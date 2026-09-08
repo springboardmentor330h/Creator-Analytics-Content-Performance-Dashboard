@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import KPICard from '../components/KPICard'
 import api from '../services/api'
 
 function ContentAnalytics() {
@@ -12,6 +13,9 @@ function ContentAnalytics() {
   useEffect(() => {
     const fetchContentAnalytics = async () => {
       try {
+        setLoading(true)
+        setError('')
+
         const summaryResponse = await api.get(
           '/analytics/summary'
         )
@@ -40,8 +44,8 @@ function ContentAnalytics() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold text-[#2563eb]">
           Content Analytics
         </h1>
 
@@ -54,8 +58,8 @@ function ContentAnalytics() {
 
   if (error) {
     return (
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <h1 className="text-3xl font-bold text-[#2563eb]">
           Content Analytics
         </h1>
 
@@ -67,125 +71,78 @@ function ContentAnalytics() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
+
       {/* Page Heading */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold tracking-tight text-[#2563eb]">
           Content Analytics
         </h1>
 
-        <p className="mt-2 text-gray-500">
-          Analyze your content performance across
-          different platforms.
+        <p className="mt-1 text-sm text-gray-500">
+          Analyze your content performance across different platforms.
         </p>
       </div>
 
       {/* KPI Cards */}
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 
-        {/* Views */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Total Views
-          </p>
+        <KPICard
+          title="Total Views"
+          value={(summary?.total_views || 0).toLocaleString()}
+          description="Total content views"
+          icon="◉"
+        />
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.total_views?.toLocaleString()}
-          </h2>
+        <KPICard
+          title="Total Likes"
+          value={(summary?.total_likes || 0).toLocaleString()}
+          description="Total content likes"
+          icon="♥"
+        />
 
-          <p className="mt-2 text-sm text-gray-500">
-            Total content views
-          </p>
-        </div>
+        <KPICard
+          title="Total Comments"
+          value={(summary?.total_comments || 0).toLocaleString()}
+          description="Total content comments"
+          icon="●"
+        />
 
-        {/* Likes */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Total Likes
-          </p>
+        <KPICard
+          title="Engagement Rate"
+          value={`${summary?.average_engagement_rate || 0}%`}
+          description="Average engagement rate"
+          icon="↗"
+        />
 
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.total_likes?.toLocaleString()}
-          </h2>
+        <KPICard
+          title="Total Reach"
+          value={(summary?.total_reach || 0).toLocaleString()}
+          description="Total audience reach"
+          icon="◎"
+        />
 
-          <p className="mt-2 text-sm text-gray-500">
-            Total content likes
-          </p>
-        </div>
-
-        {/* Comments */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Total Comments
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.total_comments?.toLocaleString()}
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Total content comments
-          </p>
-        </div>
-
-        {/* Engagement */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Engagement Rate
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.average_engagement_rate}%
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Average engagement rate
-          </p>
-        </div>
-
-      </div>
-
-      {/* Additional Metrics */}
-      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-
-        {/* Reach */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Total Reach
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.total_reach?.toLocaleString()}
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Total audience reach
-          </p>
-        </div>
-
-        {/* Shares */}
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-medium text-gray-500">
-            Total Shares
-          </p>
-
-          <h2 className="mt-2 text-3xl font-bold text-gray-800">
-            {summary?.total_shares?.toLocaleString()}
-          </h2>
-
-          <p className="mt-2 text-sm text-gray-500">
-            Total content shares
-          </p>
-        </div>
+        <KPICard
+          title="Total Followers"
+          value={(summary?.total_followers || 0).toLocaleString()}
+          description="Total followers"
+          icon="♟"
+        />
 
       </div>
 
       {/* Top Performing Content */}
-      <div className="mb-8 overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
-          Top Performing Content
-        </h2>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-[#2563eb]">
+            Top Performing Content
+          </h2>
+
+          <p className="mt-1 text-xs text-[#2563eb]">
+            Content generating the strongest performance
+          </p>
+        </div>
 
         {topContent.length === 0 ? (
           <p className="py-8 text-center text-gray-500">
@@ -195,29 +152,29 @@ function ContentAnalytics() {
           <table className="w-full text-left">
 
             <thead>
-              <tr className="border-b text-sm text-gray-500">
+              <tr className="border-b">
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Content
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Platform
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Views
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Reach
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Watch Time
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Engagement Rate
                 </th>
 
@@ -231,7 +188,7 @@ function ContentAnalytics() {
                   className="border-b last:border-b-0"
                 >
 
-                  <td className="px-4 py-4 font-medium text-gray-800">
+                  <td className="px-4 py-4 text-gray-700">
                     {content.content_title}
                   </td>
 
@@ -251,7 +208,7 @@ function ContentAnalytics() {
                     {content.watch_time?.toLocaleString()}
                   </td>
 
-                  <td className="px-4 py-4 font-medium text-gray-800">
+                  <td className="px-4 py-4 text-gray-600">
                     {content.engagement_rate}%
                   </td>
 
@@ -265,11 +222,17 @@ function ContentAnalytics() {
       </div>
 
       {/* Platform Performance */}
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mt-6 overflow-x-auto rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition duration-300 hover:shadow-md">
 
-        <h2 className="mb-6 text-xl font-bold text-gray-800">
-          Platform Performance
-        </h2>
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-[#2563eb]">
+            Platform Performance
+          </h2>
+
+          <p className="mt-1 text-xs text-[#2563eb]">
+            Compare content performance across platforms
+          </p>
+        </div>
 
         {platformData.length === 0 ? (
           <p className="py-8 text-center text-gray-500">
@@ -279,29 +242,29 @@ function ContentAnalytics() {
           <table className="w-full text-left">
 
             <thead>
-              <tr className="border-b text-sm text-gray-500">
+              <tr className="border-b">
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Platform
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Views
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Likes
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Comments
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Reach
                 </th>
 
-                <th className="px-4 py-3">
+                <th className="px-4 py-3 text-sm font-bold text-[#2563eb]">
                   Engagement Rate
                 </th>
 
@@ -315,7 +278,7 @@ function ContentAnalytics() {
                   className="border-b last:border-b-0"
                 >
 
-                  <td className="px-4 py-4 font-medium text-gray-800">
+                  <td className="px-4 py-4 text-gray-700">
                     {platform.platform}
                   </td>
 
@@ -335,7 +298,7 @@ function ContentAnalytics() {
                     {platform.total_reach?.toLocaleString()}
                   </td>
 
-                  <td className="px-4 py-4 font-medium text-gray-800">
+                  <td className="px-4 py-4 text-gray-600">
                     {platform.average_engagement_rate}%
                   </td>
 
