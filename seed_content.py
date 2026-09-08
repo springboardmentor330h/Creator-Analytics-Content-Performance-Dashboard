@@ -1,3 +1,4 @@
+
 import random
 from datetime import date, timedelta
 
@@ -5,11 +6,20 @@ from app.db.database import SessionLocal
 from app.models.content import Content
 
 
-TARGET_RECORDS = 500
+# ---------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------
 
-CREATOR_IDS = [1, 2, 3, 5]
+RECORDS_PER_PLATFORM = 100
 
-PLATFORMS = ["YouTube", "Instagram", "LinkedIn"]
+CREATOR_IDS = [2]
+
+MOCK_PLATFORMS = [
+    "Facebook",
+    "LinkedIn",
+    "TikTok",
+    "X",
+]
 
 CONTENT_TITLES = [
     "Python Full Stack Tutorial",
@@ -27,6 +37,11 @@ CONTENT_TITLES = [
     "Python Programming Masterclass",
     "FastAPI Project Tutorial",
     "PostgreSQL for Beginners",
+    "Backend Developer Roadmap",
+    "Learn Python from Scratch",
+    "Building Production APIs",
+    "Modern Backend Development",
+    "Python Developer Career Guide",
 ]
 
 CONTENT_TYPES = [
@@ -38,117 +53,300 @@ CONTENT_TYPES = [
 ]
 
 
+# ---------------------------------------------------------
+# Platform-specific ranges
+# ---------------------------------------------------------
+
+PLATFORM_RANGES = {
+    "Facebook": {
+        "views": (5000, 40000),
+        "like_rate": (0.03, 0.10),
+        "comment_rate": (0.005, 0.025),
+        "share_rate": (0.005, 0.03),
+        "save_rate": (0.002, 0.01),
+        "reach_multiplier": (0.9, 1.4),
+    },
+
+    "LinkedIn": {
+        "views": (3000, 30000),
+        "like_rate": (0.04, 0.12),
+        "comment_rate": (0.005, 0.03),
+        "share_rate": (0.003, 0.02),
+        "save_rate": (0.002, 0.01),
+        "reach_multiplier": (0.9, 1.5),
+    },
+
+    "TikTok": {
+        "views": (10000, 100000),
+        "like_rate": (0.05, 0.15),
+        "comment_rate": (0.005, 0.04),
+        "share_rate": (0.005, 0.04),
+        "save_rate": (0.005, 0.03),
+        "reach_multiplier": (0.85, 1.2),
+    },
+
+    "X": {
+        "views": (2000, 25000),
+        "like_rate": (0.02, 0.10),
+        "comment_rate": (0.002, 0.02),
+        "share_rate": (0.003, 0.025),
+        "save_rate": (0.001, 0.01),
+        "reach_multiplier": (0.9, 1.4),
+    },
+}
+
+
+# ---------------------------------------------------------
+# Generate sample data
+# ---------------------------------------------------------
+
 def generate_content():
+
     db = SessionLocal()
 
     try:
-        current_count = db.query(Content).count()
-        records_needed = max(0, TARGET_RECORDS - current_count)
-
-        print(f"Previous records: {current_count}")
-
-        if records_needed == 0:
-            print("Content table already has 500 or more records.")
-            return
 
         random.seed(42)
+
+        # -------------------------------------------------
+        # Remove existing mock records only
+        # -------------------------------------------------
+
+        deleted_count = (
+            db.query(Content)
+            .filter(
+                Content.platform.in_(MOCK_PLATFORMS)
+            )
+            .delete(
+                synchronize_session=False
+            )
+        )
+
+        db.commit()
+
+        print(
+            f"Existing mock records removed: {deleted_count}"
+        )
 
         rows = []
 
         start_date = date(2026, 1, 1)
 
-        for _ in range(records_needed):
+        # -------------------------------------------------
+        # Generate records
+        # -------------------------------------------------
 
-            platform = random.choice(PLATFORMS)
+        for platform in MOCK_PLATFORMS:
 
-            views = random.randint(5000, 50000)
+            settings = PLATFORM_RANGES[platform]
 
-            likes = random.randint(
-                int(views * 0.03),
-                int(views * 0.12)
-            )
+            for index in range(RECORDS_PER_PLATFORM):
 
-            comments = random.randint(
-                int(views * 0.005),
-                int(views * 0.03)
-            )
+                # Views
+                views = random.randint(
+                    settings["views"][0],
+                    settings["views"][1]
+                )
 
-            shares = random.randint(
-                int(views * 0.003),
-                int(views * 0.02)
-            )
+                # Likes
+                likes = random.randint(
+                    int(
+                        views
+                        * settings["like_rate"][0]
+                    ),
+                    int(
+                        views
+                        * settings["like_rate"][1]
+                    )
+                )
 
-            saves = random.randint(
-                int(views * 0.002),
-                int(views * 0.015)
-            )
+                # Comments
+                comments = random.randint(
+                    int(
+                        views
+                        * settings["comment_rate"][0]
+                    ),
+                    int(
+                        views
+                        * settings["comment_rate"][1]
+                    )
+                )
 
-            reach = random.randint(
-                int(views * 0.8),
-                int(views * 1.5)
-            )
+                # Shares
+                shares = random.randint(
+                    int(
+                        views
+                        * settings["share_rate"][0]
+                    ),
+                    int(
+                        views
+                        * settings["share_rate"][1]
+                    )
+                )
 
-            watch_time = random.randint(
-                300,
-                7200
-            )
+                # Saves
+                saves = random.randint(
+                    int(
+                        views
+                        * settings["save_rate"][0]
+                    ),
+                    int(
+                        views
+                        * settings["save_rate"][1]
+                    )
+                )
 
-            total_engagement = (
-                likes
-                + comments
-                + shares
-                + saves
-            )
+                # Reach
+                reach = int(
+                    views
+                    * random.uniform(
+                        settings["reach_multiplier"][0],
+                        settings["reach_multiplier"][1]
+                    )
+                )
 
-            if reach > 0:
-                engagement_rate = (
-                    total_engagement / reach
-                ) * 100
-            else:
-                engagement_rate = 0.0
+                # Watch time
+                watch_time = random.randint(
+                    300,
+                    7200
+                )
 
-            published_date = (
-                start_date
-                + timedelta(days=random.randint(0, 230))
-            )
+                # Total engagement
+                total_engagement = (
+                    likes
+                    + comments
+                    + shares
+                    + saves
+                )
 
-            content = Content(
-                creator_id=random.choice(CREATOR_IDS),
-                content_title=random.choice(CONTENT_TITLES),
-                platform=platform,
-                content_type=random.choice(CONTENT_TYPES),
-                views=views,
-                likes=likes,
-                comments=comments,
-                shares=shares,
-                saves=saves,
-                watch_time=watch_time,
-                reach=reach,
-                published_date=published_date,
-                engagement_rate=round(
-                    engagement_rate,
-                    2
-                ),
-            )
+                # Engagement rate
+                if reach > 0:
 
-            rows.append(content)
+                    engagement_rate = (
+                        total_engagement
+                        / reach
+                    ) * 100
+
+                else:
+
+                    engagement_rate = 0.0
+
+                # Historical date
+                published_date = (
+                    start_date
+                    + timedelta(
+                        days=random.randint(
+                            0,
+                            250
+                        )
+                    )
+                )
+
+                # Unique external ID
+                external_content_id = (
+                    f"{platform.lower()}_mock_"
+                    f"{index + 1:03d}"
+                )
+
+                # Create Content object
+                content = Content(
+
+                    creator_id=random.choice(
+                        CREATOR_IDS
+                    ),
+
+                    content_title=random.choice(
+                        CONTENT_TITLES
+                    ),
+
+                    platform=platform,
+
+                    external_content_id=(
+                        external_content_id
+                    ),
+
+                    content_type=random.choice(
+                        CONTENT_TYPES
+                    ),
+
+                    views=views,
+                    likes=likes,
+                    comments=comments,
+                    shares=shares,
+                    saves=saves,
+                    watch_time=watch_time,
+                    reach=reach,
+
+                    published_date=(
+                        published_date
+                    ),
+
+                    engagement_rate=round(
+                        engagement_rate,
+                        2
+                    ),
+                )
+
+                rows.append(content)
+
+        # -------------------------------------------------
+        # Insert records
+        # -------------------------------------------------
 
         db.add_all(rows)
+
         db.commit()
 
-        total_count = db.query(Content).count()
+        # -------------------------------------------------
+        # Verification
+        # -------------------------------------------------
 
-        print(f"Records added: {records_needed}")
-        print(f"Total content records: {total_count}")
+        print(
+            f"Mock records added: {len(rows)}"
+        )
+
+        for platform in MOCK_PLATFORMS:
+
+            count = (
+                db.query(Content)
+                .filter(
+                    Content.platform == platform
+                )
+                .count()
+            )
+
+            print(
+                f"{platform}: {count} records"
+            )
+
+        total_count = (
+            db.query(Content).count()
+        )
+
+        print(
+            f"Total content records in database: "
+            f"{total_count}"
+        )
 
     except Exception as e:
+
         db.rollback()
-        print("Error while inserting content data:")
+
+        print(
+            "Error while inserting mock content data:"
+        )
+
         print(e)
 
     finally:
+
         db.close()
 
 
+# ---------------------------------------------------------
+# Run script
+# ---------------------------------------------------------
+
 if __name__ == "__main__":
     generate_content()
+

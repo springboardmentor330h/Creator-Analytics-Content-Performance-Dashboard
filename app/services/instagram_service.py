@@ -6,6 +6,8 @@ load_dotenv(override=True)
 
 INSTAGRAM_ACCESS_TOKEN = os.getenv("INSTAGRAM_ACCESS_TOKEN")
 
+import requests
+
 
 class InstagramAPIError(Exception):
     """Custom exception for Instagram API errors."""
@@ -51,6 +53,41 @@ def get_instagram_profile():
         )
 
     return response.json()
+
+
+def get_instagram_follower_count():
+    """Fetch the real Instagram follower count."""
+
+    token = get_instagram_access_token()
+
+    url = "https://graph.instagram.com/me"
+
+    params = {
+        "fields": "user_id,username,followers_count",
+        "access_token": token
+    }
+
+    response = requests.get(url, params=params)
+
+    if response.status_code != 200:
+        raise InstagramAPIError(
+            f"Instagram follower count request failed: {response.text}",
+            response.status_code
+        )
+
+    data = response.json()
+
+    followers_count = data.get("followers_count")
+
+    if followers_count is None:
+        raise InstagramAPIError(
+            "Instagram API did not return followers_count",
+            500
+        )
+
+    return int(followers_count)
+
+
 
 def get_instagram_media(
     user_id: str,

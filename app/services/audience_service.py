@@ -3,6 +3,8 @@ from sqlalchemy import func
 
 from app.models.audience import Audience
 from app.models.growth import Growth
+from app.models.platform_growth import PlatformGrowth
+from app.models.content import Content
 
 
 def get_total_followers(
@@ -39,6 +41,7 @@ def get_total_impressions(
         .scalar()
         or 0
     )
+
 
 
 def get_gender_distribution(
@@ -167,17 +170,49 @@ def get_device_distribution(
 def get_growth_trend(
     db: Session,
     creator_id: int,
-    days: int = 30
+    days: int = 30,
+    platform: str | None = None
 ):
-    growth_records = (
-        db.query(Growth)
-        .filter(Growth.creator_id == creator_id)
-        .order_by(Growth.date.desc())
-        .limit(days)
-        .all()
-    )
+    # --------------------------------------------------
+    # PLATFORM-SPECIFIC GROWTH
+    # --------------------------------------------------
 
-    growth_records.reverse()
+    if platform and platform.lower() != "all":
+
+        growth_records = (
+            db.query(PlatformGrowth)
+            .filter(
+                PlatformGrowth.creator_id == creator_id,
+                PlatformGrowth.platform.ilike(platform)
+            )
+            .order_by(PlatformGrowth.date.desc())
+            .limit(days)
+            .all()
+        )
+
+        growth_records.reverse()
+
+    # --------------------------------------------------
+    # CREATOR-LEVEL GROWTH
+    # --------------------------------------------------
+
+    else:
+
+        growth_records = (
+            db.query(Growth)
+            .filter(
+                Growth.creator_id == creator_id
+            )
+            .order_by(Growth.date.desc())
+            .limit(days)
+            .all()
+        )
+
+        growth_records.reverse()
+
+    # --------------------------------------------------
+    # CALCULATE GROWTH
+    # --------------------------------------------------
 
     result = []
 
@@ -188,11 +223,15 @@ def get_growth_trend(
         if previous_followers is None:
             daily_growth = 0
             growth_percentage = 0
+
         else:
-            daily_growth = record.followers - previous_followers
+            daily_growth = (
+                record.followers - previous_followers
+            )
 
             if previous_followers == 0:
                 growth_percentage = 0
+
             else:
                 growth_percentage = round(
                     (daily_growth / previous_followers) * 100,
@@ -234,3 +273,57 @@ def get_audience_trends(
         }
         for record in growth_records
     ]
+
+def get_platform_followers(
+    db: Session,
+    creator_id: int,
+    platform: str
+):
+    record = (
+        db.query(PlatformGrowth)
+        .filter(
+            PlatformGrowth.creator_id == creator_id,
+            PlatformGrowth.platform.ilike(platform)
+        )
+        .order_by(PlatformGrowth.date.desc())
+        .first()
+    )
+
+    if not record:
+        return 0
+
+    return record.followers
+
+
+def get_platform_reach(
+    db: Session,
+    creator_id: int,
+    platform: str
+):
+    return (
+        db.query(func.sum(Content.reach))
+        .filter(
+            Content.creator_id == creator_id,
+            Content.platform.ilike(platform),
+            Content.external_content_id.isnot(None)
+        )
+        .scalar()
+        or 0
+    )
+
+
+def get_platform_views(
+    db: Session,
+    creator_id: int,
+    platform: str
+):
+    return (
+        db.query(func.sum(Content.views))
+        .filter(
+            Content.creator_id == creator_id,
+            Content.platform.ilike(platform),
+            Content.external_content_id.isnot(None)
+        )
+        .scalar()
+        or 0
+    )

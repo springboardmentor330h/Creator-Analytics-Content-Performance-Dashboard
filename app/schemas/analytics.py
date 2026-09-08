@@ -1,13 +1,5 @@
 from pydantic import BaseModel
 
-
-# class EngagementResponse(BaseModel):
-#     content_id: int
-#     likes: int
-#     comments: int
-#     shares: int
-#     saves: int
-#     engagement_rate: float
 class EngagementResponse(BaseModel):
     content_id: int
     platform: str
@@ -96,3 +88,5 @@ class PlatformComparisonResponse(BaseModel):
     engagement_rate: float
     likes: int
     comments: int
+    growth: int = 0
+

@@ -117,6 +117,33 @@ def get_channel_details(channel_id: str):
 
     except HttpError as error:
         handle_youtube_error(error)
+def get_channel_subscriber_count(channel_id: str):
+    """
+    Fetch the current subscriber count for a YouTube channel
+    from the real YouTube Data API.
+    """
+
+    channel_data = get_channel_details(channel_id)
+
+    items = channel_data.get("items", [])
+
+    if not items:
+        raise YouTubeAPIError(
+            "YouTube channel not found",
+            404
+        )
+
+    statistics = items[0].get("statistics", {})
+
+    subscriber_count = statistics.get("subscriberCount")
+
+    if subscriber_count is None:
+        raise YouTubeAPIError(
+            "YouTube subscriber count is not available",
+            404
+        )
+
+    return int(subscriber_count)
 
 
 def get_uploads_playlist_id(channel_id: str):

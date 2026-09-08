@@ -376,24 +376,39 @@ The frontend does not hard-code the logged-in user's information.
 ---
 
 # Authentication
+CreatorIQ uses JWT-based authentication with registration and login functionality.
 
-CreatorIQ uses JWT-based authentication.
+## Registration Flow
 
-Login flow:
+```text
+Registration Page
+       ↓
+POST /users
+       ↓
+FastAPI validates user data
+       ↓
+Password is securely hashed
+       ↓
+User is stored in PostgreSQL
+       ↓
+Registration successful
+```
+
+## Login Flow
 
 ```text
 Login Page
-    ↓
+       ↓
 POST /login
-    ↓
+       ↓
 FastAPI validates credentials
-    ↓
+       ↓
 JWT Access Token
-    ↓
+       ↓
 React stores/uses token
-    ↓
+       ↓
 Axios attaches Bearer token
-    ↓
+       ↓
 Protected FastAPI APIs
 ```
 
@@ -407,7 +422,36 @@ Authorization: Bearer <access_token>
 
 The backend validates the token using the existing authentication system.
 
+Protected APIs use the authenticated user information to provide creator-specific data.
+
 ---
+
+Final Integration Flow
+User Registration / Login
+          ↓
+JWT Authentication
+          ↓
+Creator Dashboard
+          ↓
+YouTube ──────┐
+              │
+Instagram ────┤
+              ↓
+      Common CreatorIQ Data
+              ↓
+         PostgreSQL
+              ↓
+      Analytics Services
+              ↓
+     Multi-Platform Analytics
+              ↓
+       React Dashboard
+              ↓
+ Revenue + Sponsorships
+              ↓
+ Notifications + Reports
+              ↓
+       PDF / Excel Export
 
 # API Integration
 
@@ -497,16 +541,19 @@ GET /reports/creator/pdf
 GET /reports/creator/excel
 ```
 
+
 ## YouTube
 
 ```text
 POST /social/youtube/sync
+```
+
 ## Instagram
 
+```text
 POST /social/instagram/sync
 ```
 
----
 
 # YouTube API Integration
 
@@ -841,6 +888,7 @@ The frontend communicates with the FastAPI backend through the configured Axios 
 # Expected Dashboard Flow
 
 ```text
+
 Login
   ↓
 Creator Dashboard
@@ -912,13 +960,19 @@ The backend provides:
 * Revenue analytics
 * Sponsorship tracking
 * Social media integration
-* YouTube synchronization
+* YouTube API integration
+* YouTube content synchronization
+* Instagram Graph API integration
+* Instagram content synchronization
+* Multi-platform content analytics
+* Platform comparison
 * Notifications
 * Reporting
 * PDF and Excel exports
 
 The React frontend provides:
 
+* Registration
 * Login
 * Creator dashboard
 * Analytics visualization

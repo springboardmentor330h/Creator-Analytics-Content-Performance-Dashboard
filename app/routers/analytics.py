@@ -271,11 +271,13 @@ def get_engagement_chart_api(
 # FOLLOWER CHART
 # --------------------------------------------------
 
+
 @router.get(
     "/chart/followers",
     response_model=ChartResponse
 )
 def get_follower_chart_api(
+    platform: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -283,9 +285,9 @@ def get_follower_chart_api(
 
     return get_follower_chart(
         db=db,
-        creator_id=creator_id
+        creator_id=creator_id,
+        platform=platform
     )
-
 
 # --------------------------------------------------
 # PLATFORM COMPARISON

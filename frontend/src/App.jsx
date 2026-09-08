@@ -1,8 +1,10 @@
+
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import Layout from "./components/layout/Layout";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import ContentAnalytics from "./pages/ContentAnalytics";
 import AudienceAnalytics from "./pages/AudienceAnalytics";
@@ -18,8 +20,9 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* Login */}
+        {/* Authentication */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* Dashboard */}
         <Route element={<Layout />}>
@@ -82,3 +85,4 @@ function App() {
 }
 
 export default App;
+

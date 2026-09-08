@@ -282,91 +282,101 @@ def delete_audience(
 # --------------------------------------------------
 # 6. Audience Analytics Report
 # --------------------------------------------------
-
 @router.get("/analytics/audience")
 def get_audience_analytics(
+    platform: str | None = None,
     db: Session = Depends(get_db),
-    current_user=Depends(get_authenticated_user)
+    current_user: User = Depends(get_current_user)
 ):
-    if isinstance(current_user, User):
-        creator_id = current_user.id
-    else:
-        user = (
-            db.query(User)
-            .filter(User.email == current_user)
-            .first()
-        )
+    creator_id = current_user.id
 
-        if not user:
-            raise HTTPException(
-                status_code=401,
-                detail="Authenticated user not found"
-            )
-
-        creator_id = user.id
-
-    gender_distribution = (
-        audience_service.get_gender_distribution(
-            db,
-            creator_id
-        )
+    # Existing creator-level demographic data
+    gender_distribution = audience_service.get_gender_distribution(
+        db, creator_id
     )
 
-    age_distribution = (
-        audience_service.get_age_distribution(
-            db,
-            creator_id
-        )
+    age_distribution = audience_service.get_age_distribution(
+        db, creator_id
     )
 
-    top_countries = (
-        audience_service.get_top_countries(
-            db,
-            creator_id
-        )
+    country_distribution = audience_service.get_top_countries(
+        db, creator_id
     )
 
-    top_cities = (
-        audience_service.get_top_cities(
-            db,
-            creator_id
-        )
+    city_distribution = audience_service.get_top_cities(
+        db, creator_id
     )
 
-    device_distribution = (
-        audience_service.get_device_distribution(
-            db,
-            creator_id
-        )
+    device_distribution = audience_service.get_device_distribution(
+        db, creator_id
     )
+
+    # --------------------------------------------------
+    # ALL PLATFORMS
+    # --------------------------------------------------
+
+    if not platform or platform.lower() == "all":
+
+        return {
+            "platform": "All",
+
+            "total_followers": audience_service.get_total_followers(
+                db, creator_id
+            ),
+
+            "total_reach": audience_service.get_total_reach(
+                db, creator_id
+            ),
+
+            "total_impressions": audience_service.get_total_impressions(
+                db, creator_id
+            ),
+
+            "gender_distribution": gender_distribution,
+            "age_distribution": age_distribution,
+            "country_distribution": country_distribution,
+            "city_distribution": city_distribution,
+            "device_distribution": device_distribution,
+
+            "demographics_level": "creator"
+        }
+
+    # --------------------------------------------------
+    # PLATFORM-SPECIFIC DATA
+    # --------------------------------------------------
 
     return {
-        "total_followers": audience_service.get_total_followers(
-            db,
-            creator_id
+        "platform": platform,
+
+        "total_followers": audience_service.get_platform_followers(
+            db, creator_id, platform
         ),
-        "total_reach": audience_service.get_total_reach(
-            db,
-            creator_id
+
+        "total_reach": audience_service.get_platform_reach(
+            db, creator_id, platform
         ),
-        "total_impressions": audience_service.get_total_impressions(
-            db,
-            creator_id
+
+        "total_views": audience_service.get_platform_views(
+            db, creator_id, platform
         ),
+
+        # Demographics are still creator-level because
+        # Audience table currently has no platform column.
         "gender_distribution": gender_distribution,
         "age_distribution": age_distribution,
-        "top_countries": top_countries,
-        "top_cities": top_cities,
-        "device_usage": device_distribution
+        "country_distribution": country_distribution,
+        "city_distribution": city_distribution,
+        "device_distribution": device_distribution,
+
+        "demographics_level": "creator"
     }
-
-
 # --------------------------------------------------
 # 7. Growth Analytics Report
 # --------------------------------------------------
 
 @router.get("/analytics/growth")
 def get_growth_analytics(
+    platform: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_authenticated_user)
 ):
@@ -390,7 +400,8 @@ def get_growth_analytics(
     return audience_service.get_growth_trend(
         db,
         creator_id,
-        days=30
+        days=30,
+        platform=platform
     )
 
 

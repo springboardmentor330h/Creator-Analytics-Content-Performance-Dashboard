@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 import KpiCard from "../components/common/KpiCard";
@@ -49,7 +50,7 @@ function Dashboard() {
         const [
           summaryResponse,
           growthResponse,
-          platformPerformanceResponse,
+          platformComparisonResponse,
         ] = await Promise.all([
           // Platform-specific summary
           api.get(
@@ -58,12 +59,16 @@ function Dashboard() {
               : `/analytics/summary?platform=${platform}`
           ),
 
-          // Growth is creator-level because the current
-          // Growth model does not contain platform information.
-          api.get("/analytics/chart/followers"),
+          
+          // Platform-specific follower growth
+        api.get(
+          platform === "All"
+          ? "/analytics/chart/followers"
+          : `/analytics/chart/followers?platform=${platform}`
+        ),
 
-          // Platform comparison always shows all platforms.
-          api.get("/analytics/platform-performance"),
+          // Platform comparison including Growth
+          api.get("/analytics/platform-comparison"),
         ]);
 
         console.log(
@@ -77,8 +82,8 @@ function Dashboard() {
         );
 
         console.log(
-          "Platform performance:",
-          platformPerformanceResponse.data
+          "Platform comparison:",
+          platformComparisonResponse.data
         );
 
         setSummary(summaryResponse.data);
@@ -86,7 +91,7 @@ function Dashboard() {
         setGrowthData(growthResponse.data);
 
         setPlatformPerformance(
-          platformPerformanceResponse.data
+          platformComparisonResponse.data
         );
       } catch (err) {
         console.error(
@@ -157,6 +162,29 @@ function Dashboard() {
     growthData.values?.length > 0;
 
   // --------------------------------------------------
+  // CALCULATE FOLLOWER GROWTH
+  // --------------------------------------------------
+
+  const followerValues = (growthData.values || []).map(
+    (value) => Number(value || 0)
+  );
+
+  const firstFollowers =
+    followerValues.length > 0
+      ? followerValues[0]
+      : 0;
+
+  const currentFollowers =
+    followerValues.length > 0
+      ? followerValues[followerValues.length - 1]
+      : Number(summary.total_followers || 0);
+
+  const followerGrowth =
+    followerValues.length > 1
+      ? currentFollowers - firstFollowers
+      : 0;
+
+  // --------------------------------------------------
   // FILTER PLATFORM COMPARISON
   // --------------------------------------------------
 
@@ -183,28 +211,32 @@ function Dashboard() {
       </div>
 
       {/* Platform Selector */}
-      <div className="mt-6 flex gap-3">
-        {["All", "YouTube", "Instagram"].map(
-          (item) => (
-            <button
-              key={item}
-              onClick={() =>
-                setPlatform(item)
-              }
-              className={`rounded-lg px-4 py-2 font-medium transition ${
-                platform === item
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              {item}
-            </button>
-          )
-        )}
+      <div className="mt-6 flex flex-wrap gap-3">
+        {[
+          "All",
+          "YouTube",
+          "Instagram",
+          "TikTok",
+          "Facebook",
+          "LinkedIn",
+          "X",
+        ].map((item) => (
+          <button
+            key={item}
+            onClick={() => setPlatform(item)}
+            className={`rounded-lg px-4 py-2 font-medium transition ${
+              platform === item
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+            }`}
+          >
+            {item}
+          </button>
+        ))}
       </div>
 
       {/* KPI Cards */}
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <KpiCard
           title="Total Views"
           value={Number(
@@ -226,14 +258,36 @@ function Dashboard() {
           ).toLocaleString()}
         />
 
-        <KpiCard 
-          title="Total Reach" 
+        <KpiCard
+          title="Total Reach"
           value={
-          summary.total_reach == null
-           ? "N/A"
-           : Number(summary.total_reach).toLocaleString()
-    } 
-/>
+            summary.total_reach == null
+              ? "N/A"
+              : Number(
+                  summary.total_reach
+                ).toLocaleString()
+          }
+        />
+
+        <KpiCard
+          title="Current Followers"
+          value={Number(
+            currentFollowers
+          ).toLocaleString()}
+        />
+
+        <KpiCard
+          title="Follower Growth"
+          value={
+            followerGrowth > 0
+              ? `+${Number(
+                  followerGrowth
+                ).toLocaleString()}`
+              : Number(
+                  followerGrowth
+                ).toLocaleString()
+          }
+        />
       </div>
 
       {/* Follower Growth Chart */}
@@ -305,6 +359,10 @@ function Dashboard() {
                   <th className="px-4 py-3 text-sm font-semibold text-slate-600">
                     Engagement Rate
                   </th>
+
+                  <th className="px-4 py-3 text-sm font-semibold text-slate-600">
+                    Growth
+                  </th>
                 </tr>
               </thead>
 
@@ -321,33 +379,45 @@ function Dashboard() {
 
                       <td className="px-4 py-4 text-slate-600">
                         {Number(
-                          item.total_views || 0
+                          item.views || 0
                         ).toLocaleString()}
                       </td>
 
                       <td className="px-4 py-4 text-slate-600">
                         {Number(
-                          item.total_likes || 0
+                          item.likes || 0
                         ).toLocaleString()}
                       </td>
 
                       <td className="px-4 py-4 text-slate-600">
                         {Number(
-                          item.total_comments || 0
+                          item.comments || 0
                         ).toLocaleString()}
                       </td>
 
                       <td className="px-4 py-4 text-slate-600">
-                        {item.total_reach == null
-                          ? "N/A"
-                          : Number(item.total_reach).toLocaleString()}
+                        {Number(
+                          item.reach || 0
+                        ).toLocaleString()}
                       </td>
 
                       <td className="px-4 py-4 text-slate-600">
                         {Number(
-                          item.average_engagement_rate || 0
+                          item.engagement_rate || 0
                         ).toFixed(2)}
                         %
+                      </td>
+
+                      <td className="px-4 py-4 font-medium text-slate-700">
+                        {Number(
+                          item.growth || 0
+                        ) > 0
+                          ? `+${Number(
+                              item.growth
+                            ).toLocaleString()}`
+                          : Number(
+                              item.growth || 0
+                            ).toLocaleString()}
                       </td>
                     </tr>
                   )
@@ -366,3 +436,4 @@ function Dashboard() {
 }
 
 export default Dashboard;
+

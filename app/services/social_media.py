@@ -1,54 +1,4 @@
 MOCK_PLATFORM_DATA = {
-    "YouTube": [
-        {
-            "platform": "YouTube",
-            "content_title": "Python Backend Development",
-            "views": 15000,
-            "likes": 1200,
-            "comments": 150,
-            "shares": 100,
-            "saves": 80,
-            "watch_time": 4500,
-            "reach": 18000
-        },
-        {
-            "platform": "YouTube",
-            "content_title": "FastAPI Tutorial",
-            "views": 12500,
-            "likes": 1050,
-            "comments": 130,
-            "shares": 90,
-            "saves": 70,
-            "watch_time": 3800,
-            "reach": 15500
-        }
-    ],
-
-    "Instagram": [
-        {
-            "platform": "Instagram",
-            "content_title": "Python Programming Tips",
-            "views": 18000,
-            "likes": 2200,
-            "comments": 280,
-            "shares": 350,
-            "saves": 420,
-            "watch_time": 3200,
-            "reach": 21000
-        },
-        {
-            "platform": "Instagram",
-            "content_title": "FastAPI Coding Tips",
-            "views": 16500,
-            "likes": 2050,
-            "comments": 240,
-            "shares": 310,
-            "saves": 380,
-            "watch_time": 2900,
-            "reach": 19500
-        }
-    ],
-
     "Facebook": [
         {
             "platform": "Facebook",
@@ -60,6 +10,17 @@ MOCK_PLATFORM_DATA = {
             "saves": 60,
             "watch_time": 2500,
             "reach": 14000
+        },
+        {
+            "platform": "Facebook",
+            "content_title": "FastAPI Backend Guide",
+            "views": 14500,
+            "likes": 1150,
+            "comments": 150,
+            "shares": 220,
+            "saves": 75,
+            "watch_time": 3100,
+            "reach": 17500
         }
     ],
 
@@ -74,6 +35,17 @@ MOCK_PLATFORM_DATA = {
             "saves": 50,
             "watch_time": 2100,
             "reach": 12000
+        },
+        {
+            "platform": "LinkedIn",
+            "content_title": "Python Career Guide",
+            "views": 12500,
+            "likes": 1100,
+            "comments": 180,
+            "shares": 240,
+            "saves": 85,
+            "watch_time": 2600,
+            "reach": 16000
         }
     ],
 
@@ -88,6 +60,17 @@ MOCK_PLATFORM_DATA = {
             "saves": 450,
             "watch_time": 1800,
             "reach": 25000
+        },
+        {
+            "platform": "TikTok",
+            "content_title": "FastAPI Quick Tutorial",
+            "views": 35000,
+            "likes": 4800,
+            "comments": 520,
+            "shares": 750,
+            "saves": 680,
+            "watch_time": 2400,
+            "reach": 39000
         }
     ],
 
@@ -102,6 +85,17 @@ MOCK_PLATFORM_DATA = {
             "saves": 40,
             "watch_time": 1200,
             "reach": 9500
+        },
+        {
+            "platform": "X",
+            "content_title": "Python Backend Tips",
+            "views": 9800,
+            "likes": 850,
+            "comments": 120,
+            "shares": 190,
+            "saves": 55,
+            "watch_time": 1400,
+            "reach": 12500
         }
     ]
 }
@@ -109,7 +103,8 @@ MOCK_PLATFORM_DATA = {
 
 def get_platform_data(platform: str):
     """
-    Simulate fetching data from a social-media platform.
+    Return mock/sample data for platforms
+    that do not have live API integration.
     """
 
     return MOCK_PLATFORM_DATA.get(platform, [])

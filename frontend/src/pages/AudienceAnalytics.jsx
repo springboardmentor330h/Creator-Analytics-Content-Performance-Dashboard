@@ -1,16 +1,35 @@
-
 import { useEffect, useState } from "react";
 import api from "../api/axios";
 
 function AudienceAnalytics() {
   const [data, setData] = useState(null);
+  const [platform, setPlatform] = useState("All");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const platforms = [
+    "All",
+    "YouTube",
+    "Instagram",
+    "TikTok",
+    "Facebook",
+    "LinkedIn",
+    "X",
+  ];
 
   useEffect(() => {
     const loadAudience = async () => {
       try {
-        const response = await api.get("/analytics/audience");
+        setLoading(true);
+        setError("");
+
+        const endpoint =
+          platform === "All"
+            ? "/analytics/audience"
+            : `/analytics/audience?platform=${encodeURIComponent(platform)}`;
+
+        const response = await api.get(endpoint);
+
         setData(response.data);
       } catch (err) {
         console.error("Audience Analytics API Error:", err);
@@ -21,7 +40,7 @@ function AudienceAnalytics() {
     };
 
     loadAudience();
-  }, []);
+  }, [platform]);
 
   if (loading) {
     return (
@@ -29,6 +48,7 @@ function AudienceAnalytics() {
         <h1 className="text-3xl font-bold text-slate-800">
           Audience Analytics
         </h1>
+
         <p className="mt-3 text-slate-500">
           Loading audience data...
         </p>
@@ -42,6 +62,7 @@ function AudienceAnalytics() {
         <h1 className="text-3xl font-bold text-slate-800">
           Audience Analytics
         </h1>
+
         <p className="mt-4 text-red-500">
           {error}
         </p>
@@ -52,29 +73,69 @@ function AudienceAnalytics() {
   const genderDistribution = data?.gender_distribution || {};
   const ageDistribution = data?.age_distribution || {};
 
+  const isAllPlatforms = platform === "All";
+
   return (
     <div className="p-8">
+
+      {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-800">
-          Audience Analytics
-        </h1>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 
-       <p className="mt-2 text-slate-500">
-  Understand your overall creator audience, demographics, and reach.
-</p>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">
+              Audience Analytics
+            </h1>
 
-<div className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
-  Audience demographics are shown at the creator level.
-  Platform-specific demographic data is displayed only when
-  available from the connected social media API.
-</div>
+            <p className="mt-2 text-slate-500">
+              Understand your audience, demographics, and reach across platforms.
+            </p>
+          </div>
+
+          {/* Platform Selector */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              Platform
+            </label>
+
+            <select
+              value={platform}
+              onChange={(e) => setPlatform(e.target.value)}
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-slate-500"
+            >
+              {platforms.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+        </div>
+
+        {/* Data explanation */}
+        <div className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {isAllPlatforms ? (
+            <>
+              Overall audience metrics are shown at the creator level.
+            </>
+          ) : (
+            <>
+              <strong>{platform}</strong> follower, reach, and view metrics
+              are loaded from the platform data stored in PostgreSQL.
+              Audience demographics are currently shown at the creator level.
+            </>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+
+        {/* Followers */}
         <div className="rounded-xl bg-white p-6 shadow">
           <p className="text-sm text-slate-500">
-            Total Followers
+            {isAllPlatforms ? "Total Followers" : `${platform} Followers`}
           </p>
 
           <p className="mt-2 text-3xl font-bold text-slate-800">
@@ -82,9 +143,10 @@ function AudienceAnalytics() {
           </p>
         </div>
 
+        {/* Reach */}
         <div className="rounded-xl bg-white p-6 shadow">
           <p className="text-sm text-slate-500">
-            Total Reach
+            {isAllPlatforms ? "Total Reach" : `${platform} Reach`}
           </p>
 
           <p className="mt-2 text-3xl font-bold text-slate-800">
@@ -92,76 +154,96 @@ function AudienceAnalytics() {
           </p>
         </div>
 
+        {/* Impressions / Views */}
         <div className="rounded-xl bg-white p-6 shadow">
           <p className="text-sm text-slate-500">
-            Total Impressions
+            {isAllPlatforms ? "Total Impressions" : `${platform} Views`}
           </p>
 
           <p className="mt-2 text-3xl font-bold text-slate-800">
-            {Number(data?.total_impressions || 0).toLocaleString()}
+            {Number(
+              isAllPlatforms
+                ? data?.total_impressions || 0
+                : data?.total_views || 0
+            ).toLocaleString()}
           </p>
         </div>
+
       </div>
 
       {/* Demographics */}
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="mt-8">
 
-        {/* Gender */}
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-5 text-xl font-semibold text-slate-800">
-            Gender Distribution
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-slate-800">
+            Audience Demographics
           </h2>
 
-          <div className="space-y-4">
-            {Object.entries(genderDistribution).map(
-              ([gender, percentage]) => (
-                <div
-                  key={gender}
-                  className="flex items-center justify-between border-b border-slate-100 pb-3"
-                >
-                  <span className="font-medium text-slate-700">
-                    {gender}
-                  </span>
-
-                  <span className="font-bold text-slate-800">
-                    {percentage}%
-                  </span>
-                </div>
-              )
-            )}
-          </div>
+          <p className="mt-1 text-sm text-slate-500">
+            These demographics currently represent the overall creator audience,
+            not individual platform audiences.
+          </p>
         </div>
 
-        {/* Age */}
-        <div className="rounded-xl bg-white p-6 shadow">
-          <h2 className="mb-5 text-xl font-semibold text-slate-800">
-            Age Distribution
-          </h2>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
-          <div className="space-y-4">
-            {Object.entries(ageDistribution).map(
-              ([ageGroup, percentage]) => (
-                <div
-                  key={ageGroup}
-                  className="flex items-center justify-between border-b border-slate-100 pb-3"
-                >
-                  <span className="font-medium text-slate-700">
-                    {ageGroup}
-                  </span>
+          {/* Gender */}
+          <div className="rounded-xl bg-white p-6 shadow">
+            <h2 className="mb-5 text-xl font-semibold text-slate-800">
+              Gender Distribution
+            </h2>
 
-                  <span className="font-bold text-slate-800">
-                    {percentage}%
-                  </span>
-                </div>
-              )
-            )}
+            <div className="space-y-4">
+              {Object.entries(genderDistribution).map(
+                ([gender, percentage]) => (
+                  <div
+                    key={gender}
+                    className="flex items-center justify-between border-b border-slate-100 pb-3"
+                  >
+                    <span className="font-medium text-slate-700">
+                      {gender}
+                    </span>
+
+                    <span className="font-bold text-slate-800">
+                      {percentage}%
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
           </div>
-        </div>
 
+          {/* Age */}
+          <div className="rounded-xl bg-white p-6 shadow">
+            <h2 className="mb-5 text-xl font-semibold text-slate-800">
+              Age Distribution
+            </h2>
+
+            <div className="space-y-4">
+              {Object.entries(ageDistribution).map(
+                ([ageGroup, percentage]) => (
+                  <div
+                    key={ageGroup}
+                    className="flex items-center justify-between border-b border-slate-100 pb-3"
+                  >
+                    <span className="font-medium text-slate-700">
+                      {ageGroup}
+                    </span>
+
+                    <span className="font-bold text-slate-800">
+                      {percentage}%
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
+
     </div>
   );
 }
 
 export default AudienceAnalytics;
-
