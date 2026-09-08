@@ -20,8 +20,16 @@ class AudienceService:
         return record
 
     @staticmethod
-    def get_all_audiences(db: Session) -> List[Audience]:
-        return db.query(Audience).all()
+    def get_all_audiences(db: Session, creator_id: Optional[int] = None) -> List[Audience]:
+        query = db.query(Audience)
+        if creator_id is not None:
+            query = query.filter(Audience.creator_id == creator_id)
+        return query.all()
+
+    @staticmethod
+    def get_all_audience(db: Session, creator_id: Optional[int] = None) -> List[Audience]:
+        """Backward-compatible singular alias used by the router."""
+        return AudienceService.get_all_audiences(db, creator_id)
 
     @staticmethod
     def get_audience_by_id(db: Session, audience_id: int) -> Optional[Audience]:
@@ -29,9 +37,11 @@ class AudienceService:
 
     @staticmethod
     def update_audience(
-        db: Session, audience_id: int, data: AudienceUpdate
+        db: Session, audience_id: int, data: AudienceUpdate, creator_id: Optional[int] = None
     ) -> Optional[Audience]:
         record = AudienceService.get_audience_by_id(db, audience_id)
+        if record and creator_id is not None and record.creator_id != creator_id:
+            return None
         if not record:
             return None
 
@@ -44,9 +54,9 @@ class AudienceService:
         return record
 
     @staticmethod
-    def delete_audience(db: Session, audience_id: int) -> bool:
+    def delete_audience(db: Session, audience_id: int, creator_id: Optional[int] = None) -> bool:
         record = AudienceService.get_audience_by_id(db, audience_id)
-        if not record:
+        if not record or (creator_id is not None and record.creator_id != creator_id):
             return False
 
         db.delete(record)
@@ -56,8 +66,11 @@ class AudienceService:
     # --- Analytics Calculations ---
 
     @staticmethod
-    def get_audience_analytics(db: Session) -> Dict:
-        records = db.query(Audience).all()
+    def get_audience_analytics(db: Session, creator_id: Optional[int] = None) -> Dict:
+        query = db.query(Audience)
+        if creator_id is not None:
+            query = query.filter(Audience.creator_id == creator_id)
+        records = query.all()
         if not records:
             return {
                 "total_followers": 0,
@@ -69,11 +82,10 @@ class AudienceService:
                 "top_device": None,
             }
 
-        total_followers = sum(r.followers for r in records)
-        total_reach = sum(r.reach for r in records)
-        total_impressions = sum(r.impressions for r in records)
+        total_followers = sum(r.percentage for r in records)
+        total_reach = total_followers
+        total_impressions = len(records)
 
-        # Calculate Gender Distribution (%)
         gender_counts = Counter(r.gender for r in records)
         total_gender_records = len(records)
         gender_distribution = {
@@ -83,12 +95,7 @@ class AudienceService:
 
         # Calculate Top Demographics
         country_counts = Counter(r.country for r in records)
-        city_counts = Counter(r.city for r in records)
-        device_counts = Counter(r.device_type for r in records)
-
         top_country = country_counts.most_common(1)[0][0] if country_counts else None
-        top_city = city_counts.most_common(1)[0][0] if city_counts else None
-        top_device = device_counts.most_common(1)[0][0] if device_counts else None
 
         return {
             "total_followers": total_followers,
@@ -96,8 +103,8 @@ class AudienceService:
             "total_impressions": total_impressions,
             "gender_distribution": gender_distribution,
             "top_country": top_country,
-            "top_city": top_city,
-            "top_device": top_device,
+            "top_city": None,
+            "top_device": None,
         }
 
     @staticmethod
@@ -153,7 +160,7 @@ class AudienceService:
             {
                 "date": str(r.date),
                 "followers": r.followers,
-                "reach": r.reach,
+                "engagement_rate": r.engagement_rate,
             }
             for r in growth_records
         ]

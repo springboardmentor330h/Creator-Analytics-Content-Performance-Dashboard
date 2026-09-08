@@ -14,7 +14,7 @@ from app.models.user import User, UserRole
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 Scheme - tokenUrl must match your POST token generation route
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 # JWT Configuration
 SECRET_KEY = settings.SECRET_KEY
@@ -42,7 +42,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> str:
     """Decodes JWT token and returns user payload for protected endpoints."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -51,6 +54,13 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        user = db.query(User).filter(User.id == int(user_id), User.is_active.is_(True), User.is_deleted.is_(False)).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authenticated user not found or inactive",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return user_id

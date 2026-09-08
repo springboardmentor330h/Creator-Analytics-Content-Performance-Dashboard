@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { api } from '../services/api';
 
 export default function Profile({ onLogout }) {
   const [user, setUser] = useState({
@@ -7,17 +8,29 @@ export default function Profile({ onLogout }) {
     role: 'Creator',
     bio: 'Helping brands turn storytelling into measurable growth across YouTube and Instagram.',
   });
+  const [editing, setEditing] = useState(false);
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Could not parse saved user:', error);
-      }
-    }
+    api.get('/users/me').then((currentUser) => {
+      setUser(currentUser);
+      localStorage.setItem('user', JSON.stringify(currentUser));
+    }).catch((error) => setMessage(error.message));
   }, []);
+
+  const updateField = (event) => setUser((current) => ({ ...current, [event.target.name]: event.target.value }));
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    try {
+      const updated = await api.put('/users/me', { full_name: user.full_name, email: user.email, bio: user.bio });
+      setUser(updated);
+      localStorage.setItem('user', JSON.stringify(updated));
+      setEditing(false);
+      setMessage('Profile updated.');
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
 
   return (
     <div style={styles.page}>
@@ -30,15 +43,16 @@ export default function Profile({ onLogout }) {
           {onLogout && (
             <button onClick={onLogout} style={styles.logoutButton}>Sign Out</button>
           )}
+          <button type="button" onClick={() => setEditing((current) => !current)} style={styles.editButton}>{editing ? 'Cancel' : 'Edit profile'}</button>
         </div>
 
         <div style={styles.profileBody}>
           <div style={styles.avatar}>{user.full_name?.charAt(0)?.toUpperCase() || 'C'}</div>
 
           <div style={styles.infoGrid}>
-            <ProfileField label="Full Name" value={user.full_name} />
-            <ProfileField label="Email" value={user.email} />
+            {editing ? <form onSubmit={saveProfile} style={styles.editForm}><label>Full Name<input name="full_name" value={user.full_name || ''} onChange={updateField} required /></label><label>Email<input name="email" value={user.email || ''} onChange={updateField} required /></label><label>Bio<textarea name="bio" value={user.bio || ''} onChange={updateField} /></label><button type="submit" style={styles.editButton}>Save changes</button></form> : <><ProfileField label="Full Name" value={user.full_name} /><ProfileField label="Email" value={user.email} /></>}
             <ProfileField label="Role" value={user.role} />
+            {message && <p role="status" style={styles.message}>{message}</p>}
           </div>
         </div>
 

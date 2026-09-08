@@ -1,12 +1,15 @@
+import secrets
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "CreatorIQ API"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = "change-me-before-production"
+    SECRET_KEY: str = secrets.token_urlsafe(32)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/creatoriq"
+    # Local development works without Docker; deployments override this value.
+    DATABASE_URL: str = "sqlite:///./creatoriq-dev.db"
     MONGODB_URL: str = "mongodb://localhost:27017/creatoriq_analytics"
     REDIS_URL: str = "redis://localhost:6379/0"
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"

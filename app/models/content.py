@@ -1,7 +1,22 @@
+from datetime import date
+
 from sqlalchemy import BigInteger, Column, DateTime, Integer, String, Float, Date, ForeignKey, UniqueConstraint, func
+from sqlalchemy.types import TypeDecorator
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
+
+
+class FlexibleDate(TypeDecorator):
+    """Accept ISO date strings at API/test boundaries while storing real dates."""
+
+    impl = Date
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if isinstance(value, str):
+            return date.fromisoformat(value)
+        return value
 
 
 class Content(Base):
@@ -19,7 +34,7 @@ class Content(Base):
     saves = Column(Integer, default=0)
     watch_time = Column(Float, default=0.0)
     reach = Column(Integer, default=0)
-    published_date = Column(Date, nullable=False)
+    published_date = Column(FlexibleDate, nullable=False)
 
     creator = relationship("User", back_populates="contents")
 

@@ -1,21 +1,21 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
+  --text: #526174;
+  --text-h: #10233f;
+  --bg: #f4f7fb;
+  --border: #dce5ef;
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
+  --accent: #0f766e;
+  --accent-bg: rgba(15, 118, 110, 0.1);
+  --accent-border: rgba(15, 118, 110, 0.5);
   --social-bg: rgba(244, 243, 236, 0.5);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --heading: 'Avenir Next', 'Trebuchet MS', sans-serif;
   --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
+  font: 16px/145% var(--sans);
   letter-spacing: 0.18px;
   color-scheme: light;
   color: var(--text);
@@ -35,7 +35,8 @@ html, body {
   width: 100%;
   min-height: 100%;
   height: 100%;
-  background: #f8fafc;
+  background: #f4f7fb;
+  background-image: linear-gradient(135deg, rgba(15, 118, 110, 0.035), transparent 38%), linear-gradient(315deg, rgba(234, 88, 12, 0.025), transparent 42%);
 }
 
 body {
@@ -98,6 +99,49 @@ code {
   display: none;
 }
 
+button, input, select, textarea {
+  font: inherit;
+}
+
+button {
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 8px 18px rgba(15, 35, 63, 0.14);
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 3px solid rgba(15, 118, 110, 0.3);
+  outline-offset: 3px;
+}
+
+.dashboard-main > * {
+  animation: rise-in 420ms ease both;
+}
+
+table th {
+  color: #64748b;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 768px) {
   .mobile-only {
     display: inline-flex;
@@ -113,6 +157,10 @@ code {
 
   .dashboard-main {
     margin-left: 0;
-    padding: 1rem;
+    padding: 1rem 0.85rem 2rem;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

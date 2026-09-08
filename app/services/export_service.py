@@ -21,6 +21,13 @@ def generate_pdf_report(report_data: dict) -> io.BytesIO:
     p.drawString(100, 560, f"Direct Revenue: ${report_data['revenue_summary']['total_direct_revenue']:,.2f}")
     p.drawString(100, 540, f"Sponsorship Value: ${report_data['revenue_summary']['total_sponsorship_value']:,.2f}")
     p.drawString(100, 520, f"Combined Total: ${report_data['revenue_summary']['combined_total']:,.2f}")
+    y_position = 490
+    for record in report_data.get("revenue_records", []):
+        p.drawString(100, y_position, f"Revenue: {record['source']} ${record['amount']:,.2f} ({record['earned_date']})")
+        y_position -= 18
+    for record in report_data.get("sponsorship_records", []):
+        p.drawString(100, y_position, f"Sponsorship: {record['sponsor_name']} ${record['amount']:,.2f} ({record['payment_status']})")
+        y_position -= 18
     
     p.showPage()
     p.save()
@@ -32,10 +39,14 @@ def generate_excel_report(report_data: dict) -> io.BytesIO:
     
     content_df = pd.DataFrame([report_data["content_summary"]])
     revenue_df = pd.DataFrame([report_data["revenue_summary"]])
+    revenue_records_df = pd.DataFrame(report_data.get("revenue_records", []))
+    sponsorship_records_df = pd.DataFrame(report_data.get("sponsorship_records", []))
     
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         content_df.to_excel(writer, sheet_name="Content Performance", index=False)
         revenue_df.to_excel(writer, sheet_name="Revenue Summary", index=False)
+        revenue_records_df.to_excel(writer, sheet_name="Revenue Records", index=False)
+        sponsorship_records_df.to_excel(writer, sheet_name="Sponsorship Records", index=False)
         
     buffer.seek(0)
     return buffer

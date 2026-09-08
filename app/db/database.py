@@ -5,7 +5,11 @@ from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+engine_options = {"pool_pre_ping": True}
+if DATABASE_URL.startswith("sqlite"):
+    engine_options["connect_args"] = {"check_same_thread": False}
+
+engine = create_engine(DATABASE_URL, **engine_options)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

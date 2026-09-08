@@ -22,6 +22,8 @@ def get_comprehensive_creator_report(creator_id: int, db: Session) -> dict:
 
     total_revenue = db.query(func.sum(Revenue.amount)).filter(Revenue.creator_id == creator_id).scalar() or 0.0
     total_sponsorship = db.query(func.sum(Sponsorship.amount)).filter(Sponsorship.creator_id == creator_id).scalar() or 0.0
+    revenue_rows = db.query(Revenue).filter(Revenue.creator_id == creator_id).order_by(Revenue.earned_date.desc()).all()
+    sponsorship_rows = db.query(Sponsorship).filter(Sponsorship.creator_id == creator_id).order_by(Sponsorship.start_date.desc()).all()
 
     audience_rows = (
         db.query(AudienceDemographics)
@@ -56,6 +58,28 @@ def get_comprehensive_creator_report(creator_id: int, db: Session) -> dict:
             "total_sponsorship_value": total_sponsorship,
             "combined_total": total_revenue + total_sponsorship,
         },
+        "revenue_records": [
+            {
+                "id": row.id,
+                "amount": row.amount,
+                "source": row.source,
+                "description": row.description,
+                "earned_date": row.earned_date.isoformat(),
+            }
+            for row in revenue_rows
+        ],
+        "sponsorship_records": [
+            {
+                "id": row.id,
+                "sponsor_name": row.sponsor_name,
+                "amount": row.amount,
+                "description": row.description,
+                "start_date": row.start_date.isoformat(),
+                "end_date": row.end_date.isoformat() if row.end_date else None,
+                "payment_status": row.payment_status,
+            }
+            for row in sponsorship_rows
+        ],
         "audience_demographics": [
             {
                 "id": row.id,

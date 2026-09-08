@@ -26,6 +26,8 @@ import DashboardOverview from './pages/DashboardOverview.jsx';
 import ContentManager from './pages/ContentManager.jsx';
 import Profile from './pages/Profile.jsx';
 import Login from './pages/Login.jsx';
+import { ReportsPage } from './pages/LiveSectionPage.jsx';
+import LiveSectionPage from './pages/LiveSectionPage.jsx';
 
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -39,7 +41,10 @@ const navItems = [
   { label: 'Profile', path: '/profile', icon: UserRound },
 ];
 
-function StructuredSectionPage({ title, subtitle, metrics = [], insights = [], tableRows = [] }) {
+function StructuredSectionPage({ title, subtitle, metrics = [], insights = [], tableRows = [], liveSection }) {
+  if (liveSection === 'reports') return <ReportsPage />;
+  if (liveSection) return <LiveSectionPage section={liveSection} />;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
       <div style={{
@@ -231,7 +236,7 @@ export default function App() {
           path="/audience"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="audience"
                 title="Audience Analytics"
                 subtitle="Your strongest audience segments, engagement quality, and geographic reach are summarized below."
                 metrics={[
@@ -260,7 +265,7 @@ export default function App() {
           path="/growth"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="growth"
                 title="Growth & Trends"
                 subtitle="Follower growth and performance trends show how your content momentum is evolving over time."
                 metrics={[
@@ -289,7 +294,7 @@ export default function App() {
           path="/revenue"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="revenue"
                 title="Revenue"
                 subtitle="This section tracks your monetization streams and performance against recent campaigns."
                 metrics={[
@@ -318,7 +323,7 @@ export default function App() {
           path="/sponsorships"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="sponsorships"
                 title="Sponsorships"
                 subtitle="Current and upcoming brand opportunities are tracked here with deal value and deliverables."
                 metrics={[
@@ -347,7 +352,7 @@ export default function App() {
           path="/notifications"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="notifications"
                 title="Notifications"
                 subtitle="Recent updates, approvals, and performance triggers are grouped here for quick action."
                 metrics={[
@@ -376,7 +381,7 @@ export default function App() {
           path="/reports"
           element={
             <ProtectedRoute isAuthenticated={isAuthenticated} onLogout={handleLogout}>
-              <StructuredSectionPage
+              <StructuredSectionPage liveSection="reports"
                 title="Reports"
                 subtitle="Export your key metrics and executive view as a PDF or Excel sheet for sharing and planning."
                 metrics={[

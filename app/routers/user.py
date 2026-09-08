@@ -22,6 +22,17 @@ def get_me(
     return UserService.get_by_id(db, int(current_user_id))
 
 
+@router.put("/me", response_model=UserResponse)
+def update_me(
+    user_in: UserUpdate,
+    current_user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    update_data = user_in.model_dump(exclude_unset=True)
+    update_data.pop("role", None)
+    return UserService.update(db, int(current_user_id), UserUpdate(**update_data))
+
+
 # Search users by role query parameter
 @router.get("/search", response_model=UserListResponse)
 def search_users(

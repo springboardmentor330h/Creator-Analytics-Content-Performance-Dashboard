@@ -4,24 +4,30 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.services.report_service import get_comprehensive_creator_report
 from app.services.export_service import generate_pdf_report, generate_excel_report
+from app.core.security import get_current_user
+from fastapi import HTTPException
 
 router = APIRouter(prefix="/reports", tags=["Reports & Exports"])
 
 
 @router.get("/summary/{creator_id}")
-def get_report_summary_endpoint(creator_id: int, db: Session = Depends(get_db)):
+def get_report_summary_endpoint(creator_id: int, current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Returns aggregate performance metrics, content analytics, revenue stream summaries,
     audience demographics, and growth trends for the specified creator.
     """
+    if creator_id != int(current_user_id):
+        raise HTTPException(status_code=403, detail="You cannot access another creator's report")
     return get_comprehensive_creator_report(creator_id, db)
 
 
 @router.get("/export/pdf/{creator_id}")
-def export_pdf(creator_id: int, db: Session = Depends(get_db)):
+def export_pdf(creator_id: int, current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Generates and streams an executive PDF report for the specified creator.
     """
+    if creator_id != int(current_user_id):
+        raise HTTPException(status_code=403, detail="You cannot export another creator's report")
     data = get_comprehensive_creator_report(creator_id, db)
     pdf_buffer = generate_pdf_report(data)
 
@@ -35,10 +41,12 @@ def export_pdf(creator_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/export/excel/{creator_id}")
-def export_excel(creator_id: int, db: Session = Depends(get_db)):
+def export_excel(creator_id: int, current_user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Generates and streams a multi-sheet Excel (.xlsx) workbook for the specified creator.
     """
+    if creator_id != int(current_user_id):
+        raise HTTPException(status_code=403, detail="You cannot export another creator's report")
     data = get_comprehensive_creator_report(creator_id, db)
     excel_buffer = generate_excel_report(data)
 

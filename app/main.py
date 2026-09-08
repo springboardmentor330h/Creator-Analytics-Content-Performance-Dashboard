@@ -13,6 +13,7 @@ from app.core.security import hash_password
 from app.db.database import Base, engine, get_db
 from app.models.content import Content
 from app.models.user import User
+from app.models.user import UserRole
 from app.services.analytics_service import AnalyticsService
 from app.services.social_media import SocialMediaService
 
@@ -91,7 +92,7 @@ def ensure_demo_creator_and_content(db: Session, creator_id: int = 1) -> None:
             email=f"demo{creator_id}@creatoriq.com",
             full_name="Demo Creator",
             hashed_password=hash_password("password"),
-            role="creator",
+            role=UserRole.CREATOR,
             is_active=True,
         )
         db.add(user)
