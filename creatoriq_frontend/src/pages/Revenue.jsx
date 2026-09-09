@@ -6,12 +6,14 @@ import {
   getRevenueBySource,
   getMonthlyRevenue,
 } from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 import RevenueChart from "../components/charts/RevenueChart";
 import RevenueBySourceChart from "../components/charts/RevenueBySourceChart";
 
 function Revenue() {
-  const creatorId = 2;
+  const { user } = useAuth();
+  const creatorId = user?.id;
 
   const [summary, setSummary] = useState(null);
   const [revenue, setRevenue] = useState([]);
@@ -22,6 +24,11 @@ function Revenue() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!creatorId) {
+      setLoading(false);
+      return;
+    }
+
     const loadRevenueData = async () => {
       try {
         setLoading(true);
@@ -47,7 +54,7 @@ function Revenue() {
     };
 
     loadRevenueData();
-  }, []);
+  }, [creatorId]);
 
   if (loading) {
     return (

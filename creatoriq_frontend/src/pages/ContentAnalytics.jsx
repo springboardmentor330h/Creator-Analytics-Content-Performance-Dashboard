@@ -11,6 +11,16 @@ const PLATFORM_STYLES = {
   X: "bg-slate-700/50 text-slate-200 border-slate-600",
 };
 
+const PLATFORM_OPTIONS = [
+  "All",
+  "LinkedIn",
+  "YouTube",
+  "Instagram",
+  "TikTok",
+  "Facebook",
+  "X",
+];
+
 function ContentAnalytics() {
   const { user } = useAuth();
   const creatorId = user?.id;
@@ -44,7 +54,13 @@ function ContentAnalytics() {
   }, [creatorId]);
 
   const platforms = useMemo(() => {
-    return ["All", ...Array.from(new Set(content.map((item) => item.platform).filter(Boolean)))];
+    const availablePlatforms = new Set(
+      content.map((item) => item.platform).filter(Boolean)
+    );
+
+    return PLATFORM_OPTIONS.filter(
+      (item) => item === "All" || availablePlatforms.has(item)
+    );
   }, [content]);
 
   const filteredContent = useMemo(() => {
@@ -175,18 +191,26 @@ function ContentAnalytics() {
           </div>
         </div>
 
-        <div className="rounded-[26px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_40px_rgba(148,163,184,0.12)] backdrop-blur-sm">
-          <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Platform</p>
-          <div className="flex flex-wrap gap-2">
+        <div className="dashboard-panel platform-filter-panel">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200">Filter performance</p>
+              <h2 className="mt-1 text-lg font-semibold text-white">Platform</h2>
+            </div>
+            <span className="text-sm text-slate-300">{filteredContent.length} items shown</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             {platforms.map((item) => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setPlatform(item)}
-                className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                aria-pressed={platform === item}
+                className={`min-h-10 rounded-xl border px-3 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
                   platform === item
-                    ? "border-violet-500/50 bg-violet-600 text-white shadow-lg shadow-violet-500/20"
-                    : "border-slate-200 bg-slate-50 text-slate-600 hover:border-slate-300 hover:text-slate-800"
+                    ? "border-violet-400/70 bg-violet-600 text-white shadow-lg shadow-violet-500/20"
+                    : "border-slate-600 bg-slate-800/80 text-slate-200 hover:border-violet-400 hover:bg-slate-700 hover:text-white"
                 }`}
               >
                 {item}
@@ -474,10 +498,10 @@ function EngagementBreakdown({ metrics }) {
         })}
       </div>
 
-      <div className="mt-8 rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
-        <p className="text-sm text-slate-500">Overall engagement rate</p>
-        <p className="mt-1 text-2xl font-bold text-violet-700">{metrics.engagementRate}%</p>
-        <p className="mt-1 text-xs text-slate-500">Based on total views and audience interactions</p>
+      <div className="mt-8 rounded-2xl border border-violet-300/30 bg-gradient-to-br from-violet-600 via-indigo-600 to-slate-900 p-5 shadow-lg shadow-violet-950/20">
+        <p className="text-sm font-semibold text-violet-100">Overall engagement rate</p>
+        <p className="mt-2 text-3xl font-bold tracking-tight text-white">{metrics.engagementRate}%</p>
+        <p className="mt-1 text-xs text-indigo-100">Based on total views and audience interactions</p>
       </div>
     </section>
   );

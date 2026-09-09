@@ -5,13 +5,13 @@ import Header from "./Header";
 
 function DashboardLayout() {
   return (
-    <div className="flex min-h-screen bg-[#07111f]">
+    <div className="dashboard-layout flex min-h-screen bg-[#07111f]">
       <Sidebar />
 
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <Header />
 
-        <main className="p-6">
+        <main className="dashboard-main p-6">
           <Outlet />
         </main>
       </div>

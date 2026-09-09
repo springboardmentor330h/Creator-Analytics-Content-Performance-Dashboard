@@ -136,7 +136,7 @@ function AudienceAnalytics() {
 
   const countryData = audienceData.top_countries || [];
 
-  const cityData = audienceData.top_cities || [];
+  const cityData = (audienceData.top_cities || []).slice(0, 5);
 
   const activeHoursData = audienceData.active_hours || [];
 
@@ -255,9 +255,7 @@ function AudienceAnalytics() {
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    label={({ name, value }) =>
-                      `${name}: ${value}%`
-                    }
+                    label={false}
                   >
                     {genderData.map((entry, index) => (
                       <Cell
@@ -274,6 +272,29 @@ function AudienceAnalytics() {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {genderData.map((entry, index) => (
+                <div
+                  key={`gender-detail-${entry.name}`}
+                  className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2"
+                >
+                  <span
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        pieColors[index % pieColors.length],
+                    }}
+                  />
+
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-700">
+                      {entry.name}: {Number(entry.value).toFixed(2)}%
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -392,8 +413,8 @@ function AudienceAnalytics() {
                 </p>
               </div>
 
-              <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-700">
-                Top {cityData.length}
+              <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-700">
+                Top 5
               </span>
             </div>
 
@@ -422,11 +443,11 @@ function AudienceAnalytics() {
                     tick={{ fontSize: 12, fill: "#f8fafc", fontWeight: 600 }}
                   />
                   <Tooltip
-                    cursor={{ fill: "#ecfeff" }}
+                    cursor={{ fill: "#eef2ff" }}
                     formatter={(value) => [Number(value).toLocaleString(), "Audience"]}
                     contentStyle={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", color: "#0f172a", boxShadow: "0 20px 40px rgba(15, 23, 42, 0.08)" }}
                   />
-                  <Bar dataKey="count" name="Audience" fill="#06b6d4" radius={[0, 8, 8, 0]} maxBarSize={24}>
+                  <Bar dataKey="count" name="Audience" fill="#6366f1" radius={[0, 8, 8, 0]} maxBarSize={24}>
                     <LabelList dataKey="count" position="right" fill="#f8fafc" fontSize={12} fontWeight={700} formatter={(value) => Number(value).toLocaleString()} />
                   </Bar>
                 </BarChart>

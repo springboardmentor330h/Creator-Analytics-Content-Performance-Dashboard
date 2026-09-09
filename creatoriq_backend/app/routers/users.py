@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from app.core.auth import require_admin
 
 from app.db.database import get_db
 from app.schemas.user import UserCreate, UserUpdate
@@ -19,7 +20,8 @@ router = APIRouter()
 @router.post("/users")
 def create_user_route(
     user: UserCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     new_user = create_user(db, user)
 
@@ -37,7 +39,8 @@ def create_user_route(
 # GET ALL USERS
 @router.get("/users")
 def get_users(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     users = get_all_users(db)
 
@@ -61,7 +64,8 @@ def get_users(
 @router.get("/users/search")
 def search_users(
     role: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     users = search_users_by_role(db, role)
 
@@ -85,7 +89,8 @@ def search_users(
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     user = get_user_by_id(db, user_id)
 
@@ -105,7 +110,8 @@ def get_user(
 def update_user_route(
     user_id: int,
     updated_user: UserUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     user = update_user(db, user_id, updated_user)
 
@@ -124,7 +130,8 @@ def update_user_route(
 @router.delete("/users/{user_id}")
 def delete_user_route(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_admin = Depends(require_admin)
 ):
     delete_user(db, user_id)
 

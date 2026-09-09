@@ -1,8 +1,10 @@
 import { useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Reports() {
-  const creatorId = 2;
+  const { user } = useAuth();
+  const creatorId = user?.id;
 
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -111,9 +113,10 @@ function Reports() {
             <div className="mt-6">
               <h3 className="text-lg font-semibold text-slate-800">Revenue Analytics</h3>
               {report.revenue?.revenue_summary && (
-                <div className="mt-4 rounded-[22px] border border-violet-200 bg-violet-50/70 p-5">
-                  <p className="text-sm text-slate-500">Total Revenue</p>
-                  <p className="mt-1 text-3xl font-bold text-slate-900">₹{Number(report.revenue.revenue_summary.total_revenue || 0).toLocaleString("en-IN")}</p>
+                <div className="mt-4 rounded-[22px] border border-violet-300/30 bg-gradient-to-br from-violet-500/20 via-indigo-500/10 to-slate-900/40 p-5 shadow-inner shadow-violet-950/20">
+                  <p className="text-sm font-medium text-violet-100">Total Revenue</p>
+                  <p className="mt-2 text-3xl font-bold tracking-tight text-white">₹{Number(report.revenue.revenue_summary.total_revenue || 0).toLocaleString("en-IN")}</p>
+                  <p className="mt-1 text-xs text-slate-300">Total earnings recorded in this report</p>
                 </div>
               )}
             </div>

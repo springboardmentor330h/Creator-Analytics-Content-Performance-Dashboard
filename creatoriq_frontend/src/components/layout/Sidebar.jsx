@@ -1,4 +1,6 @@
 import { NavLink } from "react-router";
+import { useAuth } from "../../context/AuthContext";
+
 
 const menuItems = [
   { name: "Dashboard", path: "/" },
@@ -13,14 +15,33 @@ const menuItems = [
 ];
 
 function Sidebar() {
+  const { user } = useAuth();
+
+  const role = (user?.role || "").trim().toLowerCase();
+
+  const isAdmin =
+    role === "admin" ||
+    role === "administrator";
+
+  const visibleItems = isAdmin
+    ? [
+        ...menuItems,
+        {
+          name: "User Management",
+          path: "/admin/users",
+        },
+      ]
+    : menuItems;
+
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-white p-5">
-      <h1 className="text-2xl font-bold mb-8">
+    <aside className="dashboard-sidebar w-64 min-h-screen bg-slate-900 text-white p-5">
+      <h1 className="mb-8 text-2xl font-bold">
         CreatorIQ
       </h1>
 
-      <nav className="space-y-2">
-        {menuItems.map((item) => (
+      <nav className="dashboard-nav space-y-2">
+        {/* {menuItems.map((item) => ( */}
+        {visibleItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

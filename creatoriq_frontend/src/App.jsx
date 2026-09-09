@@ -13,6 +13,8 @@ import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AdminRoute from "./components/auth/AdminRoute";
+import AdminUsers from "./pages/AdminUsers";
 
 function App() {
   return (
@@ -30,7 +32,10 @@ function App() {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/profile" element={<Profile />} />
+        <Route element={<AdminRoute />}>
+        <Route path="/admin/users" element={<AdminUsers />}/>
         </Route>
+      </Route>
       </Route>
     </Routes>
   );

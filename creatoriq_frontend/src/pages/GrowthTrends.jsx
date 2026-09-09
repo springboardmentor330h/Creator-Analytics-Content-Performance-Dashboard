@@ -290,7 +290,10 @@ function GrowthTrends() {
                   <h2 className="text-lg font-semibold text-slate-800">Growth Analytics Data</h2>
                   <p className="mt-1 text-sm text-slate-500">Latest performance summary</p>
                 </div>
-                <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">Live</span>
+                <span className="chart-badge chart-badge-live gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Live
+                </span>
               </div>
 
               <div className="overflow-x-auto">

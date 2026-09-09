@@ -25,12 +25,14 @@ def calculate_engagement(content: Content):
 def get_content_engagement(
     db: Session,
     content_id: int,
+    creator_id: int | None = None,
 ):
-    content = (
-        db.query(Content)
-        .filter(Content.id == content_id)
-        .first()
-    )
+    query = db.query(Content).filter(Content.id == content_id)
+
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
+
+    content = query.first()
 
     if not content:
         return None
@@ -50,8 +52,14 @@ def get_content_engagement(
 def get_top_content(
     db: Session,
     limit: int = 5,
+    creator_id: int | None = None,
 ):
-    contents = db.query(Content).all()
+    query = db.query(Content)
+
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
+
+    contents = query.all()
 
     results = []
 
@@ -148,6 +156,11 @@ def get_platform_comparison(
         creator_id,
     )
 
+    platform_results.sort(
+        key=lambda item: item["total_views"],
+        reverse=True,
+    )
+
     return {
         item["platform"]: {
             "views": item["total_views"],
@@ -160,9 +173,19 @@ def get_platform_comparison(
     }
 
 
-def get_dashboard_summary(db: Session):
-    contents = db.query(Content).all()
-    audiences = db.query(Audience).all()
+def get_dashboard_summary(
+    db: Session,
+    creator_id: int | None = None,
+):
+    content_query = db.query(Content)
+    audience_query = db.query(Audience)
+
+    if creator_id is not None:
+        content_query = content_query.filter(Content.creator_id == creator_id)
+        audience_query = audience_query.filter(Audience.creator_id == creator_id)
+
+    contents = content_query.all()
+    audiences = audience_query.all()
 
     total_content = len(contents)
 
@@ -208,7 +231,7 @@ def get_dashboard_summary(db: Session):
         else 0
     )
 
-    platform_results = get_platform_performance(db)
+    platform_results = get_platform_performance(db, creator_id)
 
     best_platform = None
 
@@ -218,6 +241,7 @@ def get_dashboard_summary(db: Session):
     top_content_results = get_top_content(
         db,
         limit=1,
+        creator_id=creator_id,
     )
 
     top_content = None
@@ -244,12 +268,16 @@ def get_dashboard_summary(db: Session):
         "total_followers": total_followers,
     }
 
-def get_engagement_chart(db: Session):
-    growth_records = (
-        db.query(Growth)
-        .order_by(Growth.date.asc())
-        .all()
-    )
+def get_engagement_chart(
+    db: Session,
+    creator_id: int | None = None,
+):
+    query = db.query(Growth)
+
+    if creator_id is not None:
+        query = query.filter(Growth.creator_id == creator_id)
+
+    growth_records = query.order_by(Growth.date.asc()).all()
 
     return {
         "labels": [
@@ -262,12 +290,16 @@ def get_engagement_chart(db: Session):
         ],
     }
 
-def get_followers_chart(db: Session):
-    growth_records = (
-        db.query(Growth)
-        .order_by(Growth.date.asc())
-        .all()
-    )
+def get_followers_chart(
+    db: Session,
+    creator_id: int | None = None,
+):
+    query = db.query(Growth)
+
+    if creator_id is not None:
+        query = query.filter(Growth.creator_id == creator_id)
+
+    growth_records = query.order_by(Growth.date.asc()).all()
 
     return {
         "labels": [

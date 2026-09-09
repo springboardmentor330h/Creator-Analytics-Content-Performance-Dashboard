@@ -1,16 +1,23 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Notifications() {
-  const creatorId = 2;
+  const { user } = useAuth();
+  const creatorId = user?.id;
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!creatorId) {
+      setLoading(false);
+      return;
+    }
+
     fetchNotifications();
-  }, []);
+  }, [creatorId]);
 
   const fetchNotifications = async () => {
     try {

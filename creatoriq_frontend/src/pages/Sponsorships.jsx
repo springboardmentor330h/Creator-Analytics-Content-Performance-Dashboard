@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
 
 function Sponsorships() {
+  const { user } = useAuth();
+  const creatorId = user?.id;
   const [sponsorships, setSponsorships] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!creatorId) {
+      setLoading(false);
+      return;
+    }
+
     api
-      .get("/sponsorships/creator/2")
+      .get(`/sponsorships/creator/${creatorId}`)
       .then((response) => {
         setSponsorships(response.data);
       })
@@ -19,7 +27,7 @@ function Sponsorships() {
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [creatorId]);
 
   const statusClasses = {
     Active: "bg-emerald-100 text-emerald-700",

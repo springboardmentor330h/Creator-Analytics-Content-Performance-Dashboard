@@ -212,6 +212,12 @@ const normalizeRevenueTrendResponse = (response) => {
     : [];
 };
 
+const formatChartValue = (value) =>
+  new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(value) || 0);
+
 /* =========================================================
    DASHBOARD
 ========================================================= */
@@ -694,7 +700,7 @@ function Dashboard() {
             </h2>
 
             <p className="mt-2 text-sm text-indigo-100/90">
-              From backend analytics
+              Across all connected platforms
             </p>
           </div>
 
@@ -719,7 +725,7 @@ function Dashboard() {
             </h2>
 
             <p className="mt-2 text-sm text-emerald-50/90">
-              From backend analytics
+              Total audience engagement
             </p>
           </div>
 
@@ -744,7 +750,7 @@ function Dashboard() {
             </h2>
 
             <p className="mt-2 text-sm text-sky-50/90">
-              Backend platform analytics
+              Average across platforms
             </p>
           </div>
 
@@ -776,7 +782,7 @@ function Dashboard() {
             </h2>
 
             <p className="mt-2 text-sm text-violet-100/90">
-              From revenue API
+              Earnings to date
             </p>
           </div>
         </div>
@@ -878,18 +884,20 @@ function Dashboard() {
                       dataKey="label"
                       tick={{
                         fontSize: 11,
-                        fill: "#475569",
+                        fill: "#ffffff",
                       }}
                       axisLine={false}
                       tickLine={false}
+                      minTickGap={18}
                     />
 
                     <YAxis
                       yAxisId="views"
                       tick={{
                         fontSize: 11,
-                        fill: "#475569",
+                        fill: "#ffffff",
                       }}
+                      tickFormatter={formatChartValue}
                       axisLine={false}
                       tickLine={false}
                       width={42}
@@ -900,8 +908,9 @@ function Dashboard() {
                       orientation="right"
                       tick={{
                         fontSize: 11,
-                        fill: "#64748b",
+                        fill: "#ffffff",
                       }}
+                      tickFormatter={formatChartValue}
                       axisLine={false}
                       tickLine={false}
                       width={38}
@@ -930,6 +939,7 @@ function Dashboard() {
                       align="right"
                       height={30}
                       iconType="circle"
+                      wrapperStyle={{ color: "#ffffff" }}
                     />
 
                     <Area
@@ -1194,7 +1204,7 @@ function Dashboard() {
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              A quick overview of your backend performance
+              A quick overview of your creator performance
             </p>
           </div>
 
@@ -1202,59 +1212,59 @@ function Dashboard() {
 
             {/* Content count */}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-5 shadow-lg shadow-black/10">
 
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-white/80">
                 Published Content
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-slate-800">
+              <p className="mt-2 text-2xl font-bold text-white">
                 {loading
                   ? "..."
                   : content.length.toLocaleString()}
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
+              <p className="mt-1 text-xs text-white/70">
                 Across all connected platforms
               </p>
             </div>
 
             {/* Reach */}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-5 shadow-lg shadow-black/10">
 
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-white/80">
                 Total Reach
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-slate-800">
+              <p className="mt-2 text-2xl font-bold text-white">
                 {loading
                   ? "..."
                   : totalReach.toLocaleString()}
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
-                From backend analytics
+              <p className="mt-1 text-xs text-white/70">
+                Across all connected platforms
               </p>
             </div>
 
             {/* Best platform */}
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-5 shadow-lg shadow-black/10">
 
-              <p className="text-sm font-medium text-slate-500">
+              <p className="text-sm font-medium text-white/80">
                 Leading Platform
               </p>
 
-              <p className="mt-2 text-2xl font-bold text-slate-800">
+              <p className="mt-2 text-2xl font-bold text-white">
                 {loading
                   ? "..."
                   : bestPlatform?.platform ||
                     "—"}
               </p>
 
-              <p className="mt-1 text-xs text-slate-400">
-                Highest views from backend platform comparison
+              <p className="mt-1 text-xs text-white/70">
+                Platform with the highest views
               </p>
             </div>
 
