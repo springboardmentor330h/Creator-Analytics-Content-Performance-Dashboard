@@ -4,13 +4,13 @@ import Header from "./Header";
 
 function Layout() {
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen overflow-x-hidden bg-slate-100">
       <Sidebar />
 
-      <div className="ml-64 min-h-screen">
+      <div className="min-h-screen min-w-0 lg:ml-64">
         <Header />
 
-        <main className="p-6">
+        <main className="min-w-0 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

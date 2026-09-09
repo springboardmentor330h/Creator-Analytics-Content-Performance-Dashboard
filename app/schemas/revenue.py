@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 class RevenueBase(BaseModel):
     source: str
-    amount: Decimal = Field(gt=0)
+    amount: Decimal = Field(ge=0)
     currency: str = "INR"
     description: Optional[str] = None
     revenue_date: date
@@ -39,7 +39,7 @@ class RevenueCreate(RevenueBase):
 
 class RevenueUpdate(BaseModel):
     source: Optional[str] = None
-    amount: Optional[Decimal] = Field(default=None, gt=0)
+    amount: Optional[Decimal] = Field(default=None, ge=0)
     currency: Optional[str] = None
     description: Optional[str] = None
     revenue_date: Optional[date] = None

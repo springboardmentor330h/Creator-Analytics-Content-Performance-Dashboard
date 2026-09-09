@@ -37,13 +37,13 @@ class ContentResponse(BaseModel):
     content_title: str
     platform: str
     content_type: str
-    views: int
-    likes: int
-    comments: int
-    shares: int
-    saves: int
-    watch_time: int
-    reach: int
+    views: Optional[int] = None
+    likes: Optional[int]=None
+    comments:Optional[int]=None
+    shares:Optional[int]=None
+    saves:Optional[int]=None
+    watch_time:Optional[int]=None
+    reach:Optional[int]=None
     engagement_rate: float
     published_date: date
 

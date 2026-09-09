@@ -13,12 +13,12 @@ class ContentComparisonResponse(BaseModel):
     title: str
     platform: str
     views: int
-    likes: int
+    likes: int 
     comments: int
     shares: int
     saves: int
     watch_time: int
-    reach: int
+    reach: int 
     engagement_rate: float
 
 class TopPerformingContentResponse(BaseModel):
@@ -69,24 +69,25 @@ class PlatformPerformanceResponse(BaseModel):
 
 #Replaced the summary response
 class SummaryResponse(BaseModel):
-    total_views: int
-    total_likes: int
-    total_comments: int
-    total_shares: int
+    total_views: int | None = None
+    total_likes: int | None = None
+    total_comments: int | None = None
+    total_shares: int | None = None
     total_reach: int | None = None
-    total_followers: int
-    average_engagement_rate: float
+    total_followers: int | None = None
+    average_engagement_rate: float | None = None
 
 class ChartResponse(BaseModel):
     labels: list[str]
     values: list[float]
 
 class PlatformComparisonResponse(BaseModel):
-    platform: str
-    views: int
-    reach: int
-    engagement_rate: float
-    likes: int
-    comments: int
-    growth: int = 0
 
+    platform: str
+
+    views: int | None
+    reach: int | None
+    engagement_rate: float | None
+    likes: int | None
+    comments: int | None
+    growth: int | None

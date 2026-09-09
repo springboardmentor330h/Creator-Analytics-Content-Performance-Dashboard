@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-
+from datetime import date
 from app.models.content import Content
 from app.models.growth import Growth
 from app.models.platform_growth import PlatformGrowth
@@ -346,7 +346,9 @@ def get_platform_performance(
 def get_dashboard_summary(
     db: Session,
     creator_id: int,
-    platform: str | None = None
+    platform: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None
 ):
     query = (
         db.query(Content)
@@ -356,10 +358,27 @@ def get_dashboard_summary(
         )
     )
 
-    # "all" means all available platform data
+    # --------------------------------------------------
+    # PLATFORM FILTER
+    # --------------------------------------------------
+
     if platform and platform.lower() != "all":
         query = query.filter(
             Content.platform == platform
+        )
+
+    # --------------------------------------------------
+    # DATE FILTER
+    # --------------------------------------------------
+
+    if start_date:
+        query = query.filter(
+            Content.published_date >= start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            Content.published_date <= end_date
         )
 
     contents = query.all()
@@ -370,38 +389,94 @@ def get_dashboard_summary(
         "records:",
         len(contents),
         "views:",
-        sum(content.views or 0 for content in contents)
-    )
-
-    total_views = sum(
-        content.views or 0
-        for content in contents
-    )
-
-    total_likes = sum(
-        content.likes or 0
-        for content in contents
-    )
-
-    total_comments = sum(
-        content.comments or 0
-        for content in contents
-    )
-
-    total_shares = sum(
-        content.shares or 0
-        for content in contents
+        sum(
+            content.views or 0
+            for content in contents
+        )
     )
 
     # --------------------------------------------------
-    # TOTAL REACH
+    # VIEWS
     # --------------------------------------------------
 
-    reach_values = [
-        content.reach
+    view_values = [
+        content.views
         for content in contents
-        if content.reach is not None
+        if content.views is not None
     ]
+
+    total_views = (
+        sum(view_values)
+        if view_values
+        else None
+    )
+
+    # --------------------------------------------------
+    # LIKES
+    # --------------------------------------------------
+
+    like_values = [
+        content.likes
+        for content in contents
+        if content.likes is not None
+    ]
+
+    total_likes = (
+        sum(like_values)
+        if like_values
+        else None
+    )
+
+    # --------------------------------------------------
+    # COMMENTS
+    # --------------------------------------------------
+
+    comment_values = [
+        content.comments
+        for content in contents
+        if content.comments is not None
+    ]
+
+    total_comments = (
+        sum(comment_values)
+        if comment_values
+        else None
+    )
+
+    # --------------------------------------------------
+    # SHARES
+    # --------------------------------------------------
+
+    share_values = [
+        content.shares
+        for content in contents
+        if content.shares is not None
+    ]
+
+    total_shares = (
+        sum(share_values)
+        if share_values
+        else None
+    )
+
+    # --------------------------------------------------
+    # REACH
+    # --------------------------------------------------
+
+    reach_values = []
+
+    for content in contents:
+
+        # 0 / NULL means reach is unavailable
+        # for platform API data in this project.
+
+        if (
+            content.reach is not None
+            and content.reach > 0
+        ):
+            reach_values.append(
+                content.reach
+            )
 
     total_reach = (
         sum(reach_values)
@@ -413,52 +488,105 @@ def get_dashboard_summary(
     # ENGAGEMENT RATE
     # --------------------------------------------------
 
-    if contents:
+    engagement_rates = []
 
-        engagement_rates = []
+    for content in contents:
 
-        for content in contents:
+        engagement_rate = calculate_engagement_rate(
+            content
+        )
 
-            engagement_rate = calculate_engagement_rate(
-                content
+        if engagement_rate is not None:
+            engagement_rates.append(
+                engagement_rate
             )
 
-            if engagement_rate > 0:
-                engagement_rates.append(
-                    engagement_rate
+    average_engagement_rate = (
+        sum(engagement_rates)
+        / len(engagement_rates)
+        if engagement_rates
+        else None
+    )
+
+    # --------------------------------------------------
+    # FOLLOWERS
+    # --------------------------------------------------
+
+    follower_query = (
+        db.query(PlatformGrowth)
+        .filter(
+            PlatformGrowth.creator_id == creator_id
+        )
+    )
+
+    # Platform filter
+    if platform and platform.lower() != "all":
+        follower_query = follower_query.filter(
+            PlatformGrowth.platform.ilike(platform)
+        )
+
+    # Date filter
+    if start_date:
+        follower_query = follower_query.filter(
+            PlatformGrowth.date >= start_date
+        )
+
+    if end_date:
+        follower_query = follower_query.filter(
+            PlatformGrowth.date <= end_date
+        )
+
+    growth_records = (
+        follower_query
+        .order_by(
+            PlatformGrowth.date.asc()
+        )
+        .all()
+    )
+
+    # --------------------------------------------------
+    # CURRENT FOLLOWERS
+    # --------------------------------------------------
+
+    if growth_records:
+
+        # --------------------------------------------------
+        # ALL PLATFORMS
+        # --------------------------------------------------
+
+        if not platform or platform.lower() == "all":
+
+            latest_followers_by_platform = {}
+
+            for record in growth_records:
+
+                platform_name = (
+                    record.platform.lower()
                 )
 
-        average_engagement_rate = (
-            sum(engagement_rates)
-            / len(engagement_rates)
-            if engagement_rates
-            else 0
-        )
+                # Keep only the latest follower count
+                # for each platform.
+                latest_followers_by_platform[
+                    platform_name
+                ] = record.followers
+
+            total_followers = sum(
+                latest_followers_by_platform.values()
+            )
+
+        # --------------------------------------------------
+        # SELECTED PLATFORM
+        # --------------------------------------------------
+
+        else:
+
+            # Latest follower count for selected platform.
+            total_followers = (
+                growth_records[-1].followers
+            )
 
     else:
-        average_engagement_rate = 0
-
-    # --------------------------------------------------
-    # LATEST FOLLOWER COUNT
-    # --------------------------------------------------
-
-    latest_growth = (
-        db.query(Growth)
-        .filter(
-            Growth.creator_id == creator_id
-        )
-        .order_by(
-            Growth.date.desc(),
-            Growth.id.desc()
-        )
-        .first()
-    )
-
-    total_followers = (
-        latest_growth.followers
-        if latest_growth
-        else 0
-    )
+        total_followers = None
 
     # --------------------------------------------------
     # FINAL SUMMARY
@@ -471,12 +599,18 @@ def get_dashboard_summary(
         "total_shares": total_shares,
         "total_reach": total_reach,
         "total_followers": total_followers,
-        "average_engagement_rate": round(
-            average_engagement_rate,
-            2
+
+        "average_engagement_rate": (
+            round(
+                average_engagement_rate,
+                2
+            )
+            if average_engagement_rate is not None
+            else None
         )
     }
-# --------------------------------------------------
+
+#----------------------------------------------
 # ENGAGEMENT CHART
 # --------------------------------------------------
 
@@ -509,18 +643,35 @@ def get_engagement_chart(
 def get_follower_chart(
     db: Session,
     creator_id: int,
-    platform: str | None = None
+    platform: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None
 ):
     # If a specific platform is selected,
     # use platform-specific follower snapshots
     if platform and platform.lower() != "all":
 
-        growth_data = (
+        query = (
             db.query(PlatformGrowth)
             .filter(
                 PlatformGrowth.creator_id == creator_id,
                 PlatformGrowth.platform.ilike(platform)
             )
+        )
+
+        # Date filter
+        if start_date:
+            query = query.filter(
+                PlatformGrowth.date >= start_date
+            )
+
+        if end_date:
+            query = query.filter(
+                PlatformGrowth.date <= end_date
+            )
+
+        growth_data = (
+            query
             .order_by(PlatformGrowth.date.asc())
             .all()
         )
@@ -536,12 +687,27 @@ def get_follower_chart(
             ]
         }
 
-    # Otherwise keep the existing creator-level growth
-    growth_data = (
+    # Otherwise use creator-level growth
+    query = (
         db.query(Growth)
         .filter(
             Growth.creator_id == creator_id
         )
+    )
+
+    # Date filter
+    if start_date:
+        query = query.filter(
+            Growth.date >= start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            Growth.date <= end_date
+        )
+
+    growth_data = (
+        query
         .order_by(Growth.date.asc())
         .all()
     )
@@ -556,23 +722,36 @@ def get_follower_chart(
             for row in growth_data
         ]
     }
-
 # --------------------------------------------------
 # PLATFORM COMPARISON
 # --------------------------------------------------
 
 def get_platform_comparison(
     db: Session,
-    creator_id: int
+    creator_id: int,
+    start_date: date | None = None,
+    end_date: date | None = None
 ):
-    contents = (
+    query = (
         db.query(Content)
         .filter(
             Content.creator_id == creator_id,
             Content.external_content_id.isnot(None)
         )
-        .all()
     )
+
+    # Date filter
+    if start_date:
+        query = query.filter(
+            Content.published_date >= start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            Content.published_date <= end_date
+        )
+
+    contents = query.all()
 
     platform_data = {}
 
@@ -586,40 +765,69 @@ def get_platform_comparison(
                 "reach": 0,
                 "likes": 0,
                 "comments": 0,
+
+                "has_views_data": False,
                 "has_reach_data": False,
+                "has_likes_data": False,
+                "has_comments_data": False,
+
                 "engagement_rates": []
             }
 
-        platform_data[platform]["views"] += (
-            content.views or 0
-        )
+        # --------------------------------------------------
+        # VIEWS
+        # --------------------------------------------------
 
-        platform_data[platform]["likes"] += (
-            content.likes or 0
-        )
+        if content.views is not None:
+            platform_data[platform]["views"] += content.views
+            platform_data[platform]["has_views_data"] = True
 
-        platform_data[platform]["comments"] += (
-            content.comments or 0
-        )
+        # --------------------------------------------------
+        # LIKES
+        # --------------------------------------------------
+
+        if content.likes is not None:
+            platform_data[platform]["likes"] += content.likes
+            platform_data[platform]["has_likes_data"] = True
+
+        # --------------------------------------------------
+        # COMMENTS
+        # --------------------------------------------------
+
+        if content.comments is not None:
+            platform_data[platform]["comments"] += content.comments
+            platform_data[platform]["has_comments_data"] = True
+
+        # --------------------------------------------------
+        # REACH
+        # --------------------------------------------------
 
         if content.reach is not None:
-            platform_data[platform]["reach"] += (
-                content.reach
-            )
-
+            platform_data[platform]["reach"] += content.reach
             platform_data[platform]["has_reach_data"] = True
 
-        engagement_rate = calculate_engagement_rate(
-            content
-        )
+        # --------------------------------------------------
+        # ENGAGEMENT RATE
+        # --------------------------------------------------
 
-        platform_data[platform]["engagement_rates"].append(
-            engagement_rate
-        )
+        engagement_rate = calculate_engagement_rate(content)
+
+        if engagement_rate is not None:
+            platform_data[platform]["engagement_rates"].append(
+                engagement_rate
+            )
 
     result = []
 
+    # --------------------------------------------------
+    # BUILD PLATFORM COMPARISON RESULT
+    # --------------------------------------------------
+
     for platform, data in platform_data.items():
+
+        # --------------------------------------------------
+        # AVERAGE ENGAGEMENT RATE
+        # --------------------------------------------------
 
         if data["engagement_rates"]:
             average_engagement_rate = (
@@ -627,50 +835,102 @@ def get_platform_comparison(
                 / len(data["engagement_rates"])
             )
         else:
-            average_engagement_rate = 0.0
+            average_engagement_rate = None
 
-        # ------------------------------------------
-        # PLATFORM-SPECIFIC FOLLOWER GROWTH
-        # ------------------------------------------
+        # --------------------------------------------------
+        # PLATFORM GROWTH
+        # --------------------------------------------------
 
-        growth_records = (
+        growth_query = (
             db.query(PlatformGrowth)
             .filter(
                 PlatformGrowth.creator_id == creator_id,
-                PlatformGrowth.platform == platform
+                PlatformGrowth.platform.ilike(platform)
             )
-            .order_by(PlatformGrowth.date.asc())
+        )
+
+        # Date filter
+        if start_date:
+            growth_query = growth_query.filter(
+                PlatformGrowth.date >= start_date
+            )
+
+        if end_date:
+            growth_query = growth_query.filter(
+                PlatformGrowth.date <= end_date
+            )
+
+        growth_records = (
+            growth_query
+            .order_by(
+                PlatformGrowth.date.asc()
+            )
             .all()
         )
 
         if len(growth_records) >= 2:
+
             earliest_followers = growth_records[0].followers
             latest_followers = growth_records[-1].followers
 
             platform_growth = (
                 latest_followers - earliest_followers
             )
+
         else:
             # Not enough historical data
             # to calculate real growth
-            platform_growth = 0
+            platform_growth = None
 
-        result.append({
-            "platform": platform,
-            "views": data["views"],
-            "reach": (
-                data["reach"]
-                if data["has_reach_data"]
-                else 0
-            ),
-            "engagement_rate": round(
-                average_engagement_rate,
-                2
-            ),
-            "likes": data["likes"],
-            "comments": data["comments"],
-            "growth": platform_growth
-        })
+        # --------------------------------------------------
+        # ADD PLATFORM RESULT
+        # --------------------------------------------------
+
+        result.append(
+            {
+                "platform": platform,
+
+                # Unavailable views -> None -> N/A
+                "views": (
+                    data["views"]
+                    if data["has_views_data"]
+                    else None
+                ),
+
+                # Unavailable likes -> None -> N/A
+                "likes": (
+                    data["likes"]
+                    if data["has_likes_data"]
+                    else None
+                ),
+
+                # Unavailable comments -> None -> N/A
+                "comments": (
+                    data["comments"]
+                    if data["has_comments_data"]
+                    else None
+                ),
+
+                # Unavailable reach -> None -> N/A
+                "reach": (
+                    data["reach"]
+                    if data["has_reach_data"]
+                    else None
+                ),
+
+                # Unavailable engagement -> None -> N/A
+                "engagement_rate": (
+                    round(
+                        average_engagement_rate,
+                        2
+                    )
+                    if average_engagement_rate is not None
+                    else None
+                ),
+
+                # Insufficient growth data -> None -> N/A
+                "growth": platform_growth
+            }
+        )
 
     return result
-

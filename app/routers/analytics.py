@@ -1,7 +1,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from datetime import date
 from app.db.database import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
@@ -235,16 +235,26 @@ def get_platform_performance_api(
 )
 def get_dashboard_summary_api(
     platform: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     creator_id = current_user.id
 
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date cannot be after end date"
+        )
+
     return get_dashboard_summary(
-    db=db,
-    creator_id=creator_id,
-    platform=platform
-)
+        db=db,
+        creator_id=creator_id,
+        platform=platform,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 
 # --------------------------------------------------
@@ -278,15 +288,25 @@ def get_engagement_chart_api(
 )
 def get_follower_chart_api(
     platform: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     creator_id = current_user.id
 
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date cannot be after end date"
+        )
+
     return get_follower_chart(
         db=db,
         creator_id=creator_id,
-        platform=platform
+        platform=platform,
+        start_date=start_date,
+        end_date=end_date
     )
 
 # --------------------------------------------------
@@ -298,13 +318,22 @@ def get_follower_chart_api(
     response_model=list[PlatformComparisonResponse]
 )
 def get_platform_comparison_api(
+    start_date: date | None = None,
+    end_date: date | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     creator_id = current_user.id
 
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Start date cannot be after end date"
+        )
+
     return get_platform_comparison(
         db=db,
-        creator_id=creator_id
+        creator_id=creator_id,
+        start_date=start_date,
+        end_date=end_date
     )
-

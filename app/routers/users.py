@@ -1,50 +1,3 @@
-# from typing import List, Optional
-# from fastapi import APIRouter, Depends, Query, status
-# from sqlalchemy.orm import Session
-
-# from app.db.database import get_db
-# from app.models.user import UserRole
-# from app.schemas.user import UserCreate, UserListResponse, UserResponse, UserUpdate
-# from app.services.user_service import UserService
-
-# router = APIRouter(prefix="/users", tags=["Users"])
-
-
-# @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-# def create_user(user_in: UserCreate, db: Session = Depends(get_db)):
-#     return UserService.create(db, user_in)
-
-
-# @router.get("/", response_model=List[UserResponse])
-# def get_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-#     return UserService.get_all(db, skip=skip, limit=limit)
-
-
-# # 1. SEARCH ENDPOINT
-# @router.get("/search", response_model=UserListResponse)
-# def search_users(
-#     role: Optional[UserRole] = Query(None, description="Filter users by role"),
-#     skip: int = Query(0, ge=0),
-#     limit: int = Query(100, ge=1, le=500),
-#     db: Session = Depends(get_db)
-# ):
-#     return UserService.search_by_role(db, role=role, skip=skip, limit=limit)
-
-
-# # 2. GET SINGLE USER ENDPOINT
-# @router.get("/{user_id}", response_model=UserResponse)
-# def get_user(user_id: int, db: Session = Depends(get_db)):
-#     return UserService.get_by_id(db, user_id)
-
-
-# @router.put("/{user_id}", response_model=UserResponse)
-# def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)):
-#     return UserService.update(db, user_id, user_in)
-
-
-# @router.delete("/{user_id}")
-# def delete_user(user_id: int, db: Session = Depends(get_db)):
-#     return UserService.delete(db, user_id)
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -53,18 +6,21 @@ from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import hash_password
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, require_roles
+
 
 router = APIRouter()
 
 
 # ============================================================
 # Create User
+# Only Administrator can create users
 # ============================================================
 
 @router.post("/users")
 def create_user(
     user: UserCreate,
+    current_user=Depends(require_roles("Administrator")),
     db: Session = Depends(get_db)
 ):
     existing_user = db.query(User).filter(
@@ -98,11 +54,12 @@ def create_user(
 
 # ============================================================
 # Get All Users
+# Only Administrator can view all users
 # ============================================================
 
 @router.get("/users")
 def get_users(
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles("Administrator")),
     db: Session = Depends(get_db)
 ):
     users = db.query(User).all()
@@ -122,11 +79,19 @@ def get_users(
 
 # ============================================================
 # Search Users by Role
+# Agency, Marketing Team and Administrator
 # ============================================================
 
 @router.get("/users/search")
 def search_users(
     role: str,
+    current_user=Depends(
+        require_roles(
+            "Agency",
+            "Marketing Team",
+            "Administrator"
+        )
+    ),
     db: Session = Depends(get_db)
 ):
     users = db.query(User).filter(
@@ -151,7 +116,7 @@ def search_users(
 
 # ============================================================
 # Get Current Logged-in User
-# IMPORTANT: This must come before /users/{user_id}
+# All authenticated users
 # ============================================================
 
 @router.get("/users/me")
@@ -168,13 +133,26 @@ def get_current_user_profile(
 
 # ============================================================
 # Get User By ID
+#
+# Creator -> Only own profile
+# Agency -> Any user
+# Marketing Team -> Any user
+# Administrator -> Any user
 # ============================================================
 
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Creator can access only their own profile
+    if current_user.role == "Creator" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creators can access only their own profile"
+        )
+
     user = db.query(User).filter(
         User.id == user_id
     ).first()
@@ -195,14 +173,43 @@ def get_user(
 
 # ============================================================
 # Update User
+#
+# Creator -> Can update own profile only
+# Agency -> Can update users
+# Marketing Team -> Can update users
+# Administrator -> Can update users
+#
+# Only Administrator can change roles
 # ============================================================
 
 @router.put("/users/{user_id}")
 def update_user(
     user_id: int,
     updated_user: UserUpdate,
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Creator can update only their own profile
+    if current_user.role == "Creator" and current_user.id != user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Creators can update only their own profile"
+        )
+
+    # Check whether user has permission to update
+    allowed_roles = [
+        "Creator",
+        "Agency",
+        "Marketing Team",
+        "Administrator"
+    ]
+
+    if current_user.role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to update users"
+        )
+
     user = db.query(User).filter(
         User.id == user_id
     ).first()
@@ -225,19 +232,28 @@ def update_user(
                 detail="Email already exists"
             )
 
+    # Update full name
     if updated_user.full_name is not None:
         user.full_name = updated_user.full_name
 
+    # Update email
     if updated_user.email is not None:
         user.email = updated_user.email
 
-    # Hash password before saving
+    # Update password
     if updated_user.password is not None:
         user.password = hash_password(
             updated_user.password
         )
 
+    # Only Administrator can change roles
     if updated_user.role is not None:
+        if current_user.role != "Administrator":
+            raise HTTPException(
+                status_code=403,
+                detail="Only Administrator can change user roles"
+            )
+
         user.role = updated_user.role
 
     db.commit()
@@ -256,11 +272,15 @@ def update_user(
 
 # ============================================================
 # Delete User
+# Only Administrator can delete users
 # ============================================================
 
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,
+    current_user=Depends(
+        require_roles("Administrator")
+    ),
     db: Session = Depends(get_db)
 ):
     user = db.query(User).filter(
@@ -279,3 +299,4 @@ def delete_user(
     return {
         "message": "User Deleted Successfully"
     }
+

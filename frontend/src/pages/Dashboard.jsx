@@ -38,8 +38,88 @@ function Dashboard() {
     useState([]);
 
   const [platform, setPlatform] = useState("All");
+
+  // Date filter
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [appliedStartDate, setAppliedStartDate] = useState("");
+  const [appliedEndDate, setAppliedEndDate] = useState("");
+
+  const [dateError, setDateError] = useState("");
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // --------------------------------------------------
+  // APPLY DATE FILTER
+  // --------------------------------------------------
+
+  const handleApplyDateFilter = () => {
+    if (
+      startDate &&
+      endDate &&
+      startDate > endDate
+    ) {
+      setDateError(
+        "Start date cannot be after end date."
+      );
+      return;
+    }
+
+    setDateError("");
+
+    setAppliedStartDate(startDate);
+    setAppliedEndDate(endDate);
+  };
+
+  // --------------------------------------------------
+  // CLEAR DATE FILTER
+  // --------------------------------------------------
+
+  const handleClearDateFilter = () => {
+    setStartDate("");
+    setEndDate("");
+    setAppliedStartDate("");
+    setAppliedEndDate("");
+    setDateError("");
+  };
+
+  // --------------------------------------------------
+  // BUILD QUERY PARAMETERS
+  // --------------------------------------------------
+
+  const buildQueryString = () => {
+    const params = new URLSearchParams();
+
+    if (platform !== "All") {
+      params.append("platform", platform);
+    }
+
+    if (appliedStartDate) {
+      params.append(
+        "start_date",
+        appliedStartDate
+      );
+    }
+
+    if (appliedEndDate) {
+      params.append(
+        "end_date",
+        appliedEndDate
+      );
+    }
+
+    const queryString = params.toString();
+
+    return queryString
+      ? `?${queryString}`
+      : "";
+  };
+
+  // --------------------------------------------------
+  // FETCH DASHBOARD DATA
+  // --------------------------------------------------
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -47,28 +127,50 @@ function Dashboard() {
         setLoading(true);
         setError("");
 
+        const queryString =
+          buildQueryString();
+
+        const platformComparisonParams =
+          new URLSearchParams();
+
+        if (appliedStartDate) {
+          platformComparisonParams.append(
+            "start_date",
+            appliedStartDate
+          );
+        }
+
+        if (appliedEndDate) {
+          platformComparisonParams.append(
+            "end_date",
+            appliedEndDate
+          );
+        }
+
+        const platformComparisonQuery =
+          platformComparisonParams.toString();
+
         const [
           summaryResponse,
           growthResponse,
           platformComparisonResponse,
         ] = await Promise.all([
-          // Platform-specific summary
+          // Summary
           api.get(
-            platform === "All"
-              ? "/analytics/summary"
-              : `/analytics/summary?platform=${platform}`
+            `/analytics/summary${queryString}`
           ),
 
-          
-          // Platform-specific follower growth
-        api.get(
-          platform === "All"
-          ? "/analytics/chart/followers"
-          : `/analytics/chart/followers?platform=${platform}`
-        ),
+          // Follower growth chart
+          api.get(
+            `/analytics/chart/followers${queryString}`
+          ),
 
-          // Platform comparison including Growth
-          api.get("/analytics/platform-comparison"),
+          // Platform comparison
+          api.get(
+            platformComparisonQuery
+              ? `/analytics/platform-comparison?${platformComparisonQuery}`
+              : "/analytics/platform-comparison"
+          ),
         ]);
 
         console.log(
@@ -86,9 +188,13 @@ function Dashboard() {
           platformComparisonResponse.data
         );
 
-        setSummary(summaryResponse.data);
+        setSummary(
+          summaryResponse.data
+        );
 
-        setGrowthData(growthResponse.data);
+        setGrowthData(
+          growthResponse.data
+        );
 
         setPlatformPerformance(
           platformComparisonResponse.data
@@ -108,7 +214,15 @@ function Dashboard() {
     };
 
     fetchDashboard();
-  }, [platform]);
+  }, [
+    platform,
+    appliedStartDate,
+    appliedEndDate,
+  ]);
+
+  // --------------------------------------------------
+  // LOADING
+  // --------------------------------------------------
 
   if (loading) {
     return (
@@ -120,6 +234,10 @@ function Dashboard() {
     );
   }
 
+  // --------------------------------------------------
+  // ERROR
+  // --------------------------------------------------
+
   if (error) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -129,6 +247,10 @@ function Dashboard() {
       </div>
     );
   }
+
+  // --------------------------------------------------
+  // NO DATA
+  // --------------------------------------------------
 
   if (!summary) {
     return (
@@ -140,6 +262,36 @@ function Dashboard() {
     );
   }
 
+  // --------------------------------------------------
+  // FORMAT OPTIONAL / MISSING METRICS
+  // --------------------------------------------------
+
+  const formatMetric = (value) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "N/A";
+    }
+
+    return Number(value).toLocaleString();
+  };
+
+  const formatPercentage = (value) => {
+    if (
+      value === null ||
+      value === undefined
+    ) {
+      return "N/A";
+    }
+
+    return `${Number(value).toFixed(2)}%`;
+  };
+
+  // --------------------------------------------------
+  // FOLLOWER CHART
+  // --------------------------------------------------
+
   const followerChart = {
     labels: growthData.labels || [],
 
@@ -147,8 +299,14 @@ function Dashboard() {
       {
         label: "Followers",
 
-        data: (growthData.values || []).map(
-          (value) => Number(value || 0)
+        data: (
+          growthData.values || []
+        ).map(
+          (value) =>
+            value === null ||
+            value === undefined
+              ? null
+              : Number(value)
         ),
 
         borderWidth: 2,
@@ -162,27 +320,94 @@ function Dashboard() {
     growthData.values?.length > 0;
 
   // --------------------------------------------------
-  // CALCULATE FOLLOWER GROWTH
+  // CURRENT FOLLOWERS
+  // --------------------------------------------------
+  // Use backend summary value.
+  //
+  // All:
+  // Combined latest followers from all platforms.
+  //
+  // Selected platform:
+  // Latest followers for that platform.
   // --------------------------------------------------
 
-  const followerValues = (growthData.values || []).map(
-    (value) => Number(value || 0)
-  );
-
-  const firstFollowers =
-    followerValues.length > 0
-      ? followerValues[0]
-      : 0;
-
   const currentFollowers =
-    followerValues.length > 0
-      ? followerValues[followerValues.length - 1]
-      : Number(summary.total_followers || 0);
+    summary.total_followers ?? null;
 
-  const followerGrowth =
-    followerValues.length > 1
-      ? currentFollowers - firstFollowers
-      : 0;
+  // --------------------------------------------------
+  // FOLLOWER GROWTH
+  // --------------------------------------------------
+  //
+  // YouTube and Instagram:
+  // Growth is unavailable -> N/A.
+  //
+  // TikTok, Facebook, LinkedIn and X:
+  // Use actual growth returned by backend.
+  //
+  // All:
+  // Combine available growth values from supported
+  // platforms.
+  // --------------------------------------------------
+
+  const unavailableGrowthPlatforms = [
+    "youtube",
+    "instagram",
+  ];
+
+  const selectedPlatform =
+    platform.toLowerCase();
+
+  const selectedPlatformData =
+    platformPerformance.find(
+      (item) =>
+        item.platform?.toLowerCase() ===
+        selectedPlatform
+    );
+
+  let followerGrowth = null;
+
+  // --------------------------------------------------
+  // ALL PLATFORMS
+  // --------------------------------------------------
+
+  if (platform === "All") {
+    const availableGrowth =
+      platformPerformance
+        .filter(
+          (item) =>
+            item.growth !== null &&
+            item.growth !== undefined &&
+            !unavailableGrowthPlatforms.includes(
+              item.platform?.toLowerCase()
+            )
+        )
+        .map(
+          (item) => Number(item.growth)
+        );
+
+    followerGrowth =
+      availableGrowth.length > 0
+        ? availableGrowth.reduce(
+            (total, value) =>
+              total + value,
+            0
+          )
+        : null;
+  }
+
+  // --------------------------------------------------
+  // SELECTED PLATFORM
+  // --------------------------------------------------
+
+  else if (
+    !unavailableGrowthPlatforms.includes(
+      selectedPlatform
+    )
+  ) {
+    followerGrowth =
+      selectedPlatformData?.growth ??
+      null;
+  }
 
   // --------------------------------------------------
   // FILTER PLATFORM COMPARISON
@@ -223,7 +448,9 @@ function Dashboard() {
         ].map((item) => (
           <button
             key={item}
-            onClick={() => setPlatform(item)}
+            onClick={() =>
+              setPlatform(item)
+            }
             className={`rounded-lg px-4 py-2 font-medium transition ${
               platform === item
                 ? "bg-slate-900 text-white"
@@ -235,27 +462,129 @@ function Dashboard() {
         ))}
       </div>
 
-      {/* KPI Cards */}
+      {/* --------------------------------------------------
+          DATE FILTER
+      -------------------------------------------------- */}
+
+      <div className="mt-6 rounded-xl bg-white p-4 shadow">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+
+          {/* Start Date */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Start Date
+            </label>
+
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) =>
+                setStartDate(
+                  e.target.value
+                )
+              }
+              className="rounded-lg border border-slate-300 px-3 py-2 text-slate-700 outline-none focus:border-slate-500"
+            />
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              End Date
+            </label>
+
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) =>
+                setEndDate(
+                  e.target.value
+                )
+              }
+              className="rounded-lg border border-slate-300 px-3 py-2 text-slate-700 outline-none focus:border-slate-500"
+            />
+          </div>
+
+          {/* Apply */}
+          <button
+            onClick={
+              handleApplyDateFilter
+            }
+            className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
+          >
+            Apply Filter
+          </button>
+
+          {/* Clear */}
+          <button
+            onClick={
+              handleClearDateFilter
+            }
+            className="rounded-lg bg-slate-100 px-4 py-2 font-medium text-slate-700 transition hover:bg-slate-200"
+          >
+            Clear
+          </button>
+        </div>
+
+        {/* Date Error */}
+        {dateError && (
+          <p className="mt-3 text-sm text-red-600">
+            {dateError}
+          </p>
+        )}
+
+        {/* Active Filter */}
+        {(appliedStartDate ||
+          appliedEndDate) && (
+          <p className="mt-3 text-sm text-slate-500">
+            Showing data
+            {appliedStartDate
+              ? ` from ${appliedStartDate}`
+              : ""}
+            {appliedEndDate
+              ? ` to ${appliedEndDate}`
+              : ""}
+          </p>
+        )}
+      </div>
+
+      {/* --------------------------------------------------
+          KPI CARDS
+      -------------------------------------------------- */}
+
       <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+
         <KpiCard
           title="Total Views"
-          value={Number(
-            summary.total_views || 0
-          ).toLocaleString()}
+          value={
+            summary.total_views == null
+              ? "N/A"
+              : Number(
+                  summary.total_views
+                ).toLocaleString()
+          }
         />
 
         <KpiCard
           title="Total Likes"
-          value={Number(
-            summary.total_likes || 0
-          ).toLocaleString()}
+          value={
+            summary.total_likes == null
+              ? "N/A"
+              : Number(
+                  summary.total_likes
+                ).toLocaleString()
+          }
         />
 
         <KpiCard
           title="Total Comments"
-          value={Number(
-            summary.total_comments || 0
-          ).toLocaleString()}
+          value={
+            summary.total_comments == null
+              ? "N/A"
+              : Number(
+                  summary.total_comments
+                ).toLocaleString()
+          }
         />
 
         <KpiCard
@@ -271,15 +600,21 @@ function Dashboard() {
 
         <KpiCard
           title="Current Followers"
-          value={Number(
-            currentFollowers
-          ).toLocaleString()}
+          value={
+            currentFollowers == null
+              ? "N/A"
+              : Number(
+                  currentFollowers
+                ).toLocaleString()
+          }
         />
 
         <KpiCard
           title="Follower Growth"
           value={
-            followerGrowth > 0
+            followerGrowth == null
+              ? "N/A"
+              : followerGrowth > 0
               ? `+${Number(
                   followerGrowth
                 ).toLocaleString()}`
@@ -290,7 +625,10 @@ function Dashboard() {
         />
       </div>
 
-      {/* Follower Growth Chart */}
+      {/* --------------------------------------------------
+          FOLLOWER GROWTH CHART
+      -------------------------------------------------- */}
+
       <div className="mt-8 rounded-xl bg-white p-6 shadow">
         <h2 className="mb-5 text-xl font-semibold text-slate-800">
           Follower Growth
@@ -325,7 +663,10 @@ function Dashboard() {
         )}
       </div>
 
-      {/* Platform Comparison */}
+      {/* --------------------------------------------------
+          PLATFORM COMPARISON
+      -------------------------------------------------- */}
+
       <div className="mt-8 rounded-xl bg-white p-6 shadow">
         <h2 className="mb-5 text-xl font-semibold text-slate-800">
           Platform Comparison
@@ -336,6 +677,7 @@ function Dashboard() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-200">
+
                   <th className="px-4 py-3 text-sm font-semibold text-slate-600">
                     Platform
                   </th>
@@ -363,64 +705,96 @@ function Dashboard() {
                   <th className="px-4 py-3 text-sm font-semibold text-slate-600">
                     Growth
                   </th>
+
                 </tr>
               </thead>
 
               <tbody>
                 {filteredPlatformPerformance.map(
-                  (item) => (
-                    <tr
-                      key={item.platform}
-                      className="border-b border-slate-100"
-                    >
-                      <td className="px-4 py-4 font-medium text-slate-800">
-                        {item.platform}
-                      </td>
+                  (item) => {
 
-                      <td className="px-4 py-4 text-slate-600">
-                        {Number(
-                          item.views || 0
-                        ).toLocaleString()}
-                      </td>
+                    const platformName =
+                      item.platform?.toLowerCase();
 
-                      <td className="px-4 py-4 text-slate-600">
-                        {Number(
-                          item.likes || 0
-                        ).toLocaleString()}
-                      </td>
+                    // YouTube does not provide
+                    // reach and growth data
+                    // for this dashboard.
+                    const isYouTube =
+                      platformName ===
+                      "youtube";
 
-                      <td className="px-4 py-4 text-slate-600">
-                        {Number(
-                          item.comments || 0
-                        ).toLocaleString()}
-                      </td>
+                    // Instagram growth is
+                    // unavailable.
+                    const isInstagram =
+                      platformName ===
+                      "instagram";
 
-                      <td className="px-4 py-4 text-slate-600">
-                        {Number(
-                          item.reach || 0
-                        ).toLocaleString()}
-                      </td>
+                    return (
+                      <tr
+                        key={item.platform}
+                        className="border-b border-slate-100"
+                      >
 
-                      <td className="px-4 py-4 text-slate-600">
-                        {Number(
-                          item.engagement_rate || 0
-                        ).toFixed(2)}
-                        %
-                      </td>
+                        <td className="px-4 py-4 font-medium text-slate-800">
+                          {item.platform}
+                        </td>
 
-                      <td className="px-4 py-4 font-medium text-slate-700">
-                        {Number(
-                          item.growth || 0
-                        ) > 0
-                          ? `+${Number(
-                              item.growth
-                            ).toLocaleString()}`
-                          : Number(
-                              item.growth || 0
-                            ).toLocaleString()}
-                      </td>
-                    </tr>
-                  )
+                        <td className="px-4 py-4 text-slate-600">
+                          {formatMetric(
+                            item.views
+                          )}
+                        </td>
+
+                        <td className="px-4 py-4 text-slate-600">
+                          {formatMetric(
+                            item.likes
+                          )}
+                        </td>
+
+                        <td className="px-4 py-4 text-slate-600">
+                          {formatMetric(
+                            item.comments
+                          )}
+                        </td>
+
+                        {/* Reach */}
+                        <td className="px-4 py-4 text-slate-600">
+                          {isYouTube
+                            ? "N/A"
+                            : formatMetric(
+                                item.reach
+                              )}
+                        </td>
+
+                        {/* Engagement Rate */}
+                        <td className="px-4 py-4 text-slate-600">
+                          {formatPercentage(
+                            item.engagement_rate
+                          )}
+                        </td>
+
+                        {/* Growth */}
+                        <td className="px-4 py-4 font-medium text-slate-700">
+                          {isYouTube ||
+                          isInstagram
+                            ? "N/A"
+                            : item.growth ==
+                                null
+                            ? "N/A"
+                            : Number(
+                                item.growth
+                              ) > 0
+                            ? `+${Number(
+                                item.growth
+                              ).toLocaleString()}`
+                            : Number(
+                                item.growth
+                              ).toLocaleString()}
+                        </td>
+
+                      </tr>
+                    );
+                  }
                 )}
               </tbody>
             </table>
