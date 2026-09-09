@@ -20,8 +20,10 @@ CREATE TABLE users (
 -- Contents Table (Multi-Platform Content Records)
 CREATE TABLE contents (
     id SERIAL PRIMARY KEY,
-    creator_id INT REFERENCES users(id) ON DELETE CASCADE,
+    creator_id INT,
+    CONSTRAINT fk_contents_users FOREIGN KEY (creator_id) REFERENCES users(id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL, -- YouTube, Instagram, TikTok, Facebook, LinkedIn, X
+
     external_content_id VARCHAR(100),
     content_title VARCHAR(255) NOT NULL,
     views INT DEFAULT 0,
