@@ -1,20 +1,22 @@
-"""Router for simulated social media connections and data synchronization."""
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_user
 from app.db.database import get_db
+from app.integrations import get_integration
+from app.models.social_connection import SocialConnection
 from app.models.user import User
-from typing import Optional
-
 from app.schemas.social_connection import (
     ConnectedPlatformsResponse,
+    CreatorConnectedPlatformSummary,
     InstagramSyncRequest,
     InstagramSyncResponse,
     PlatformConnectRequest,
     PlatformConnectResponse,
     PlatformSyncRequest,
     PlatformSyncResponse,
+    StandardSyncResponse,
     YouTubeSyncRequest,
     YouTubeSyncResponse,
 )
@@ -22,6 +24,7 @@ from app.services.instagram_service import sync_instagram_data
 from app.services.social_media import (
     connect_platform,
     get_connected_platforms,
+    normalize_platform_name,
     sync_platform_data,
 )
 from app.services.youtube_service import sync_youtube_data
@@ -36,7 +39,7 @@ def connect_social_platform(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Simulate connecting a social media platform account."""
+    """Connect a social media platform account and run initial synchronization."""
     try:
         return connect_platform(db, current_user, payload.platform, payload.account_name)
     except ValueError as exc:
@@ -44,6 +47,61 @@ def connect_social_platform(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
         ) from exc
+
+
+@router.post("/{platform}/connect", response_model=PlatformConnectResponse)
+@router.post("/api/social/{platform}/connect_account", response_model=PlatformConnectResponse, include_in_schema=False)
+def connect_social_platform_path(
+    platform: str,
+    payload: Optional[PlatformConnectRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Connect a specific platform account and automatically run initial synchronization."""
+    account_name = payload.account_name if payload and payload.account_name else (current_user.full_name or "Creator Account")
+    try:
+        return connect_platform(db, current_user, platform, account_name)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/connections", response_model=List[CreatorConnectedPlatformSummary])
+@router.get("/api/social/connections_summary", response_model=List[CreatorConnectedPlatformSummary], include_in_schema=False)
+def get_creator_connections_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return list of connected platforms for the authenticated creator with account and sync metadata."""
+    connections = db.query(SocialConnection).filter(
+        SocialConnection.user_id == current_user.id,
+        SocialConnection.status == "connected",
+    ).all()
+
+    results: List[CreatorConnectedPlatformSummary] = []
+    for conn in connections:
+        p_canon = normalize_platform_name(conn.platform) or conn.platform.capitalize()
+        p_key = conn.platform.lower().strip()
+        is_live = False
+        try:
+            integ = get_integration("twitter" if p_key == "x" else p_key)
+            is_live = bool(integ.is_configured() or p_key == "youtube")
+        except Exception:
+            is_live = (p_key == "youtube")
+
+        account_display = conn.display_name or conn.platform_username or (current_user.full_name or "Creator Account")
+        results.append(
+            CreatorConnectedPlatformSummary(
+                platform=p_canon,
+                status=conn.status,
+                account_name=account_display,
+                last_synced_at=conn.last_synced_at,
+                connection_mode="live" if is_live else "manual",
+            )
+        )
+    return results
 
 
 @router.get("/platforms", response_model=ConnectedPlatformsResponse)
@@ -64,7 +122,7 @@ def sync_social_platform(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Synchronize simulated social media data into Content table for the connected platform."""
+    """Synchronize social media data into Content table for the connected platform."""
     try:
         return sync_platform_data(db, current_user, payload.platform)
     except ValueError as exc:
@@ -114,3 +172,69 @@ def sync_instagram(
         account_id=account_id,
         max_results=max_results,
     )
+
+
+@router.post("/tiktok/sync", response_model=StandardSyncResponse)
+@router.post("/api/social/tiktok/sync_account", response_model=StandardSyncResponse, include_in_schema=False)
+def sync_tiktok(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize TikTok content into PostgreSQL with idempotent duplicate handling."""
+    try:
+        return sync_platform_data(db, current_user, "TikTok")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/facebook/sync", response_model=StandardSyncResponse)
+@router.post("/api/social/facebook/sync_account", response_model=StandardSyncResponse, include_in_schema=False)
+def sync_facebook(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize Facebook content into PostgreSQL with idempotent duplicate handling."""
+    try:
+        return sync_platform_data(db, current_user, "Facebook")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/linkedin/sync", response_model=StandardSyncResponse)
+@router.post("/api/social/linkedin/sync_account", response_model=StandardSyncResponse, include_in_schema=False)
+def sync_linkedin(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize LinkedIn content into PostgreSQL with idempotent duplicate handling."""
+    try:
+        return sync_platform_data(db, current_user, "LinkedIn")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/x/sync", response_model=StandardSyncResponse)
+@router.post("/twitter/sync", response_model=StandardSyncResponse, include_in_schema=False)
+@router.post("/api/social/x/sync_account", response_model=StandardSyncResponse, include_in_schema=False)
+@router.post("/api/social/twitter/sync_account", response_model=StandardSyncResponse, include_in_schema=False)
+def sync_x(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Synchronize X (Twitter) content into PostgreSQL with idempotent duplicate handling."""
+    try:
+        return sync_platform_data(db, current_user, "X")
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/youtube/live-analytics")
+@router.get("/api/social/youtube/live-analytics", include_in_schema=False)
+async def get_social_youtube_live_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Retrieve live real-time YouTube channel and video performance metrics directly from YouTube API."""
+    from app.services.youtube_live_service import get_youtube_live_analytics
+    return await get_youtube_live_analytics(db=db, user=current_user)
+

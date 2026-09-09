@@ -2,8 +2,10 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from jose import jwt
 from app.core.config import get_settings
 from app.integrations import INTEGRATIONS, get_integration
 from app.models.social_connection import SocialConnection, ALLOWED_PLATFORMS
@@ -17,9 +19,71 @@ _OAUTH_STATES: Dict[str, Dict] = {}
 
 def clean_expired_states():
     now = datetime.utcnow()
-    expired = [k for k, v in _OAUTH_STATES.items() if v.get('expires_at') < now]
+    expired = [k for k, v in _OAUTH_STATES.items() if v.get('expires_at') and v.get('expires_at') < now]
     for k in expired:
         _OAUTH_STATES.pop(k, None)
+
+
+def generate_oauth_state(user_id: int, platform: str) -> str:
+    """Generate a cryptographically signed state token encoding user_id and platform."""
+    clean_expired_states()
+    settings = get_settings()
+    now = datetime.utcnow()
+    payload = {
+        "sub": str(user_id),
+        "user_id": user_id,
+        "platform": platform.lower().strip(),
+        "nonce": secrets.token_hex(16),
+        "exp": now + timedelta(minutes=30),
+    }
+    token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    _OAUTH_STATES[token] = {
+        "user_id": user_id,
+        "platform": platform.lower().strip(),
+        "expires_at": now + timedelta(minutes=30),
+    }
+    return token
+
+
+def parse_and_validate_oauth_state(state: str, expected_platform: str) -> int:
+    """Validate OAuth state and extract the originating user_id.
+
+    Supports both signed JWT tokens and in-memory fallback for backward compatibility.
+    """
+    clean_expired_states()
+    settings = get_settings()
+    expected_key = expected_platform.lower().strip()
+
+    # 1. Attempt decoding as signed JWT
+    try:
+        payload = jwt.decode(state, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        state_platform = str(payload.get("platform", "")).lower().strip()
+        uid = int(payload.get("user_id") or payload.get("sub", 0))
+        if state_platform and state_platform == expected_key and uid > 0:
+            _OAUTH_STATES.pop(state, None)
+            return uid
+    except Exception:
+        pass
+
+    # 2. In-memory cache fallback
+    state_data = _OAUTH_STATES.pop(state, None)
+    if state_data:
+        if state_data.get("expires_at") and state_data["expires_at"] < datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OAuth state parameter has expired. Please initiate connection again.",
+            )
+        if state_data.get("platform") != expected_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OAuth state platform mismatch.",
+            )
+        return int(state_data["user_id"])
+
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="Invalid, missing, or expired OAuth state parameter. Request rejected for security.",
+    )
 
 
 class SocialConnectionService:
@@ -41,6 +105,8 @@ class SocialConnectionService:
                 # If integration credentials removed, reflect not_configured status
                 if not integration.is_configured() and conn.status == 'not_configured':
                     conn.status = 'not_configured'
+                conn.account_name = conn.display_name or conn.platform_username or (user.full_name if conn.status == 'connected' else None)
+                conn.connection_mode = "live" if (integration.is_configured() or platform_key == "youtube") else "manual"
                 result.append(conn)
             else:
                 # Create transient unpersisted model for frontend representation
@@ -54,16 +120,19 @@ class SocialConnectionService:
                     created_at=datetime.utcnow(),
                     updated_at=datetime.utcnow(),
                 )
+                dummy.account_name = None
+                dummy.connection_mode = "live" if (is_cfg or platform_key == "youtube") else "manual"
                 result.append(dummy)
 
         return result
 
     @staticmethod
     def get_connection_by_platform(db: Session, user_id: int, platform: str) -> Optional[SocialConnection]:
+        from sqlalchemy import func
         platform_key = platform.lower().strip()
         return db.query(SocialConnection).filter(
             SocialConnection.user_id == user_id,
-            SocialConnection.platform == platform_key,
+            func.lower(SocialConnection.platform) == platform_key,
         ).first()
 
     @staticmethod
@@ -80,12 +149,7 @@ class SocialConnectionService:
                 message=f"Integration for {integration.display_name} is not configured. API client credentials required in backend .env.",
             )
 
-        state_token = secrets.token_urlsafe(32)
-        _OAUTH_STATES[state_token] = {
-            'user_id': user_id,
-            'platform': platform_key,
-            'expires_at': datetime.utcnow() + timedelta(minutes=15),
-        }
+        state_token = generate_oauth_state(user_id, platform_key)
 
         try:
             auth_url = integration.get_authorization_url(state=state_token)
@@ -106,6 +170,61 @@ class SocialConnectionService:
             )
 
     @staticmethod
+    async def get_valid_access_token(db: Session, user_id: int, platform: str) -> str:
+        """Retrieve decrypted access token, automatically refreshing it if expired."""
+        platform_key = platform.lower().strip()
+        connection = SocialConnectionService.get_connection_by_platform(db, user_id, platform_key)
+        if not connection or connection.status != 'connected':
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Platform '{platform}' is not connected. Please connect your account first.",
+            )
+
+        integration = get_integration(platform_key)
+        plain_access_token = decrypt_token(connection.access_token_encrypted)
+
+        # Check if expired or within 60s of expiring
+        is_expired = False
+        if connection.token_expires_at:
+            if connection.token_expires_at <= datetime.utcnow() + timedelta(seconds=60):
+                is_expired = True
+
+        if is_expired:
+            plain_refresh_token = decrypt_token(connection.refresh_token_encrypted)
+            if plain_refresh_token:
+                try:
+                    refreshed = await integration.refresh_token(plain_refresh_token)
+                    if refreshed.get('access_token'):
+                        plain_access_token = refreshed['access_token']
+                        connection.access_token_encrypted = encrypt_token(plain_access_token)
+                        if refreshed.get('expires_in'):
+                            connection.token_expires_at = datetime.utcnow() + timedelta(seconds=int(refreshed['expires_in']))
+                        db.commit()
+                        db.refresh(connection)
+                except Exception as exc:
+                    connection.status = 'expired'
+                    db.commit()
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail=f"OAuth token for {integration.display_name} has expired and could not be refreshed. Please reconnect your account.",
+                    ) from exc
+            else:
+                connection.status = 'expired'
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail=f"OAuth token for {integration.display_name} has expired. Please reconnect your account.",
+                )
+
+        if not plain_access_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"No valid access token available for {integration.display_name}. Please reconnect your account.",
+            )
+
+        return plain_access_token
+
+    @staticmethod
     async def process_oauth_callback(
         db: Session,
         platform: str,
@@ -117,21 +236,9 @@ class SocialConnectionService:
         platform_key = platform.lower().strip()
         integration = get_integration(platform_key)
 
-        # State validation
-        state_data = _OAUTH_STATES.pop(state, None)
-        if not state_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid, missing, or expired OAuth state parameter. Request rejected for security.",
-            )
+        # Robust cryptographic state validation
+        target_user_id = parse_and_validate_oauth_state(state, platform_key)
 
-        if state_data['platform'] != platform_key:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="OAuth state platform mismatch.",
-            )
-
-        target_user_id = state_data['user_id']
         if provided_user_id and provided_user_id != target_user_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -154,12 +261,20 @@ class SocialConnectionService:
         expires_in = token_data.get('expires_in')
         token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in) if expires_in else None
 
-        connection = db.query(SocialConnection).filter(
+        # Case-insensitive lookup with duplicate prevention
+        existing_conns = db.query(SocialConnection).filter(
             SocialConnection.user_id == target_user_id,
-            SocialConnection.platform == platform_key,
-        ).first()
+            func.lower(SocialConnection.platform) == platform_key.lower(),
+        ).all()
 
-        if not connection:
+        if len(existing_conns) > 1:
+            connection = existing_conns[0]
+            for extra in existing_conns[1:]:
+                db.delete(extra)
+            db.flush()
+        elif len(existing_conns) == 1:
+            connection = existing_conns[0]
+        else:
             connection = SocialConnection(
                 user_id=target_user_id,
                 platform=platform_key,
@@ -179,6 +294,24 @@ class SocialConnectionService:
 
         db.commit()
         db.refresh(connection)
+
+        # Trigger initial synchronization immediately upon connection
+        try:
+            plain_token = decrypt_token(access_token_enc)
+            items_synced = await integration.sync_data(db, target_user_id, plain_token or '')
+            if items_synced > 0:
+                connection.last_synced_at = datetime.utcnow()
+                db.commit()
+                db.refresh(connection)
+            else:
+                from app.services.social_media import sync_platform_data
+                target_user = db.get(User, target_user_id)
+                if target_user:
+                    sync_platform_data(db, target_user, platform_key)
+                    db.refresh(connection)
+        except Exception:
+            pass
+
         return connection
 
     @staticmethod
@@ -193,34 +326,7 @@ class SocialConnectionService:
             )
 
         integration = get_integration(platform_key)
-        plain_access_token = decrypt_token(connection.access_token_encrypted)
-
-        # Check token expiration & refresh if refresh token exists
-        if connection.token_expires_at and connection.token_expires_at < datetime.utcnow():
-            plain_refresh_token = decrypt_token(connection.refresh_token_encrypted)
-            if plain_refresh_token:
-                try:
-                    refreshed = await integration.refresh_token(plain_refresh_token)
-                    if refreshed.get('access_token'):
-                        plain_access_token = refreshed['access_token']
-                        connection.access_token_encrypted = encrypt_token(plain_access_token)
-                        if refreshed.get('expires_in'):
-                            connection.token_expires_at = datetime.utcnow() + timedelta(seconds=refreshed['expires_in'])
-                        db.commit()
-                except Exception:
-                    connection.status = 'expired'
-                    db.commit()
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail=f"OAuth token for {integration.display_name} has expired. Please reconnect your account.",
-                    )
-            else:
-                connection.status = 'expired'
-                db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"OAuth token for {integration.display_name} has expired. Please reconnect your account.",
-                )
+        plain_access_token = await SocialConnectionService.get_valid_access_token(db, user.id, platform_key)
 
         # Perform sync
         try:

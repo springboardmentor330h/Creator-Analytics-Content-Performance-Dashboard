@@ -24,18 +24,18 @@ export default function CTASection() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             to="/register"
-            className="ciq-btn-primary px-8 py-4 text-sm font-bold group shadow-md hover:shadow-lg transition-all"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#635BFF] px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#635BFF]/25 hover:bg-[#5248E5] hover:shadow-xl hover:shadow-[#635BFF]/35 active:scale-[0.98] transition-all group"
           >
             <span>Get Started Free</span>
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Link>
 
           <a
-            href="#demo"
-            className="ciq-btn-secondary px-8 py-4 text-sm font-bold text-slate-700 hover:text-brand-600 hover:border-brand-300"
+            href="#features"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-7 py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] transition-all shadow-xs"
           >
-            <Play className="h-3.5 w-3.5 text-brand-600 fill-brand-600 mr-1" />
-            <span>View Demo</span>
+            <Sparkles className="h-4 w-4 text-[#635BFF]" />
+            <span>Explore Platform</span>
           </a>
         </div>
 

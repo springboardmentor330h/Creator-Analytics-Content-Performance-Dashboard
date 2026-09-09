@@ -103,10 +103,6 @@ export default function Footer() {
         {/* Bottom Copyright Bar */}
         <div className="pt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500 font-medium">
           <p>© 2026 CreatorIQ. All rights reserved.</p>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>System Operational • Production SaaS Interface</span>
-          </div>
         </div>
 
       </div>

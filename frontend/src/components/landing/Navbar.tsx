@@ -24,7 +24,6 @@ export default function Navbar() {
     { name: 'Platform', href: '#platforms' },
     { name: 'Pricing', href: '#pricing' },
     { name: 'Resources', href: '#resources' },
-    { name: 'Live Demo', href: '#demo' },
   ]
 
   return (
@@ -68,13 +67,13 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           <Link
             to="/login"
-            className="ciq-btn-secondary py-2 px-4 text-xs font-bold"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all"
           >
             Sign In
           </Link>
           <Link
             to="/register"
-            className="ciq-btn-primary py-2 px-4 text-xs font-bold group"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#635BFF] px-4 py-2 text-xs font-bold text-white shadow-md shadow-[#635BFF]/20 hover:bg-[#5248E5] transition-all group"
           >
             <span>Create Account</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -118,14 +117,14 @@ export default function Navbar() {
             <Link
               to="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="ciq-btn-secondary w-full justify-center py-2.5 text-xs font-bold"
+              className="w-full text-center rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all"
             >
               Sign In
             </Link>
             <Link
               to="/register"
               onClick={() => setMobileMenuOpen(false)}
-              className="ciq-btn-primary w-full justify-center py-2.5 text-xs font-bold"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#635BFF] py-2.5 text-xs font-bold text-white shadow-md shadow-[#635BFF]/20 hover:bg-[#5248E5] transition-all"
             >
               <span>Create Account</span>
               <ArrowRight className="h-3.5 w-3.5" />

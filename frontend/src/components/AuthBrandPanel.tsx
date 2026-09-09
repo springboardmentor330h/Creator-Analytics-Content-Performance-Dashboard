@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BarChart3, CheckCircle2, ShieldCheck, Sparkles, TrendingUp, Users, Zap } from 'lucide-react'
+import { BarChart3, Sparkles, TrendingUp, Users, Zap } from 'lucide-react'
 
 export default function AuthBrandPanel({
   title = 'Creator Analytics & Content Performance',
@@ -57,14 +57,6 @@ export default function AuthBrandPanel({
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-6 text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-emerald-400" />
-          <span>Strict JWT Authentication & RBAC</span>
-        </div>
-        <span>System Active</span>
       </div>
     </div>
   )

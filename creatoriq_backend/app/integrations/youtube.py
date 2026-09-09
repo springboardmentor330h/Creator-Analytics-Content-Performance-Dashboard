@@ -115,5 +115,84 @@ class YouTubeIntegration(BaseSocialIntegration):
         return {"id": "yt_user", "username": "youtube_user", "display_name": "YouTube Account", "profile_url": "https://youtube.com"}
 
     async def sync_data(self, db_session: Any, user_id: int, access_token: str) -> int:
-        # Normalization logic: fetches channel statistics and inserts/updates normalized content items
-        return 0
+        """Fetch creator's uploaded videos and metrics from YouTube Data API v3 using OAuth Bearer token."""
+        from app.models.user import User
+        from app.services.youtube_service import sync_youtube_data
+
+        user = db_session.get(User, user_id)
+        if not user or not access_token:
+            return 0
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                headers = {"Authorization": f"Bearer {access_token}"}
+
+                # 1. Fetch channel info & uploads playlist ID
+                ch_resp = await client.get(
+                    "https://www.googleapis.com/youtube/v3/channels",
+                    headers=headers,
+                    params={"part": "contentDetails,snippet,statistics", "mine": "true"},
+                )
+                if ch_resp.status_code != 200:
+                    return 0
+
+                items = ch_resp.json().get("items", [])
+                if not items:
+                    return 0
+
+                channel = items[0]
+                channel_snippet = channel.get("snippet", {})
+                channel_title = channel_snippet.get("title", "YouTube Channel")
+                custom_url = channel_snippet.get("customUrl", "")
+                channel_id = channel.get("id", "")
+                uploads_playlist_id = channel.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads")
+                if not uploads_playlist_id:
+                    return 0
+
+                # 2. Fetch playlist items from uploads playlist
+                pl_resp = await client.get(
+                    "https://www.googleapis.com/youtube/v3/playlistItems",
+                    headers=headers,
+                    params={
+                        "part": "snippet,contentDetails",
+                        "playlistId": uploads_playlist_id,
+                        "maxResults": 25,
+                    },
+                )
+                if pl_resp.status_code != 200:
+                    return 0
+
+                pl_items = pl_resp.json().get("items", [])
+                video_ids = [
+                    item["contentDetails"]["videoId"]
+                    for item in pl_items
+                    if "contentDetails" in item and "videoId" in item["contentDetails"]
+                ]
+                if not video_ids:
+                    return 0
+
+                # 3. Fetch video details & statistics
+                v_resp = await client.get(
+                    "https://www.googleapis.com/youtube/v3/videos",
+                    headers=headers,
+                    params={
+                        "part": "snippet,statistics",
+                        "id": ",".join(video_ids),
+                    },
+                )
+                if v_resp.status_code != 200:
+                    return 0
+
+                video_items = v_resp.json().get("items", [])
+                res = sync_youtube_data(
+                    db=db_session,
+                    user=user,
+                    custom_items=video_items,
+                    account_name=channel_title,
+                    channel_id=custom_url or channel_id,
+                )
+                return int(res.get("records_synced", 0))
+
+        except Exception:
+            return 0
+

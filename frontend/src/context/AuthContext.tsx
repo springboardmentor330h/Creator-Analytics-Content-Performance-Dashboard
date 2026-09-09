@@ -2,13 +2,14 @@ import axios from 'axios'
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import authService, { ProfileResponse } from '../services/authService'
+import { getSafeRedirectUrl } from '../utils/redirect'
 
 interface AuthContextValue {
   user: ProfileResponse | null
   token: string | null
   loading: boolean
   error: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string, redirectTo?: string) => Promise<void>
   register: (
     full_name: string,
     email: string,
@@ -25,6 +26,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 function getErrorMessage(err: unknown, fallback: string) {
   if (axios.isAxiosError(err)) {
+    if (!err.response) {
+      return 'Unable to connect to the server. Please check your backend connection.'
+    }
     const detail = err.response?.data?.detail
     if (typeof detail === 'string') return detail
     if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg
@@ -41,33 +45,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
 
   useEffect(() => {
+    let isMounted = true
     const initialize = async () => {
-      if (token) {
+      const storedToken = localStorage.getItem('creatoriq_token')
+      if (storedToken) {
         try {
-          authService.setToken(token)
+          authService.setToken(storedToken)
           const profile = await authService.profile()
-          setUser(profile)
+          if (isMounted) {
+            setUser(profile)
+            setToken(storedToken)
+          }
         } catch {
-          setToken(null)
-          localStorage.removeItem('creatoriq_token')
+          if (isMounted) {
+            setToken(null)
+            localStorage.removeItem('creatoriq_token')
+            authService.clearToken()
+            setUser(null)
+          }
+        }
+      } else {
+        if (isMounted) {
           setUser(null)
+          setToken(null)
         }
       }
-      setLoading(false)
+      if (isMounted) {
+        setLoading(false)
+      }
     }
     initialize()
-  }, [token])
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, redirectTo?: string) => {
     setError(null)
     try {
       const response = await authService.login(email, password)
-      setToken(response.access_token)
-      localStorage.setItem('creatoriq_token', response.access_token)
-      authService.setToken(response.access_token)
+      const accessToken = response.access_token
+      setToken(accessToken)
+      localStorage.setItem('creatoriq_token', accessToken)
+      authService.setToken(accessToken)
       const profile = await authService.profile()
       setUser(profile)
-      navigate('/dashboard')
+      const destination = getSafeRedirectUrl(redirectTo, '/dashboard')
+      navigate(destination, { replace: true })
     } catch (err) {
       setError(getErrorMessage(err, 'Unable to login. Check credentials.'))
       throw err
@@ -95,11 +119,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null)
     localStorage.removeItem('creatoriq_token')
     authService.clearToken()
-    navigate('/login')
+    navigate('/login', { replace: true })
   }
 
   const fetchProfile = async () => {
-    if (!token) return
+    const currentToken = localStorage.getItem('creatoriq_token')
+    if (!currentToken) return
     try {
       const profile = await authService.profile()
       setUser(profile)

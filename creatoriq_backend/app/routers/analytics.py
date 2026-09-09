@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_user
 from app.db.database import get_db
 from app.models.user import User
+from app.services import live_analytics_service
 from app.services.analytics_service import (
     get_content_engagement,
     get_dashboard_summary,
@@ -33,10 +34,13 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 @router.get("/api/analytics/summary", include_in_schema=False)
 def dashboard_summary(
     platform: Optional[str] = Query(None),
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Retrieve high-level dashboard KPI summary metrics with optional platform filter."""
+    """Retrieve high-level dashboard KPI summary metrics from PostgreSQL database or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_dashboard_summary(db, current_user, platform=platform)
     return get_dashboard_summary(db, current_user, platform=platform)
 
 
@@ -44,30 +48,39 @@ def dashboard_summary(
 @router.get("/api/analytics/chart/engagement", include_in_schema=False)
 def chart_engagement(
     platform: Optional[str] = Query(None),
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Retrieve chronological chart-ready engagement rate trend data with optional platform filter."""
+    """Retrieve chronological chart-ready engagement rate trend data from PostgreSQL or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_engagement_chart_data(db, current_user, platform=platform)
     return get_engagement_chart_data(db, current_user, platform=platform)
 
 
 @router.get("/chart/followers")
 @router.get("/api/analytics/chart/followers", include_in_schema=False)
 def chart_followers(
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Retrieve chronological chart-ready follower growth points from Growth table."""
+    """Retrieve chronological chart-ready follower growth points from PostgreSQL or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_follower_growth_chart_data(db, current_user)
     return get_follower_growth_chart_data(db, current_user)
 
 
 @router.get("/platform-comparison")
 @router.get("/api/analytics/platform-comparison", include_in_schema=False)
 def platform_comparison(
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Dict[str, Any]]:
-    """Retrieve platform-level performance breakdown and comparison."""
+    """Retrieve platform-level performance breakdown and comparison from PostgreSQL or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_platform_comparison(db, current_user)
     return get_platform_comparison(db, current_user)
 
 
@@ -85,23 +98,41 @@ def get_engagement(
 
 
 @router.get("/top-content")
+@router.get("/api/analytics/top-content", include_in_schema=False)
 def top_content(
     platform: Optional[str] = Query(None),
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    """Retrieve top performing content items with optional platform filter."""
+    """Retrieve top performing content items from PostgreSQL or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_top_content(db, current_user, platform=platform)
     return get_top_content(db, current_user, platform=platform)
 
 
 @router.get("/platform-performance")
+@router.get("/api/analytics/platform-performance", include_in_schema=False)
 def platform_performance(
     platform: Optional[str] = Query(None),
+    source: Optional[str] = Query("database"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
-    """Retrieve platform performance summaries as a list with optional platform filter."""
+    """Retrieve platform performance summaries from PostgreSQL or live social APIs."""
+    if source and source.strip().lower() == "live":
+        return live_analytics_service.get_live_platform_performance(db, current_user, platform=platform)
     return get_platform_performance(db, current_user, platform=platform)
+
+
+@router.post("/sync-live")
+@router.post("/api/analytics/sync-live", include_in_schema=False)
+def sync_live_to_database(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """1-Click batch sync all currently connected social platforms into PostgreSQL database."""
+    return live_analytics_service.sync_all_live_to_db(db, current_user)
 
 
 # =========================================================

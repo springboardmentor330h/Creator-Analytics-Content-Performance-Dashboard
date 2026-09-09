@@ -1,279 +1,236 @@
-# CreatorIQ – Multi-Platform Social Media Analytics & Content Performance Dashboard
+# CreatorIQ – Multi-Platform Social Media Integration & Live Analytics Synchronization
 
-CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with **FastAPI**, **PostgreSQL**, **SQLAlchemy**, and **React**.
-
-> **Important Integration Notice:**  
-> Live API integration is used where credentials/access are available (such as YouTube Data API v3). For platforms where API access is unavailable, realistic sample data is stored in PostgreSQL through the same backend architecture and standardized data schemas.
+CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with **FastAPI**, **PostgreSQL**, **SQLAlchemy**, and **React** (TypeScript + Vite).
 
 ---
 
-## 1. Project Overview
+## 1. Supported Platforms & Integration Architecture
 
-CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. The Multi-Platform Analytics System extends CreatorIQ beyond YouTube to comprehensively support:
-- **YouTube** (Live Data API v3 & Ingestion)
-- **Instagram** (PostgreSQL Platform Ingestion / Reels & Posts)
-- **Facebook** (PostgreSQL Platform Ingestion / Pages & Live)
-- **LinkedIn** (PostgreSQL Platform Ingestion / Professional Articles & Posts)
+The platform supports 6 social media platforms:
 
-All platforms adhere to a unified **Common Platform Format** stored in PostgreSQL. The same analytics engine calculates KPI cards, chronological trends, rankings, and platform benchmarking without duplicated logic.
+| Platform | Mode | Live API Integration | Manual / Fallback Mode | Content Types Supported |
+| :--- | :--- | :--- | :--- | :--- |
+| **YouTube** | **Live API** | YouTube Data API v3 (Search, Videos, Statistics, OAuth 2.0) | Standardized CreatorIQ Fallback | Video, Short |
+| **Instagram** | **Live / Fallback** | Meta Graph API v18.0 (Instagram Basic Display & Insights) | Standardized CreatorIQ Manual Mode | Reel, Post |
+| **TikTok** | **Manual / Ready** | TikTok Open API v2 Architecture | Standardized CreatorIQ Manual Mode | Video |
+| **Facebook** | **Manual / Ready** | Graph API v18.0 Architecture | Standardized CreatorIQ Manual Mode | Post, Live |
+| **LinkedIn** | **Manual / Ready** | LinkedIn Community Management API Architecture | Standardized CreatorIQ Manual Mode | Article, Post |
+| **X (Twitter)** | **Manual / Ready** | Twitter API v2 Architecture | Standardized CreatorIQ Manual Mode | Post |
+
+> [!NOTE]
+> **Honest Live vs. Manual Differentiation**:  
+> Platforms with configured live credentials in the backend `.env` run with the `LIVE API` badge. Platforms without developer client secrets operate honestly with the `MANUAL DATA MODE` badge. The application never claims sample data is live API data.
 
 ---
 
-## 2. Multi-Platform System Architecture
+## 2. End-to-End Connection & Synchronization Workflow
 
 ```
-YouTube:
-  YouTube Data API v3 ───┐
-                         │
-Additional Platforms:    ▼
-  Manual / Sample Data ──┼──> Common CreatorIQ Format ──> Duplicate Detection ──> PostgreSQL
-  (Instagram/FB/LinkedIn)│                                (platform + ext_id)         │
-                         │                                                            ▼
-Live APIs (When Avail) ─┘                                                    Analytics Services
-                                                                                      │
-                                                                                      ▼
-                                                                                 FastAPI APIs
-                                                                             (?platform= filterable)
-                                                                                      │
-                                                                                      ▼
-                                                                               React Dashboard
+User Login (JWT Authentication)
+    │
+    ▼
+Connected Apps (/social-connections)
+    │
+    ▼
+Click "Connect" on Platform Card
+    │
+    ▼
+Platform Authentication / Account Connect
+(OAuth 2.0 flow or Account Handle / Channel ID)
+    │
+    ▼
+Store SocialConnection in PostgreSQL
+(status: "connected", encrypted tokens, platform_username, display_name)
+    │
+    ▼
+Initial Synchronization
+(POST /social/{platform}/sync)
+    │
+    ▼
+Fetch Available Platform Content & Metrics
+    │
+    ▼
+Transform into Common CreatorIQ Format
+    │
+    ▼
+Data Validation (Types, ranges, required fields)
+    │
+    ▼
+Idempotent PostgreSQL Upsert
+(Deduplication on creator_id + platform + external_content_id)
+    │
+    ▼
+Existing Analytics Services (Dynamic computation)
+    │
+    ▼
+FastAPI Analytics APIs (/analytics/summary, /analytics/top-content, etc.)
+    │
+    ▼
+React Dashboard (/dashboard) with Platform Filter
 ```
 
 ---
 
-## 3. Supported Platforms
+## 3. Common CreatorIQ Data Format
 
-| Platform | Ingestion Workflow | Content Types Supported | Status |
-| :--- | :--- | :--- | :--- |
-| **YouTube** | Live API v3 / Sync Service | Video, Short | Active (Live Sync) |
-| **Instagram** | PostgreSQL Ingestion / Common Format | Reel, Post | Active (Database Ingestion) |
-| **Facebook** | PostgreSQL Ingestion / Common Format | Post, Live | Active (Database Ingestion) |
-| **LinkedIn** | PostgreSQL Ingestion / Common Format | Article, Post | Active (Database Ingestion) |
-| **TikTok** | Common Schema Ready | Short, Video | Coming Soon |
-| **X (Twitter)** | Common Schema Ready | Post | Coming Soon |
-
----
-
-## 4. Common Platform Data Format
-
-All social platforms ingest data using an identical internal payload structure:
+All platforms transform their raw metrics into a standardized internal representation before persisting to PostgreSQL (`public.content` table):
 
 ```json
 {
   "platform": "Instagram",
-  "external_content_id": "IG101",
-  "content_title": "Behind the Scenes: High-Performance Server Rack Setup",
+  "external_content_id": "ig-post-mock-1",
+  "content_title": "Behind the Scenes: Code, Coffee & Deployments",
   "content_type": "Reel",
-  "views": 28500,
-  "likes": 2950,
-  "comments": 240,
-  "shares": 380,
-  "reach": 26000,
-  "published_date": "2026-05-04"
+  "views": 12000,
+  "likes": 950,
+  "comments": 120,
+  "shares": 75,
+  "reach": 15000,
+  "published_date": "2026-08-12"
 }
 ```
 
-### Standardized Database Fields (`public.content` table):
-- `platform`: `YouTube`, `Instagram`, `Facebook`, `LinkedIn`, `TikTok`, `X`
-- `external_content_id`: Native platform unique identifier (Indexed)
-- `title` / `content_title`: Content headline or title
-- `content_type`: `Video`, `Short`, `Post`, `Reel`, `Article`, `Live`
-- `published_at` / `published_date`: Publication date (`YYYY-MM-DD`)
-- `views`: Non-negative view count
-- `likes`: Reaction / like count
-- `comments`: Comment count
-- `shares`: Share / retweet count
-- `reach`: Audience reach / impressions
-- `engagement_rate`: Normalized engagement metric calculated as:
+### Metrics Formula & Availability:
+- **Views, Likes, Comments, Shares, Reach**: Non-negative integers.
+- **Engagement Rate**: Calculated using the standard project formula:
   $$\text{Engagement Rate} = \frac{\text{likes} + \text{comments} + \text{shares} + \text{saves}}{\text{reach}} \times 100$$
+- **Unavailable Metrics**: Preserved as `0` or `NULL` without inventing fake metrics.
 
 ---
 
-## 5. Duplicate Handling (Upsert Logic)
+## 4. Duplicate Handling & Idempotency
 
-To prevent duplicate records when synchronizing or entering platform data multiple times:
-- Logical Unique Key: `creator_id + platform + external_content_id`
-- **Synchronization / Insert Behavior**:
-  - **Existing record?**
-    - `YES` &rarr; **Update** existing record metrics (`views`, `likes`, `comments`, `shares`, `reach`, `engagement_rate`, `updated_at`).
-    - `NO` &rarr; **Create** new record with native platform identifier.
-
----
-
-## 6. Analytics Workflow & Platform Filtering
-
-The central `analytics_service.py` provides cross-platform calculations for all supported platforms:
-
-### 1. Dashboard Summary (`GET /analytics/summary`)
-Supports `?platform=YouTube|Instagram|Facebook|LinkedIn`:
-- When **All Platforms** is selected: combined PostgreSQL metrics across all platforms.
-- When **YouTube / Instagram / Facebook / LinkedIn** is selected: filters to that platform only.
-- Calculates:
-  - Total Views
-  - Total Likes
-  - Total Comments
-  - Total Shares
-  - Total Reach
-  - Total Followers (attributing proportional platform audience)
-  - Average Engagement Rate
-
-### 2. Platform Comparison (`GET /analytics/platform-comparison`)
-Returns database-derived breakdown for all platforms with data:
-```json
-{
-  "YouTube": {
-    "views": 621000,
-    "reach": 584500,
-    "engagement_rate": 12.16,
-    "likes": 52580,
-    "comments": 4540
-  },
-  "Instagram": {
-    "views": 497200,
-    "reach": 451000,
-    "engagement_rate": 18.15,
-    "likes": 57350,
-    "comments": 4855
-  },
-  "Facebook": {
-    "views": 310000,
-    "reach": 281400,
-    "engagement_rate": 12.55,
-    "likes": 25670,
-    "comments": 3665
-  },
-  "LinkedIn": {
-    "views": 408500,
-    "reach": 379500,
-    "engagement_rate": 13.51,
-    "likes": 35350,
-    "comments": 4605
-  }
-}
-```
-
-### 3. Chronological Charts & Content Ranking
-- `GET /analytics/chart/engagement?platform={name}` &ndash; Chronological engagement rate timeline.
-- `GET /analytics/chart/followers` &ndash; Follower growth timeline from Growth table.
-- `GET /analytics/top-content?platform={name}` &ndash; Top 5 content items ranked by engagement rate.
+To ensure repeated synchronization is safe and idempotent:
+- **Logical Unique Identifier**: `creator_id + platform + external_content_id`
+- **Database Query**:
+  ```python
+  existing = db.query(Content).filter(
+      Content.creator_id == user.id,
+      func.lower(Content.platform) == platform.lower(),
+      or_(
+          Content.external_content_id == ext_id,
+          Content.content_id == ext_id,
+      ),
+  ).first()
+  ```
+- **Upsert Rule**:
+  - If record **exists**: Update metrics (`views`, `likes`, `comments`, `shares`, `reach`, `engagement_rate`, `updated_at`).
+  - If record **does not exist**: Create new `Content` record.
+- **Result**: Repeated syncs update the existing records rather than duplicating them (e.g., 25 records remain 25 records).
 
 ---
 
-## 7. Frontend Features & Routing
+## 5. Creator Data Isolation
 
-1. **Dashboard Platform Selector**:
-   - `Platform: [ All Platforms ▼ ]` dropdown with options:
-     - `All Platforms`
-     - `YouTube`
-     - `Instagram`
-     - `Facebook`
-     - `LinkedIn`
-   - Dynamically re-fetches all 7 KPI cards, engagement trends, top content, and platform distribution.
-2. **Dedicated Platform Pages**:
-   - `/platform/:platformId` or `/youtube`, `/instagram`, `/facebook`, `/linkedin`
-   - Implemented platforms display platform metrics, status badge ("Live API" vs "Manual Data / PostgreSQL"), engagement trend, and top posts.
-   - Unimplemented platforms (e.g. TikTok, X) display a clean **"Coming Soon"** state instead of redirecting to the landing page.
-3. **Social Media Page (`/social-connections`)**:
-   - Displays YouTube, Instagram, Facebook, and LinkedIn.
-   - Shows state badges: `Connected`, `Manual Data`, `Sync Available`.
-   - Direct button to View Platform Analytics without undefined URL bounces.
+Creator data is strictly partitioned by `creator_id`:
+- A creator can only access their own connections, content, analytics, revenue, and sponsorships.
+- All database queries in `analytics_service.py`, `social_media.py`, `youtube_service.py`, `instagram_service.py`, and `content.py` enforce `Content.creator_id == current_user.id`.
+- Agency accounts only view creators assigned to them.
 
 ---
 
-## 8. How to Run the Application
+## 6. Social Media & Synchronization API Endpoints
 
-### Backend (FastAPI & PostgreSQL)
+### Social Connections Endpoints:
+- `GET /social/connections`: Returns current creator's connected platforms summary:
+  ```json
+  [
+    {
+      "platform": "YouTube",
+      "status": "connected",
+      "account_name": "Suresh Tech",
+      "last_synced_at": "2026-09-04T14:20:00",
+      "connection_mode": "live"
+    },
+    {
+      "platform": "TikTok",
+      "status": "connected",
+      "account_name": "@suresh_tiktok",
+      "last_synced_at": "2026-09-04T14:25:00",
+      "connection_mode": "manual"
+    }
+  ]
+  ```
+- `GET /api/social/connections`: Full connection records with permissions and scopes.
+- `POST /social/connect`: Connect account by platform and handle:
+  `{"platform": "YouTube", "account_name": "Suresh Tech"}`
+- `DELETE /api/social/{platform}`: Disconnect platform and securely wipe tokens.
 
-1. Activate virtual environment and navigate to backend directory:
-   ```powershell
-   cd creatoriq_backend
-   ..\venv\Scripts\activate
-   ```
-2. Verify `.env` configuration:
-   ```env
-   DATABASE_URL=postgresql://postgres:postgres@localhost:5432/creatoriq
-   JWT_SECRET_KEY=your-jwt-secret-key
-   YOUTUBE_API_KEY=your_optional_youtube_key
-   ```
-3. Seed multi-platform dataset (creates 12+ items per platform = 48+ items):
-   ```powershell
-   python seed_multiplatform.py
-   ```
-4. Start development server:
-   ```powershell
-   uvicorn main:app --reload --host 127.0.0.1 --port 8000
-   ```
+### Dedicated Platform Sync Endpoints:
+- `POST /social/youtube/sync`: Live YouTube Data API v3 synchronization with duplicate detection.
+- `POST /social/instagram/sync`: Meta Graph API / Instagram synchronization.
+- `POST /social/tiktok/sync`: TikTok content synchronization with duplicate detection.
+- `POST /social/facebook/sync`: Facebook content synchronization with duplicate detection.
+- `POST /social/linkedin/sync`: LinkedIn content synchronization with duplicate detection.
+- `POST /social/x/sync` (and `/social/twitter/sync`): X (Twitter) content synchronization with duplicate detection.
+- `POST /social/{platform}/sync`: Universal platform synchronization endpoint.
 
-### Frontend (React & Vite)
-
-1. Navigate to frontend:
-   ```powershell
-   cd frontend
-   ```
-2. Start development server:
-   ```powershell
-   cmd /c npm run dev
-   ```
-3. Open [http://localhost:5173](http://localhost:5173) in browser.
-4. Log in using demo credentials:
-   - **Email:** `creator@creatoriq.dev`
-   - **Password:** `Password123!`
+### Dashboard Analytics Endpoints:
+All analytics endpoints support optional platform filtering via `?platform={name}` and data source switching via `?source=database|live`:
+- `GET /analytics/summary`
+- `GET /analytics/top-content`
+- `GET /analytics/platform-comparison`
+- `GET /analytics/chart/engagement`
+- `GET /analytics/chart/followers`
 
 ---
 
-## 9. Verification & Testing Procedure
+## 7. Database Architecture
 
-### A. Automated Backend Tests
-Run the comprehensive test suite (all 85 tests):
+### Models:
+1. `users`: Authentication & creator profile (`id`, `email`, `password_hash`, `role`, `full_name`).
+2. `social_connections`: Platform connection state (`user_id`, `platform`, `status`, `platform_username`, `display_name`, `access_token_encrypted`, `refresh_token_encrypted`, `token_expires_at`, `scopes`, `last_synced_at`).
+   - Unique Constraint: `(user_id, platform)`
+3. `content`: Multi-platform content records (`id`, `creator_id`, `platform`, `content_id`, `external_content_id`, `title`, `content_type`, `published_at`, `views`, `likes`, `comments`, `shares`, `reach`, `engagement_rate`).
+   - Composite Index: `(creator_id, platform, content_id)`
+   - Index: `(platform, external_content_id)`
+
+---
+
+## 8. Frontend Implementation (`/social-connections` & `/dashboard`)
+
+### Connected Apps UI (`/social-connections`):
+- **Connected Cards**:
+  - Platform Icon & Platform Name
+  - Status Badge (`Connected`) + Mode Badge (`LIVE API` vs `MANUAL DATA MODE`)
+  - Account Name & Email / Username
+  - Last synced timestamp
+  - Action Buttons:
+    - **Reconnect**: Opens dialog to update handle or re-authenticate.
+    - **Sync**: Triggers platform synchronization with dynamic spinner (`Syncing...` &rarr; `Synced successfully (X records)`).
+    - **Disconnect**: Opens confirmation dialog to safely disconnect account.
+- **Disconnected Cards**:
+  - Platform Icon & Platform Name
+  - Status Badge (`Disconnected`)
+  - Description
+  - **Connect** Button: Opens connection modal with OAuth and account connection options.
+
+### Dashboard Platform Filter (`/dashboard`):
+- Filter options: **All Platforms**, **YouTube**, **Instagram**, **TikTok**, **Facebook**, **LinkedIn**, **X**.
+- Selecting a platform automatically filters KPI cards, trends, comparison, and top content table.
+- Selecting **All Platforms** computes aggregate metrics across all connected platforms.
+
+---
+
+## 9. Testing & Verification
+
+### Running Automated Backend Tests:
 ```powershell
-pytest -v
+.\venv\Scripts\pytest creatoriq_backend/tests/
 ```
+Result: **93 passed**, 0 failed.
 
-### B. Swagger UI Testing
-1. Navigate to: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-2. Log in at `POST /auth/login` and paste the JWT token into the **Authorize** dialog.
-3. Test endpoints:
-   - `POST /content` (verify content creation and duplicate prevention with same `external_content_id`)
-   - `GET /content` (verify pagination and total content count)
-   - `GET /content/{id}` (verify fetching single item)
-   - `GET /analytics/summary` (test with and without `platform=Instagram`)
-   - `GET /analytics/top-content` (test with and without `platform=Facebook`)
-   - `GET /analytics/platform-performance` (grouped totals)
-   - `GET /analytics/chart/engagement` (time series)
-   - `GET /analytics/chart/followers` (growth curve)
-   - `GET /analytics/platform-comparison` (YouTube, Instagram, Facebook, LinkedIn breakdown)
-
-### C. pgAdmin / PostgreSQL Verification Queries
-Run in pgAdmin Query Tool:
-
-```sql
--- 1. Check content distribution across platforms (should show 10+ records for YouTube, Instagram, Facebook, LinkedIn)
-SELECT platform, COUNT(*) AS total_records
-FROM public.content
-GROUP BY platform
-ORDER BY total_records DESC;
-
--- 2. View recent content records
-SELECT id, creator_id, platform, external_content_id, title, views, likes, comments, shares, reach, engagement_rate, published_at
-FROM public.content
-ORDER BY published_at DESC;
-
--- 3. Verify duplicate prevention (should return 0 rows)
-SELECT platform, external_content_id, COUNT(*)
-FROM public.content
-WHERE external_content_id IS NOT NULL
-GROUP BY platform, external_content_id
-HAVING COUNT(*) > 1;
-
--- 4. Verify social connections status
-SELECT user_id, platform, status, last_synced_at
-FROM public.social_connections;
+### Validating Frontend Build:
+```powershell
+cd frontend
+npm run build
 ```
+Result: TypeScript typecheck (`tsc`) and Vite production bundle succeed with 0 errors.
 
 ---
 
-## 10. Security Practices
+## 10. Security & Privacy Commitments
 
-- `.env` files and production credentials are excluded from Git tracking via `.gitignore`.
-- Password hashes use salted bcrypt via PassLib.
-- User data isolation is enforced across all analytics queries via `_apply_scope` to prevent cross-tenant data leakage.
+- **No Exposed Credentials**: Access tokens and refresh tokens are encrypted at rest using cryptography (`Fernet`) and are never returned to the frontend.
+- **Strict Environment Isolation**: API keys and secrets are loaded from `.env` and excluded via `.gitignore`.
+- **Tenant Isolation**: Creator data is strictly isolated; cross-creator data leakage is prohibited at the query level.

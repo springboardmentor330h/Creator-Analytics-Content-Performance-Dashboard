@@ -1,0 +1,10 @@
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.pyc
+.pytest_cache/

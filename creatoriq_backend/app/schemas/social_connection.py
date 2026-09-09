@@ -33,6 +33,8 @@ class SocialConnectionRead(SocialConnectionBase):
     platform_user_id: Optional[str] = None
     platform_username: Optional[str] = None
     display_name: Optional[str] = None
+    account_name: Optional[str] = None
+    connection_mode: Optional[str] = "live"
     profile_url: Optional[str] = None
     scopes: Optional[str] = None
     status: str
@@ -41,6 +43,25 @@ class SocialConnectionRead(SocialConnectionBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CreatorConnectedPlatformSummary(BaseModel):
+    platform: str
+    status: str
+    account_name: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
+    connection_mode: Optional[str] = "live"
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StandardSyncResponse(BaseModel):
+    platform: str
+    status: str = "success"
+    account: Optional[str] = None
+    records_synced: int = 0
+    last_synced_at: Optional[datetime] = None
+    message: Optional[str] = None
 
 
 class OAuthInitResponse(BaseModel):
@@ -68,6 +89,7 @@ class PlatformConnectResponse(BaseModel):
     message: str
 
 
+
 class ConnectedPlatformsResponse(BaseModel):
     platforms: list[str]
 
@@ -80,6 +102,9 @@ class PlatformSyncResponse(BaseModel):
     message: str
     platform: str
     records_synced: int
+    status: Optional[str] = "success"
+    account: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
 
 
 class YouTubeSyncRequest(BaseModel):
@@ -95,6 +120,7 @@ class YouTubeSyncResponse(BaseModel):
     status: str = "success"
     records_synced: int
     channel_title: Optional[str] = None
+    last_synced_at: Optional[datetime] = None
     message: Optional[str] = None
 
 
@@ -107,4 +133,7 @@ class InstagramSyncResponse(BaseModel):
     platform: str = "Instagram"
     status: str = "success"
     records_synced: int
+    last_synced_at: Optional[datetime] = None
+    message: Optional[str] = None
+
 

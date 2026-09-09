@@ -472,20 +472,29 @@ def sync_youtube_data(
 
         # 4. Update SocialConnection record in PostgreSQL to reflect active live connection
         from app.models.social_connection import SocialConnection
-        display = account_name or (f"@{channel_id.lstrip('@')}" if channel_id else (f"@{user.full_name.lower().replace(' ', '')}" if user.full_name else "@youtube_creator"))
-        channel_title = account_name or (channel_id or "YouTube Live Channel")
 
         conn = db.query(SocialConnection).filter(
             SocialConnection.user_id == user.id,
             func.lower(SocialConnection.platform) == "youtube",
         ).first()
 
+        channel_title = resolved_display_name = account_name or (conn.display_name if conn and conn.display_name else (channel_id or "YouTube Live Channel"))
+        resolved_username = (
+            f"@{channel_id.lstrip('@')}"
+            if channel_id
+            else (
+                conn.platform_username
+                if conn and conn.platform_username
+                else (account_name if account_name else (f"@{user.full_name.lower().replace(' ', '')}" if user.full_name else "@youtube_creator"))
+            )
+        )
+
         if not conn:
             conn = SocialConnection(
                 user_id=user.id,
                 platform="youtube",
-                platform_username=display,
-                display_name=channel_title,
+                platform_username=resolved_username,
+                display_name=resolved_display_name,
                 status="connected",
                 last_synced_at=datetime.utcnow(),
                 created_at=datetime.utcnow(),
@@ -494,10 +503,16 @@ def sync_youtube_data(
             db.add(conn)
         else:
             conn.status = "connected"
-            if display:
-                conn.platform_username = display
-            if channel_title:
-                conn.display_name = channel_title
+            if account_name:
+                conn.display_name = account_name
+            elif not conn.display_name:
+                conn.display_name = resolved_display_name
+
+            if channel_id:
+                conn.platform_username = f"@{channel_id.lstrip('@')}"
+            elif not conn.platform_username:
+                conn.platform_username = resolved_username
+
             conn.last_synced_at = datetime.utcnow()
             conn.updated_at = datetime.utcnow()
 

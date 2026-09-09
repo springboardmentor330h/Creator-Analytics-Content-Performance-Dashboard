@@ -22,10 +22,11 @@ PLATFORM_ALIASES: Dict[str, str] = {
     "twitter": "X",
 }
 
-# Realistic mock datasets per platform
+# Realistic mock datasets per platform with deterministic external IDs
 MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     "YouTube": [
         {
+            "external_content_id": "yt-vid-mock-1",
             "platform": "YouTube",
             "content_title": "Python Asyncio & FastAPI Masterclass",
             "content_type": "Video",
@@ -39,6 +40,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-10",
         },
         {
+            "external_content_id": "yt-vid-mock-2",
             "platform": "YouTube",
             "content_title": "Building Production Dashboards with React",
             "content_type": "Video",
@@ -52,6 +54,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-14",
         },
         {
+            "external_content_id": "yt-vid-mock-3",
             "platform": "YouTube",
             "content_title": "Top 10 Python Clean Code Tips in 60s",
             "content_type": "Short",
@@ -67,6 +70,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     ],
     "Instagram": [
         {
+            "external_content_id": "ig-post-mock-1",
             "platform": "Instagram",
             "content_title": "Behind the Scenes: Code, Coffee & Deployments",
             "content_type": "Reel",
@@ -80,6 +84,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-12",
         },
         {
+            "external_content_id": "ig-post-mock-2",
             "platform": "Instagram",
             "content_title": "Clean Code Architecture Cheat Sheet",
             "content_type": "Post",
@@ -93,6 +98,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-15",
         },
         {
+            "external_content_id": "ig-post-mock-3",
             "platform": "Instagram",
             "content_title": "Day in the Life of a Senior Backend Engineer",
             "content_type": "Reel",
@@ -108,6 +114,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     ],
     "Facebook": [
         {
+            "external_content_id": "fb-post-mock-1",
             "platform": "Facebook",
             "content_title": "Full-Stack Web Development Roadmap 2026",
             "content_type": "Post",
@@ -121,6 +128,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-11",
         },
         {
+            "external_content_id": "fb-post-mock-2",
             "platform": "Facebook",
             "content_title": "Live Q&A: Full-Stack Engineering Career Growth",
             "content_type": "Live",
@@ -136,6 +144,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     ],
     "LinkedIn": [
         {
+            "external_content_id": "li-post-mock-1",
             "platform": "LinkedIn",
             "content_title": "Scaling Microservices with PostgreSQL & Redis",
             "content_type": "Article",
@@ -149,6 +158,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-13",
         },
         {
+            "external_content_id": "li-post-mock-2",
             "platform": "LinkedIn",
             "content_title": "5 Key Architectural Lessons from Production Outages",
             "content_type": "Post",
@@ -164,6 +174,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     ],
     "TikTok": [
         {
+            "external_content_id": "tt-vid-mock-1",
             "platform": "TikTok",
             "content_title": "When the bug only happens in production...",
             "content_type": "Video",
@@ -177,6 +188,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-09",
         },
         {
+            "external_content_id": "tt-vid-mock-2",
             "platform": "TikTok",
             "content_title": "Top 3 VS Code Extensions You Should Use Today",
             "content_type": "Video",
@@ -192,6 +204,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
     ],
     "X": [
         {
+            "external_content_id": "x-post-mock-1",
             "platform": "X",
             "content_title": "Thread: Why FastAPI is taking over backend development in 2026",
             "content_type": "Post",
@@ -205,6 +218,7 @@ MOCK_PLATFORM_DATA: Dict[str, List[Dict[str, Any]]] = {
             "published_date": "2026-08-14",
         },
         {
+            "external_content_id": "x-post-mock-2",
             "platform": "X",
             "content_title": "10 database indexing mistakes to avoid for high-scale apps",
             "content_type": "Post",
@@ -242,8 +256,8 @@ def get_mock_platform_data(platform: str) -> List[Dict[str, Any]]:
     return list(MOCK_PLATFORM_DATA.get(canonical, []))
 
 
-def connect_platform(db: Session, user: User, platform: str, account_name: str) -> Dict[str, str]:
-    """Simulate connecting a social media account and persist connection state."""
+def connect_platform(db: Session, user: User, platform: str, account_name: str) -> Dict[str, Any]:
+    """Connect a social media account, persist connection state, and perform initial synchronization."""
     canonical = normalize_platform_name(platform)
     if not canonical:
         raise ValueError("Unsupported platform")
@@ -253,11 +267,23 @@ def connect_platform(db: Session, user: User, platform: str, account_name: str) 
 
     cleaned_account = account_name.strip()
 
-    # Query existing connection matching user and platform (case-insensitive)
-    conn = db.query(SocialConnection).filter(
+    # Query existing connections matching user and platform (case-insensitive)
+    existing_conns = db.query(SocialConnection).filter(
         SocialConnection.user_id == user.id,
         func.lower(SocialConnection.platform) == canonical.lower(),
-    ).first()
+    ).all()
+
+    if len(existing_conns) > 1:
+        # Deduplicate: preserve the connection with active tokens or the first one
+        conn = next((c for c in existing_conns if c.access_token_encrypted or c.refresh_token_encrypted), existing_conns[0])
+        for extra in existing_conns:
+            if extra.id != conn.id:
+                db.delete(extra)
+        db.flush()
+    elif len(existing_conns) == 1:
+        conn = existing_conns[0]
+    else:
+        conn = None
 
     if not conn:
         conn = SocialConnection(
@@ -272,8 +298,10 @@ def connect_platform(db: Session, user: User, platform: str, account_name: str) 
         db.add(conn)
     else:
         conn.platform = canonical
-        conn.platform_username = cleaned_account
-        conn.display_name = cleaned_account
+        # Preserve OAuth tokens and handle if already authenticated via OAuth
+        if not (conn.access_token_encrypted and canonical.lower() == "youtube"):
+            conn.platform_username = cleaned_account
+            conn.display_name = cleaned_account
         conn.status = "connected"
         conn.updated_at = datetime.utcnow()
 
@@ -300,7 +328,9 @@ def get_connected_platforms(db: Session, user: User) -> List[str]:
 
 
 def sync_platform_data(db: Session, user: User, platform: str) -> Dict[str, Any]:
-    """Synchronize simulated social media data for a connected platform and save to PostgreSQL."""
+    """Synchronize social media data for a connected platform and save to PostgreSQL with duplicate handling."""
+    from sqlalchemy import or_
+
     canonical = normalize_platform_name(platform)
     if not canonical:
         raise ValueError("Unsupported platform")
@@ -318,7 +348,8 @@ def sync_platform_data(db: Session, user: User, platform: str) -> Dict[str, Any]
     mock_items = get_mock_platform_data(canonical)
     synced_records_count = 0
 
-    for item in mock_items:
+    for idx, item in enumerate(mock_items):
+        ext_id = str(item.get("external_content_id") or f"{canonical.lower()}-item-{idx + 1}")
         title = item["content_title"]
         pub_date = date.fromisoformat(item["published_date"])
         views = item.get("views", 0)
@@ -331,34 +362,67 @@ def sync_platform_data(db: Session, user: User, platform: str) -> Dict[str, Any]
         content_type = item.get("content_type", "Video" if canonical == "YouTube" else "Post")
 
         engagement_rate = calculate_engagement_rate(likes, comments, shares, saves, reach)
-        unique_content_id = f"{user.id}-{canonical.lower()}-{uuid.uuid4().hex[:8]}"
 
-        content = Content(
-            creator_id=user.id,
-            platform=canonical,
-            content_id=unique_content_id,
-            title=title,
-            content_type=content_type,
-            published_at=pub_date,
-            views=views,
-            likes=likes,
-            comments=comments,
-            shares=shares,
-            saves=saves,
-            watch_time=watch_time,
-            reach=reach,
-            engagement_rate=engagement_rate,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        db.add(content)
+        # Duplicate Handling: check creator_id + platform + external_content_id / content_id
+        existing = db.query(Content).filter(
+            Content.creator_id == user.id,
+            func.lower(Content.platform) == canonical.lower(),
+            or_(
+                Content.external_content_id == ext_id,
+                Content.content_id == ext_id,
+            ),
+        ).first()
+
+        if existing:
+            # UPDATE metrics idempotently
+            existing.title = title
+            existing.content_type = content_type
+            existing.published_at = pub_date
+            existing.views = views
+            existing.likes = likes
+            existing.comments = comments
+            existing.shares = shares
+            existing.saves = saves
+            existing.watch_time = watch_time
+            existing.reach = reach
+            existing.engagement_rate = engagement_rate
+            existing.external_content_id = ext_id
+            existing.updated_at = datetime.utcnow()
+        else:
+            # CREATE new record
+            new_content = Content(
+                creator_id=user.id,
+                platform=canonical,
+                content_id=ext_id,
+                external_content_id=ext_id,
+                title=title,
+                content_type=content_type,
+                published_at=pub_date,
+                views=views,
+                likes=likes,
+                comments=comments,
+                shares=shares,
+                saves=saves,
+                watch_time=watch_time,
+                reach=reach,
+                engagement_rate=engagement_rate,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(new_content)
+
         synced_records_count += 1
 
     conn.last_synced_at = datetime.utcnow()
+    conn.updated_at = datetime.utcnow()
     db.commit()
 
     return {
         "message": f"{canonical} data synchronized successfully",
         "platform": canonical,
+        "status": "success",
+        "account": conn.display_name or conn.platform_username or (user.full_name or "Creator Account"),
         "records_synced": synced_records_count,
+        "last_synced_at": conn.last_synced_at.isoformat() if conn.last_synced_at else datetime.utcnow().isoformat(),
     }
+

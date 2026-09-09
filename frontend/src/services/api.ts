@@ -11,6 +11,29 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const requestUrl = error.config?.url || ''
+      // Only handle session expiry for CreatorIQ backend auth, never evict token for third-party social platform token expiration
+      const isSocialEndpoint = requestUrl.includes('/social') || requestUrl.includes('/api/social')
+      if (!requestUrl.includes('/auth/login') && !isSocialEndpoint) {
+        localStorage.removeItem('creatoriq_token')
+        delete api.defaults.headers.common.Authorization
+
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          const currentPath = window.location.pathname + window.location.search
+          // Avoid setting landing page as returnUrl on 401
+          const returnParam = currentPath && currentPath !== '/' ? `?returnUrl=${encodeURIComponent(currentPath)}` : ''
+          window.location.href = `/login${returnParam}`
+        }
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 export function setToken(newToken: string | null) {
   if (newToken) {
     localStorage.setItem('creatoriq_token', newToken)
@@ -28,18 +51,26 @@ export const authApi = {
   register: (data: Record<string, unknown>) =>
     api.post('/auth/register', data),
   profile: () => api.get('/auth/profile'),
+  logout: () => api.post('/auth/logout'),
   forgotPassword: (email: string) =>
     api.post('/auth/forgot-password', { email }),
 }
 
 // --- Analytics ---
 export const analyticsApi = {
-  summary: (platform?: string) => api.get('/analytics/summary', { params: { platform } }),
-  engagementChart: (platform?: string) => api.get('/analytics/chart/engagement', { params: { platform } }),
-  followersChart: () => api.get('/analytics/chart/followers'),
-  platformComparison: () => api.get('/analytics/platform-comparison'),
-  platformPerformance: (platform?: string) => api.get('/analytics/platform-performance', { params: { platform } }),
-  topContent: (platform?: string) => api.get('/analytics/top-content', { params: { platform } }),
+  summary: (platform?: string, source?: string) =>
+    api.get('/analytics/summary', { params: { platform, source } }),
+  engagementChart: (platform?: string, source?: string) =>
+    api.get('/analytics/chart/engagement', { params: { platform, source } }),
+  followersChart: (source?: string) =>
+    api.get('/analytics/chart/followers', { params: { source } }),
+  platformComparison: (source?: string) =>
+    api.get('/analytics/platform-comparison', { params: { source } }),
+  platformPerformance: (platform?: string, source?: string) =>
+    api.get('/analytics/platform-performance', { params: { platform, source } }),
+  topContent: (platform?: string, source?: string) =>
+    api.get('/analytics/top-content', { params: { platform, source } }),
+  syncLive: () => api.post('/analytics/sync-live'),
   revenueSummary: () => api.get('/analytics/revenue/summary'),
   revenueBySource: () => api.get('/analytics/revenue/by-source'),
   revenueMonthly: () => api.get('/analytics/revenue/monthly'),

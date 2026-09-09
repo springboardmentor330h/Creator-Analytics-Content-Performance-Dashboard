@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Column, Date, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.db.database import Base
@@ -11,6 +11,10 @@ PLATFORMS = ('YouTube', 'Instagram', 'TikTok', 'Facebook', 'X', 'LinkedIn')
 
 class Content(Base):
     __tablename__ = 'content'
+    __table_args__ = (
+        Index('ix_content_creator_platform_content_id', 'creator_id', 'platform', 'content_id'),
+        Index('ix_content_platform_external_id', 'platform', 'external_content_id'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)

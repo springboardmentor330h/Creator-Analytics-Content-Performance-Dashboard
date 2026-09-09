@@ -22,6 +22,8 @@ import Revenue from './pages/Revenue'
 import PlatformPage from './pages/PlatformPage'
 import SocialConnections from './pages/SocialConnections'
 import Sponsorships from './pages/Sponsorships'
+import OAuthCallback from './pages/OAuthCallback'
+import YouTubeLiveAnalytics from './pages/YouTubeLiveAnalytics'
 import ProtectedRoute from './routes/ProtectedRoute'
 import RoleProtectedRoute from './routes/RoleProtectedRoute'
 import { ROLES } from './utils/roles'
@@ -36,13 +38,21 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/403" element={<Forbidden />} />
 
+        {/* OAuth Callback Handlers (accessible on Google redirect) */}
+        <Route path="/api/social/:platform/callback" element={<OAuthCallback />} />
+        <Route path="/api/social/youtube/callback" element={<OAuthCallback />} />
+        <Route path="/social/callback" element={<OAuthCallback />} />
+
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
 
+
           {/* Analytics */}
           <Route path="/content-analytics" element={<ContentAnalytics />} />
+          <Route path="/analytics" element={<ContentAnalytics />} />
           <Route path="/audience-analytics" element={<AudienceAnalytics />} />
+          <Route path="/audience" element={<AudienceAnalytics />} />
           <Route path="/growth-trends" element={<GrowthTrends />} />
           <Route path="/growth" element={<GrowthTrends />} />
 
@@ -107,6 +117,22 @@ function App() {
 
           {/* Social & Platform Analytics */}
           <Route
+            path="/social"
+            element={
+              <RoleProtectedRoute roles={[ROLES.CREATOR, ROLES.AGENCY, ROLES.ADMIN]}>
+                <SocialConnections />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            path="/social-media"
+            element={
+              <RoleProtectedRoute roles={[ROLES.CREATOR, ROLES.AGENCY, ROLES.ADMIN]}>
+                <SocialConnections />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
             path="/social-connections"
             element={
               <RoleProtectedRoute roles={[ROLES.CREATOR, ROLES.AGENCY, ROLES.ADMIN]}>
@@ -114,6 +140,8 @@ function App() {
               </RoleProtectedRoute>
             }
           />
+          <Route path="/social/youtube/live-analytics" element={<Navigate to="/dashboard?source=live&platform=YouTube" replace />} />
+          <Route path="/social/youtube/live" element={<Navigate to="/dashboard?source=live&platform=YouTube" replace />} />
           <Route path="/platform/:platformId" element={<PlatformPage />} />
           <Route path="/platforms/:platformId" element={<PlatformPage />} />
           <Route path="/youtube" element={<PlatformPage forcedPlatform="youtube" />} />

@@ -49,21 +49,21 @@ const SUPPORTED_CONFIG: Record<string, {
     type: 'manual',
     badge: 'bg-pink-50 text-pink-700 border-pink-200',
     tagline: 'Monitor Reels reach, post interactions, saves, and engagement velocity.',
-    statusLabel: 'PostgreSQL Platform Ingestion'
+    statusLabel: 'Platform Ingestion'
   },
   facebook: {
     name: 'Facebook',
     type: 'manual',
     badge: 'bg-blue-50 text-blue-700 border-blue-200',
     tagline: 'Track page reach, live streams, video views, and audience interactions.',
-    statusLabel: 'PostgreSQL Platform Ingestion'
+    statusLabel: 'Platform Ingestion'
   },
   linkedin: {
     name: 'LinkedIn',
     type: 'manual',
     badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
     tagline: 'Monitor B2B articles, professional post reach, reaction rates, and discussion.',
-    statusLabel: 'PostgreSQL Platform Ingestion'
+    statusLabel: 'Platform Ingestion'
   }
 }
 
@@ -136,7 +136,7 @@ export default function PlatformPage({ forcedPlatform }: { forcedPlatform?: stri
       } else {
         await socialService.sync(rawKey)
       }
-      setSyncSuccess(`${platformCanonical} data refreshed from PostgreSQL.`)
+      setSyncSuccess(`${platformCanonical} data refreshed successfully.`)
       // Refresh metrics
       const [sumRes, topRes, trendRes] = await Promise.all([
         analyticsApi.summary(platformCanonical),
@@ -151,7 +151,7 @@ export default function PlatformPage({ forcedPlatform }: { forcedPlatform?: stri
         value: chart.values?.[idx] ?? 0,
       })))
     } catch {
-      setSyncSuccess(`${platformCanonical} analytics currently up to date in PostgreSQL.`)
+      setSyncSuccess(`${platformCanonical} analytics currently up to date.`)
     } finally {
       setSyncing(false)
     }
@@ -267,7 +267,7 @@ export default function PlatformPage({ forcedPlatform }: { forcedPlatform?: stri
           <p className="mt-3 text-2xl font-extrabold text-slate-900">
             {formatNumber(summary?.total_views ?? 0)}
           </p>
-          <span className="mt-1 text-[11px] font-bold text-slate-400">Aggregated from PostgreSQL</span>
+          <span className="mt-1 text-[11px] font-bold text-slate-400">Aggregated Analytics</span>
         </div>
 
         <div className="ciq-card">
@@ -319,7 +319,7 @@ export default function PlatformPage({ forcedPlatform }: { forcedPlatform?: stri
             {platformCanonical} Engagement Rate Trend
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
-            Chronological engagement progression for {platformCanonical} content stored in PostgreSQL.
+            Chronological engagement progression for {platformCanonical} content.
           </p>
         </div>
 
@@ -364,7 +364,7 @@ export default function PlatformPage({ forcedPlatform }: { forcedPlatform?: stri
               Top {platformCanonical} Content
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Ranked by engagement rate from PostgreSQL database.
+              Ranked by engagement rate.
             </p>
           </div>
           <Link

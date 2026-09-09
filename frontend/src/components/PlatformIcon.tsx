@@ -25,6 +25,8 @@ interface PlatformIconProps {
   size?: number
   /** Extra class names applied to the outer wrapper */
   className?: string
+  /** Visual style: 'solid' (default, filled brand background) or 'subtle' (light tinted background with brand icon) */
+  variant?: 'solid' | 'subtle'
 }
 
 /** Maps lower-cased platform name → brand hex colour */
@@ -41,12 +43,43 @@ const BRAND_BG: Record<string, string> = {
   pinterest: '#e60023',
 }
 
+/** Subtle background tints for cards matching official reference */
+const SUBTLE_BG: Record<string, string> = {
+  youtube: '#fdeeed',
+  instagram: '#fdeef3',
+  facebook: '#e7f0fd',
+  tiktok: '#f1f5f9',
+  twitter: '#f1f3f5',
+  x: '#f1f3f5',
+  linkedin: '#edf3f8',
+  twitch: '#f3e8ff',
+  snapchat: '#fef9c3',
+  pinterest: '#fdebec',
+}
+
+/** Subtle icon foreground colours */
+const SUBTLE_ICON_COLOR: Record<string, string> = {
+  youtube: '#e60000',
+  instagram: '#e1306c',
+  facebook: '#1877f2',
+  tiktok: '#0f172a',
+  twitter: '#0f1419',
+  x: '#0f1419',
+  linkedin: '#0a66c2',
+  twitch: '#9146ff',
+  snapchat: '#ca8a04',
+  pinterest: '#e60023',
+}
+
 /** Snapchat has a dark logo on yellow; all others use white */
 const ICON_COLOR: Record<string, string> = {
   snapchat: '#000000',
 }
 
-function getIconFill(key: string) {
+function getIconFill(key: string, variant: 'solid' | 'subtle' = 'solid') {
+  if (variant === 'subtle') {
+    return SUBTLE_ICON_COLOR[key] || '#475569'
+  }
   return ICON_COLOR[key] || '#ffffff'
 }
 
@@ -162,17 +195,21 @@ function PinterestIcon({ fill }: { fill: string }) {
   )
 }
 
-export default function PlatformIcon({ platform, size = 18, className = '' }: PlatformIconProps) {
-  const key = (platform || '').toLowerCase().trim()
-  const bg = BRAND_BG[key]
-  const iconFill = getIconFill(key)
-  const pad = Math.round(size * 0.18)
+export default function PlatformIcon({ platform, size = 18, className = '', variant = 'solid' }: PlatformIconProps) {
+  let key = (platform || '').toLowerCase().trim()
+  if (key === 'x (twitter)' || key === 'x/twitter' || key === 'twitter/x') {
+    key = 'x'
+  }
+  const isSubtle = variant === 'subtle'
+  const bg = isSubtle ? (SUBTLE_BG[key] || '#f1f5f9') : (BRAND_BG[key] || '#94a3b8')
+  const iconFill = getIconFill(key, variant)
+  const pad = Math.round(size * 0.22)
 
   const containerStyle: React.CSSProperties = {
     width: size,
     height: size,
-    borderRadius: Math.round(size * 0.25),
-    backgroundColor: bg || '#94a3b8',
+    borderRadius: Math.round(size * 0.28),
+    backgroundColor: bg,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -185,8 +222,17 @@ export default function PlatformIcon({ platform, size = 18, className = '' }: Pl
 
   switch (key) {
     case 'youtube':
-      // YouTube has a white play button — render background as white, icon red inside
-      icon = <YoutubeIcon fill="#ffffff" />
+      if (isSubtle) {
+        // Red rounded rect with white play triangle
+        icon = (
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="w-full h-full">
+            <rect width="24" height="17" y="3.5" rx="5" fill="#e60000" />
+            <polygon points="10 8 16 12 10 16" fill="#ffffff" />
+          </svg>
+        )
+      } else {
+        icon = <YoutubeIcon fill="#ffffff" />
+      }
       break
     case 'instagram':
       icon = <InstagramIcon fill={iconFill} />
@@ -220,11 +266,11 @@ export default function PlatformIcon({ platform, size = 18, className = '' }: Pl
       return (
         <span
           className={className}
-          style={{ ...containerStyle, backgroundColor: '#94a3b8' }}
+          style={{ ...containerStyle, backgroundColor: isSubtle ? '#f1f5f9' : '#94a3b8' }}
           title={platform || 'Unknown'}
           aria-label={platform || 'Unknown platform'}
         >
-          <Globe style={{ width: size - pad * 2, height: size - pad * 2, color: '#ffffff' }} />
+          <Globe style={{ width: size - pad * 2, height: size - pad * 2, color: isSubtle ? '#64748b' : '#ffffff' }} />
         </span>
       )
   }

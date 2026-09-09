@@ -1,10 +1,27 @@
 import { useState, useEffect } from 'react'
 import { audienceApi } from '../services/api'
 import {
-  LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
 } from 'recharts'
-import { TrendingUp, TrendingDown, Users, Minus } from 'lucide-react'
+import { TrendingUp, TrendingDown, Users, Zap, RefreshCw, Activity } from 'lucide-react'
+import {
+  KPICard,
+  ChartCard,
+  DataTable,
+  KPISkeleton,
+  ChartSkeleton,
+  ErrorState,
+} from '../components/ui'
+import { formatNumber, formatPercent } from '../utils/format'
 
 interface GrowthPoint {
   date: string
@@ -25,22 +42,21 @@ export default function GrowthTrends() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true)
+    setError('')
     Promise.all([audienceApi.growth(), audienceApi.trends()])
       .then(([g, t]) => {
-        setGrowthData(g.data)
-        setTrendData(t.data)
+        setGrowthData(g.data || [])
+        setTrendData(t.data || [])
       })
-      .catch(() => setError('Failed to load growth analytics'))
+      .catch(() => setError('Failed to load growth analytics.'))
       .finally(() => setLoading(false))
-  }, [])
+  }
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
-    </div>
-  )
-  if (error) return <div className="bg-red-50 text-red-600 rounded-xl p-4 border border-red-200">{error}</div>
+  useEffect(() => {
+    loadData()
+  }, [])
 
   const latest = growthData[growthData.length - 1]
   const first = growthData[0]
@@ -48,89 +64,173 @@ export default function GrowthTrends() {
   const growthPct = latest?.growth_percentage ?? 0
   const isUp = totalGrowth >= 0
 
+  const growthColumns = [
+    {
+      header: 'Timeline Date',
+      accessor: (item: GrowthPoint) => (
+        <span className="font-mono text-xs font-semibold text-slate-800">{item.date}</span>
+      ),
+    },
+    {
+      header: 'Total Audience',
+      accessor: (item: GrowthPoint) => (
+        <span className="font-extrabold text-slate-900">{formatNumber(item.followers)}</span>
+      ),
+    },
+    {
+      header: 'Daily Velocity',
+      accessor: (item: GrowthPoint) => {
+        const up = item.daily_growth >= 0
+        return (
+          <span className={`font-bold ${up ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {up ? `+${formatNumber(item.daily_growth)}` : formatNumber(item.daily_growth)}
+          </span>
+        )
+      },
+    },
+    {
+      header: 'Growth Rate',
+      accessor: (item: GrowthPoint) => {
+        const up = item.growth_percentage >= 0
+        return (
+          <span className={`font-semibold ${up ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {up ? `+${item.growth_percentage.toFixed(2)}%` : `${item.growth_percentage.toFixed(2)}%`}
+          </span>
+        )
+      },
+    },
+  ]
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-extrabold text-slate-900">Growth & Trends</h2>
-        <p className="text-sm text-slate-500 mt-1">Follower growth and audience reach trends over time</p>
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Growth & Trends
+          </h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            Historical subscriber trajectory, viral velocity, and network audience expansion.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={loadData}
+          title="Refresh growth metrics"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 shadow-2xs transition-colors self-start sm:self-auto"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600">
-            <Users className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Current Followers</p>
-            <p className="text-2xl font-extrabold text-slate-900">{latest?.followers?.toLocaleString() ?? '—'}</p>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${isUp ? 'bg-emerald-600' : 'bg-red-500'}`}>
-            {isUp ? <TrendingUp className="h-6 w-6 text-white" /> : <TrendingDown className="h-6 w-6 text-white" />}
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Total Growth</p>
-            <p className={`text-2xl font-extrabold ${isUp ? 'text-emerald-600' : 'text-red-600'}`}>
-              {isUp ? '+' : ''}{totalGrowth.toLocaleString()}
-            </p>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500">
-            <Minus className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase">Last Growth %</p>
-            <p className="text-2xl font-extrabold text-slate-900">{growthPct.toFixed(2)}%</p>
-          </div>
-        </div>
+      {error && <ErrorState message={error} onRetry={loadData} />}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, i) => <KPISkeleton key={i} />)
+        ) : (
+          <>
+            <KPICard
+              title="Current Followers"
+              value={formatNumber(latest?.followers ?? 0)}
+              icon={Users}
+              color="indigo"
+              subtitle="active cross-platform base"
+            />
+            <KPICard
+              title="Net Growth"
+              value={`${isUp ? '+' : ''}${totalGrowth.toLocaleString()}`}
+              icon={isUp ? TrendingUp : TrendingDown}
+              color={isUp ? 'emerald' : 'rose'}
+              change={growthPct}
+              changeLabel="period velocity"
+            />
+            <KPICard
+              title="Daily Rate"
+              value={`${growthPct.toFixed(2)}%`}
+              icon={Zap}
+              color="amber"
+              subtitle="24h expansion rate"
+            />
+          </>
+        )}
       </div>
 
-      {/* Follower Growth Line Chart */}
-      {growthData.length > 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 mb-4">Follower Growth Over Time</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={growthData}>
-              <defs>
-                <linearGradient id="followersGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={2} fill="url(#followersGrad)" name="Followers" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 shadow-sm">
-          No growth data available yet.
-        </div>
-      )}
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Follower Trajectory Area Chart */}
+        <ChartCard
+          title="Follower Growth Velocity"
+          subtitle="Cumulative audience development timeline"
+          loading={loading}
+          empty={growthData.length === 0}
+        >
+          <div className="h-64 sm:h-72 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={growthData}>
+                <defs>
+                  <linearGradient id="followersGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', fontSize: '12px' }}
+                  formatter={(v: number) => [v.toLocaleString(), 'Followers']}
+                />
+                <Area type="monotone" dataKey="followers" stroke="#4f46e5" strokeWidth={2.5} fillOpacity={1} fill="url(#followersGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
 
-      {/* Daily Growth Bar + Reach trend */}
-      {trendData.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 mb-4">Followers vs Reach Trend</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
-              <Tooltip />
-              <Legend />
-              <Line type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={2} dot={false} name="Followers" />
-              <Line type="monotone" dataKey="reach" stroke="#10b981" strokeWidth={2} dot={false} name="Reach" />
-            </LineChart>
-          </ResponsiveContainer>
+        {/* Reach vs Followers Multi-Line Chart */}
+        <ChartCard
+          title="Audience Reach vs Follower Base"
+          subtitle="Cross-referencing viral impressions with subscribed followers"
+          loading={loading}
+          empty={trendData.length === 0}
+        >
+          <div className="h-64 sm:h-72 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', fontSize: '12px' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
+                <Line type="monotone" dataKey="followers" stroke="#4f46e5" strokeWidth={2.5} dot={false} name="Followers" />
+                <Line type="monotone" dataKey="reach" stroke="#10b981" strokeWidth={2.5} dot={false} name="Total Reach" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      </div>
+
+      {/* Historical Growth Milestones Table */}
+      <div className="ciq-card">
+        <div className="ciq-card-header">
+          <div>
+            <h3 className="text-base font-extrabold tracking-tight text-slate-900">Historical Growth Points</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Recorded timeline snapshots</p>
+          </div>
+          <Activity className="h-4 w-4 text-slate-400" />
         </div>
-      )}
+
+        <DataTable
+          columns={growthColumns}
+          data={growthData.slice().reverse()}
+          keyExtractor={(item, idx) => `${item.date}-${idx}`}
+          loading={loading}
+          emptyMessage="No historical timeline records logged."
+        />
+      </div>
     </div>
   )
 }

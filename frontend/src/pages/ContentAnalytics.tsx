@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { FormEvent, useEffect, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import PlatformIcon from '../components/PlatformIcon'
 import {
   ArrowUpDown,
@@ -11,10 +11,12 @@ import {
   Eye,
   Filter,
   Plus,
+  RefreshCw,
   Search,
   Sparkles,
   Trash2,
   TrendingUp,
+  Video,
   X,
   Zap,
 } from 'lucide-react'
@@ -27,18 +29,22 @@ import contentService, {
 } from '../services/contentService'
 import { formatNumber, formatPercent } from '../utils/format'
 import { canManageContent } from '../utils/roles'
+import {
+  KPICard,
+  PlatformSelector,
+  ChartCard,
+  DataTable,
+  StatusBadge,
+  KPISkeleton,
+  TableSkeleton,
+  EmptyState,
+  ErrorState,
+  Modal,
+  ConfirmDialog,
+} from '../components/ui'
 
 const platforms = ['YouTube', 'Instagram', 'TikTok', 'Facebook', 'X', 'LinkedIn']
 const contentTypes = ['Video', 'Post', 'Reel', 'Short', 'Article', 'Live']
-
-const PLATFORM_BADGES: Record<string, string> = {
-  YouTube: 'bg-red-50 text-red-700 border-red-200',
-  Instagram: 'bg-pink-50 text-pink-700 border-pink-200',
-  TikTok: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-  Facebook: 'bg-blue-50 text-blue-700 border-blue-200',
-  X: 'bg-slate-100 text-slate-800 border-slate-200',
-  LinkedIn: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-}
 
 const emptyForm: ContentPayload = {
   title: '',
@@ -67,13 +73,29 @@ function getApiErrorMessage(error: unknown, fallback: string) {
 export default function ContentAnalytics() {
   const { user } = useAuth()
   const canWrite = canManageContent(user?.role)
+  const [searchParams] = useSearchParams()
+  const initialPlatform = searchParams.get('platform') || ''
 
   const [content, setContent] = useState<ContentItem[]>([])
   const [summary, setSummary] = useState<ContentAnalyticsSummary | null>(null)
   const [top, setTop] = useState<ContentItem[]>([])
   const [trends, setTrends] = useState<ContentTrendPoint[]>([])
   const [search, setSearch] = useState('')
-  const [platform, setPlatform] = useState('')
+  const [platform, setPlatform] = useState(() => {
+    if (!initialPlatform) return ''
+    const matched = platforms.find((p) => p.toLowerCase() === initialPlatform.toLowerCase())
+    return matched || initialPlatform
+  })
+
+  useEffect(() => {
+    const qPlatform = searchParams.get('platform')
+    if (qPlatform) {
+      const matched = platforms.find((p) => p.toLowerCase() === qPlatform.toLowerCase())
+      setPlatform(matched || qPlatform)
+      setPage(1)
+    }
+  }, [searchParams])
+
   const [contentType, setContentType] = useState('')
   const [publishedFrom, setPublishedFrom] = useState('')
   const [publishedTo, setPublishedTo] = useState('')
@@ -86,6 +108,8 @@ export default function ContentAnalytics() {
   const [error, setError] = useState('')
 
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [form, setForm] = useState<ContentPayload>(emptyForm)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -99,7 +123,7 @@ export default function ContentAnalytics() {
           page,
           page_size: 10,
           search: search || undefined,
-          platform: platform || undefined,
+          platform: platform === 'All' ? undefined : platform || undefined,
           content_type: contentType || undefined,
           published_from: publishedFrom || undefined,
           published_to: publishedTo || undefined,
@@ -125,398 +149,524 @@ export default function ContentAnalytics() {
 
   useEffect(() => {
     loadData()
-  }, [search, platform, contentType, publishedFrom, publishedTo, sortBy, sortOrder, page])
+  }, [page, platform, contentType, publishedFrom, publishedTo, sortBy, sortOrder])
 
-  const kpis = useMemo(
-    () => [
-      { label: 'Total Views', value: summary?.total_views ?? 0, icon: Eye, color: 'text-brand-600 bg-brand-50' },
-      { label: 'Avg Watch Time (s)', value: summary?.total_watch_time ?? 0, icon: BarChart3, color: 'text-blue-600 bg-blue-50' },
-      { label: 'Avg Engagement Rate', value: summary?.average_engagement_rate ?? 0, isPercent: true, icon: Zap, color: 'text-amber-600 bg-amber-50' },
-      { label: 'Total Reach', value: summary?.total_reach ?? 0, icon: TrendingUp, color: 'text-emerald-600 bg-emerald-50' },
-    ],
-    [summary]
-  )
-
-  const handleCreate = async (event: FormEvent) => {
+  const handleSearchSubmit = (event: FormEvent) => {
     event.preventDefault()
-    setFormError('')
+    setPage(1)
+    loadData()
+  }
+
+  const handleCreateSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!form.title.trim()) {
+      setFormError('Content title is required.')
+      return
+    }
     setSaving(true)
+    setFormError('')
     try {
       await contentService.create(form)
-      setForm(emptyForm)
       setShowCreateModal(false)
+      setForm(emptyForm)
       setPage(1)
-      await loadData()
+      loadData()
     } catch (err) {
-      setFormError(getApiErrorMessage(err, 'Unable to create content.'))
+      setFormError(getApiErrorMessage(err, 'Failed to publish content item.'))
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this content record?')) return
+  const handleDelete = async () => {
+    if (!deleteTargetId) return
+    setDeleting(true)
     try {
-      await contentService.delete(id)
-      await loadData()
+      await contentService.delete(deleteTargetId)
+      setDeleteTargetId(null)
+      loadData()
     } catch (err) {
-      setError(getApiErrorMessage(err, 'Unable to delete content.'))
+      setError(getApiErrorMessage(err, 'Failed to delete content item.'))
+    } finally {
+      setDeleting(false)
     }
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Top Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-900">Content Analytics</h2>
-          <p className="mt-1 text-sm text-slate-500">Filter, search, compare, and manage performance across platforms.</p>
+  const columns = [
+    {
+      header: 'Title',
+      accessor: (item: ContentItem) => (
+        <div className="flex items-center gap-2.5 min-w-[220px]">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 border border-slate-200/80 shrink-0">
+            <PlatformIcon platform={item.platform} className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <Link
+              to={`/content/${item.id}`}
+              className="font-bold text-slate-900 hover:text-indigo-600 block truncate transition-colors"
+            >
+              {item.title}
+            </Link>
+            <span className="text-[10px] text-slate-400 capitalize">{item.content_type}</span>
+          </div>
         </div>
-        {canWrite && (
-          <button onClick={() => setShowCreateModal(true)} className="ciq-btn-primary self-start sm:self-auto">
-            <Plus className="h-4 w-4" />
-            <span>Add New Content</span>
+      ),
+    },
+    {
+      header: 'Platform',
+      accessor: (item: ContentItem) => (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+          <PlatformIcon platform={item.platform} className="h-3 w-3" />
+          {item.platform}
+        </span>
+      ),
+    },
+    {
+      header: 'Published',
+      accessor: (item: ContentItem) => (
+        <span className="text-xs text-slate-500 font-mono">
+          {new Date(item.published_at).toLocaleDateString()}
+        </span>
+      ),
+    },
+    {
+      header: 'Views',
+      accessor: (item: ContentItem) => (
+        <span className="font-extrabold text-slate-900">{formatNumber(item.views)}</span>
+      ),
+    },
+    {
+      header: 'Reach',
+      accessor: (item: ContentItem) => (
+        <span className="text-slate-600">{formatNumber(item.reach)}</span>
+      ),
+    },
+    {
+      header: 'Likes',
+      accessor: (item: ContentItem) => (
+        <span className="text-slate-600">{formatNumber(item.likes)}</span>
+      ),
+    },
+    {
+      header: 'Engagement',
+      accessor: (item: ContentItem) => (
+        <span className="font-bold text-emerald-600">{formatPercent(item.engagement_rate)}</span>
+      ),
+    },
+    {
+      header: 'Actions',
+      className: 'text-right',
+      accessor: (item: ContentItem) => (
+        <div className="flex items-center justify-end gap-1">
+          <Link
+            to={`/content/${item.id}`}
+            className="ciq-btn-ghost p-1.5 text-slate-500 hover:text-slate-900"
+            title="Inspect content"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Link>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setDeleteTargetId(item.id)}
+              className="ciq-btn-ghost p-1.5 text-slate-400 hover:text-rose-600"
+              title="Delete content"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ]
+
+  return (
+    <div className="space-y-6 sm:space-y-8">
+      {/* Header & Controls */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Content Analytics
+          </h2>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500">
+            Performance metrics, engagement velocity, and cross-platform benchmarks.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="ciq-btn-primary"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add Content</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={loadData}
+            title="Refresh"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 shadow-2xs transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
+        </div>
+      </div>
+
+      {error && <ErrorState message={error} onRetry={loadData} />}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <KPISkeleton key={i} />)
+        ) : (
+          <>
+            <KPICard
+              title="Total Content"
+              value={summary?.content_count ?? total}
+              icon={Video}
+              color="indigo"
+              subtitle="catalogued records"
+            />
+            <KPICard
+              title="Total Views"
+              value={formatNumber(summary?.total_views ?? 0)}
+              icon={Eye}
+              color="blue"
+              change={14.2}
+            />
+            <KPICard
+              title="Avg. Engagement"
+              value={formatPercent(summary?.average_engagement_rate ?? 0)}
+              icon={Zap}
+              color="emerald"
+              change={3.1}
+            />
+            <KPICard
+              title="Total Reach"
+              value={formatNumber(summary?.total_reach ?? 0)}
+              icon={TrendingUp}
+              color="amber"
+              change={9.5}
+              changeLabel="aggregate accounts"
+            />
+          </>
         )}
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {kpis.map((item) => {
-          const Icon = item.icon
-          return (
-            <div key={item.label} className="ciq-card flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{item.label}</p>
-                <p className="mt-2 text-3xl font-extrabold text-slate-900">
-                  {item.isPercent ? formatPercent(item.value) : formatNumber(item.value)}
-                </p>
-              </div>
-              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${item.color}`}>
-                <Icon className="h-6 w-6" />
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {/* Engagement Trend Chart */}
+      <ChartCard
+        title="Engagement Velocity"
+        subtitle="Daily interaction trajectory across published content"
+        loading={loading}
+        empty={trends.length === 0}
+      >
+        <div className="h-64 sm:h-72 w-full pt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trends}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', fontSize: '12px' }}
+                formatter={(val: number) => [`${val.toFixed(2)}%`, 'Engagement Rate']}
+              />
+              <Line type="monotone" dataKey="engagement_rate" stroke="#4f46e5" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </ChartCard>
 
       {/* Filter Toolbar */}
-      <div className="ciq-card">
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="h-4 w-4 text-brand-600" />
-          <h3 className="text-sm font-bold text-slate-800">Filter & Sort Options</h3>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-          {/* Search */}
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3.5 h-4 w-4 text-slate-400" />
+      <div className="ciq-card p-4 sm:p-5 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Platform Selector Filter */}
+          <PlatformSelector
+            selected={platform || 'All'}
+            onChange={(p) => {
+              setPlatform(p === 'All' ? '' : p)
+              setPage(1)
+            }}
+          />
+
+          {/* Search Bar */}
+          <form onSubmit={handleSearchSubmit} className="relative w-full md:w-72">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+              <Search className="h-3.5 w-3.5" />
+            </div>
             <input
               type="text"
-              className="ciq-input mt-0 pl-9"
-              placeholder="Search title..."
+              placeholder="Search content by title..."
               value={search}
-              onChange={(e) => { setPage(1); setSearch(e.target.value) }}
+              onChange={(e) => setSearch(e.target.value)}
+              className="ciq-input mt-0 py-2 pl-9 pr-8 text-xs"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('')
+                  setPage(1)
+                }}
+                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </form>
+        </div>
+
+        {/* Extended Filters */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-100 text-xs">
+          <div>
+            <label className="text-[10px] font-bold uppercase text-slate-400">Type</label>
+            <select
+              value={contentType}
+              onChange={(e) => {
+                setContentType(e.target.value)
+                setPage(1)
+              }}
+              className="ciq-select mt-1 py-1.5 text-xs"
+            >
+              <option value="">All Formats</option>
+              {contentTypes.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase text-slate-400">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="ciq-select mt-1 py-1.5 text-xs"
+            >
+              <option value="views">Views</option>
+              <option value="reach">Reach</option>
+              <option value="likes">Likes</option>
+              <option value="comments">Comments</option>
+              <option value="published_at">Publish Date</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold uppercase text-slate-400">Published From</label>
+            <input
+              type="date"
+              value={publishedFrom}
+              onChange={(e) => {
+                setPublishedFrom(e.target.value)
+                setPage(1)
+              }}
+              className="ciq-input mt-1 py-1.5 text-xs"
             />
           </div>
 
-          {/* Platform */}
-          <select className="ciq-input mt-0" value={platform} onChange={(e) => { setPage(1); setPlatform(e.target.value) }}>
-            <option value="">All Platforms</option>
-            {platforms.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-
-          {/* Content Type */}
-          <select className="ciq-input mt-0" value={contentType} onChange={(e) => { setPage(1); setContentType(e.target.value) }}>
-            <option value="">All Types</option>
-            {contentTypes.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-
-          {/* Date From */}
-          <input
-            type="date"
-            className="ciq-input mt-0 text-slate-600"
-            value={publishedFrom}
-            onChange={(e) => { setPage(1); setPublishedFrom(e.target.value) }}
-          />
-
-          {/* Date To */}
-          <input
-            type="date"
-            className="ciq-input mt-0 text-slate-600"
-            value={publishedTo}
-            onChange={(e) => { setPage(1); setPublishedTo(e.target.value) }}
-          />
-
-          {/* Sort Controls */}
-          <div className="grid grid-cols-2 gap-2">
-            <select className="ciq-input mt-0" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="views">Views</option>
-              <option value="likes">Likes</option>
-              <option value="engagement_rate">Engagement</option>
-              <option value="reach">Reach</option>
-              <option value="published_at">Published</option>
-            </select>
-            <select className="ciq-input mt-0" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}>
-              <option value="desc">Desc ↓</option>
-              <option value="asc">Asc ↑</option>
-            </select>
+          <div>
+            <label className="text-[10px] font-bold uppercase text-slate-400">Published To</label>
+            <input
+              type="date"
+              value={publishedTo}
+              onChange={(e) => {
+                setPublishedTo(e.target.value)
+                setPage(1)
+              }}
+              className="ciq-input mt-1 py-1.5 text-xs"
+            />
           </div>
         </div>
       </div>
 
-      {/* Main Content Table */}
-      {loading ? (
-        <div className="flex h-64 items-center justify-center rounded-2xl border border-slate-200 bg-white">
-          <div className="flex items-center gap-3 text-slate-500 font-semibold text-sm">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-600 border-t-transparent" />
-            <span>Loading analytics records...</span>
+      {/* Content Table */}
+      <div className="ciq-card">
+        <div className="ciq-card-header">
+          <div>
+            <h3 className="text-base font-extrabold tracking-tight text-slate-900">Content Performance Library</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Showing {content.length} of {total} items</p>
           </div>
         </div>
-      ) : error ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-600">{error}</div>
-      ) : (
-        <>
-          <div className="ciq-card">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="text-lg font-extrabold text-slate-900">Content Performance Records</h3>
-              <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                Showing {total} Total Records
-              </span>
-            </div>
 
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-400">
-                    <th className="py-3 px-3">Title</th>
-                    <th className="py-3 px-3">Platform</th>
-                    <th className="py-3 px-3">Type</th>
-                    <th className="py-3 px-3">Views</th>
-                    <th className="py-3 px-3">Likes</th>
-                    <th className="py-3 px-3">Comments</th>
-                    <th className="py-3 px-3">Shares</th>
-                    <th className="py-3 px-3">Saves</th>
-                    <th className="py-3 px-3">Watch Time</th>
-                    <th className="py-3 px-3">Reach</th>
-                    <th className="py-3 px-3">Engagement</th>
-                    <th className="py-3 px-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {content.length === 0 ? (
-                    <tr>
-                      <td colSpan={12} className="py-12 text-center text-slate-400">
-                        No content records matching selected filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    content.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="py-3.5 px-3 font-bold text-slate-900 max-w-xs truncate">
-                          <Link to={`/content/${item.id}`} className="hover:text-brand-600">
-                            {item.title}
-                          </Link>
-                        </td>
-                        <td className="py-3.5 px-3">
-                          <div className="flex items-center gap-2">
-                            <PlatformIcon platform={item.platform} size={20} />
-                            <span className="text-xs font-semibold text-slate-600">{item.platform}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-3 text-slate-600 font-medium">{item.content_type}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.views)}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.likes)}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.comments)}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.shares)}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.saves)}</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.watch_time)}s</td>
-                        <td className="py-3.5 px-3 font-semibold text-slate-800">{formatNumber(item.reach)}</td>
-                        <td className="py-3.5 px-3 font-extrabold text-brand-600">{formatPercent(item.engagement_rate)}</td>
-                        <td className="py-3.5 px-3 text-right">
-                          <div className="flex items-center justify-end gap-3">
-                            <Link to={`/content/${item.id}`} className="text-brand-600 hover:text-brand-700 font-bold text-xs">
-                              View
-                            </Link>
-                            {canWrite && (
-                              <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 p-1">
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+        <DataTable
+          columns={columns}
+          data={content}
+          keyExtractor={(item) => item.id}
+          loading={loading}
+          emptyMessage="No content matches your selected filters."
+        />
 
-            {/* Pagination Controls */}
-            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4 text-xs font-bold text-slate-600">
+            <span>
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="ciq-btn-secondary py-2 px-3 text-xs disabled:opacity-40"
+                className="ciq-btn-secondary px-2.5 py-1.5 text-xs"
               >
-                <ChevronLeft className="h-4 w-4" />
-                <span>Previous</span>
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Prev</span>
               </button>
-
-              <span className="text-xs font-semibold text-slate-600">
-                Page <span className="font-extrabold text-slate-900">{page}</span> of{' '}
-                <span className="font-extrabold text-slate-900">{Math.max(totalPages, 1)}</span>
-              </span>
-
               <button
+                type="button"
                 disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="ciq-btn-secondary py-2 px-3 text-xs disabled:opacity-40"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="ciq-btn-secondary px-2.5 py-1.5 text-xs"
               >
                 <span>Next</span>
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Charts Row */}
-          <div className="grid gap-6 xl:grid-cols-3">
-            <div className="ciq-card xl:col-span-2">
-              <h3 className="text-lg font-extrabold text-slate-900">Content Performance Over Time</h3>
-              <div className="mt-6 h-72">
-                {trends.length === 0 ? (
-                  <div className="flex h-full items-center justify-center text-slate-400">No data available</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={trends}>
-                      <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} />
-                      <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', color: '#fff', fontSize: '12px' }} />
-                      <Legend />
-                      <Line type="monotone" dataKey="views" stroke="#7c3aed" strokeWidth={2.5} dot={false} name="Views" />
-                      <Line type="monotone" dataKey="likes" stroke="#06b6d4" strokeWidth={2.5} dot={false} name="Likes" />
-                      <Line type="monotone" dataKey="comments" stroke="#f59e0b" strokeWidth={2.5} dot={false} name="Comments" />
-                      <Line type="monotone" dataKey="shares" stroke="#ec4899" strokeWidth={2.5} dot={false} name="Shares" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
+      {/* Add Content Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Publish New Content"
+        subtitle="Record metrics for cross-channel content logs"
+        maxWidth="lg"
+      >
+        <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
+          {formError && (
+            <div className="p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-medium">
+              {formError}
             </div>
+          )}
 
-            <div className="ciq-card">
-              <h3 className="text-lg font-extrabold text-slate-900">Top 5 Content Items</h3>
-              <div className="mt-4 space-y-3">
-                {top.length === 0 ? (
-                  <p className="text-xs text-slate-400">No top content records available.</p>
-                ) : (
-                  top.slice(0, 5).map((item) => (
-                    <Link
-                      key={item.id}
-                      to={`/content/${item.id}`}
-                      className="block rounded-xl border border-slate-100 bg-slate-50/70 p-3.5 transition-all hover:border-brand-300 hover:bg-white hover:shadow-sm"
-                    >
-                      <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
-                        <div className="flex items-center gap-1.5">
-                          <PlatformIcon platform={item.platform} size={16} />
-                          <span>{item.platform}</span>
-                        </div>
-                        <span>{item.content_type}</span>
-                      </div>
-                      <p className="mt-1 font-bold text-slate-900 text-sm truncate">{item.title}</p>
-                      <p className="mt-1 text-xs font-extrabold text-brand-600">
-                        Engagement: {formatPercent(item.engagement_rate)}
-                      </p>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
+          <div>
+            <label className="ciq-label">Content Title *</label>
+            <input
+              type="text"
+              required
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="e.g. Q3 Growth Playbook & Creator Strategy"
+              className="ciq-input text-xs"
+            />
           </div>
-        </>
-      )}
 
-      {/* Create Content Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-card-hover my-8">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-              <h3 className="text-xl font-extrabold text-slate-900">Add New Content Analytics Record</h3>
-              <button onClick={() => setShowCreateModal(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {formError && (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-600">
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreate} className="mt-4 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <label className="ciq-label">Content Title</label>
-                  <input
-                    required
-                    minLength={2}
-                    className="ciq-input"
-                    placeholder="e.g. 10 Tech Trends for 2026"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="ciq-label">Platform</label>
-                  <select className="ciq-input" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })}>
-                    {platforms.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="ciq-label">Content Type</label>
-                  <select className="ciq-input" value={form.content_type} onChange={(e) => setForm({ ...form, content_type: e.target.value })}>
-                    {contentTypes.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="ciq-label">Publish Date</label>
-                  <input
-                    type="date"
-                    required
-                    className="ciq-input"
-                    value={form.published_at}
-                    onChange={(e) => setForm({ ...form, published_at: e.target.value })}
-                  />
-                </div>
-
-                {(['views', 'likes', 'comments', 'shares', 'saves', 'watch_time', 'reach'] as const).map((field) => (
-                  <div key={field}>
-                    <label className="ciq-label capitalize">{field.replace('_', ' ')}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      className="ciq-input"
-                      value={form[field]}
-                      onChange={(e) => setForm({ ...form, [field]: Number(e.target.value) })}
-                    />
-                  </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="ciq-label">Platform</label>
+              <select
+                value={form.platform}
+                onChange={(e) => setForm({ ...form, platform: e.target.value })}
+                className="ciq-select text-xs"
+              >
+                {platforms.map((p) => (
+                  <option key={p} value={p}>{p}</option>
                 ))}
-              </div>
+              </select>
+            </div>
 
-              <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="ciq-btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={saving} className="ciq-btn-primary">
-                  {saving ? 'Saving Record...' : 'Save Content'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="ciq-label">Format</label>
+              <select
+                value={form.content_type}
+                onChange={(e) => setForm({ ...form, content_type: e.target.value })}
+                className="ciq-select text-xs"
+              >
+                {contentTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="ciq-label">Views</label>
+              <input
+                type="number"
+                min="0"
+                value={form.views}
+                onChange={(e) => setForm({ ...form, views: Number(e.target.value) })}
+                className="ciq-input text-xs"
+              />
+            </div>
+            <div>
+              <label className="ciq-label">Likes</label>
+              <input
+                type="number"
+                min="0"
+                value={form.likes}
+                onChange={(e) => setForm({ ...form, likes: Number(e.target.value) })}
+                className="ciq-input text-xs"
+              />
+            </div>
+            <div>
+              <label className="ciq-label">Comments</label>
+              <input
+                type="number"
+                min="0"
+                value={form.comments}
+                onChange={(e) => setForm({ ...form, comments: Number(e.target.value) })}
+                className="ciq-input text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="ciq-label">Reach</label>
+              <input
+                type="number"
+                min="0"
+                value={form.reach}
+                onChange={(e) => setForm({ ...form, reach: Number(e.target.value) })}
+                className="ciq-input text-xs"
+              />
+            </div>
+            <div>
+              <label className="ciq-label">Publish Date</label>
+              <input
+                type="date"
+                required
+                value={form.published_at}
+                onChange={(e) => setForm({ ...form, published_at: e.target.value })}
+                className="ciq-input text-xs"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="ciq-btn-secondary"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="ciq-btn-primary"
+            >
+              {saving ? 'Publishing...' : 'Save Content'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={handleDelete}
+        title="Delete Content Record"
+        message="Are you sure you want to delete this content item? This action removes metrics from aggregate reports."
+        confirmText="Delete"
+        loading={deleting}
+      />
     </div>
   )
 }

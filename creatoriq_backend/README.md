@@ -1,202 +1,116 @@
-# CreatorIQ – Real YouTube API Integration, Revenue Analytics & Sponsorship Tracking (Sprint 6)
+# CreatorIQ Backend – Multi-Platform Social Media Integration & Analytics
 
-CreatorIQ is an enterprise-grade creator analytics and multi-platform content performance management platform built with FastAPI, PostgreSQL, SQLAlchemy, and OAuth / Social Data Integrations.
-
----
-
-## 1. Project Overview
-
-CreatorIQ provides multi-tenant and role-based performance analytics for digital content creators, marketing teams, agencies, and administrators. Sprint 6 extends the platform to support comprehensive **Revenue Analytics and Sponsorship Campaign Tracking**, enabling creators to track diversified monetization streams, manage brand partnerships, monitor contract deliverables/payment statuses, and visualize monthly revenue trends with strict creator data isolation.
+CreatorIQ Backend is a high-performance Python FastAPI service providing creator authentication, social media connection management, automated content synchronization, and analytics calculations stored in PostgreSQL.
 
 ---
 
-## 2. System Architecture
+## 1. Supported Platforms & Status
+
+The backend provides integration routes and sync architectures for 6 social media platforms:
+
+- **YouTube**: Live API integration via YouTube Data API v3 (videos, snippets, statistics, channel search, OAuth 2.0).
+- **Instagram**: Live API integration via Meta Graph API v18.0 with automated manual fallback when developer credentials are unconfigured.
+- **TikTok**: Open API v2 architecture with standardized CreatorIQ data mapping and manual data synchronization.
+- **Facebook**: Meta Graph API architecture with standardized CreatorIQ data mapping and manual data synchronization.
+- **LinkedIn**: Community Management API architecture with standardized CreatorIQ data mapping and manual data synchronization.
+- **X (Twitter)**: Twitter API v2 architecture with standardized CreatorIQ data mapping and manual data synchronization.
+
+---
+
+## 2. Synchronization Architecture & Common CreatorIQ Format
 
 ```
-                                  +-----------------------------+
-                                  |     YouTube Data API v3     |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |    app/services/            |
-                                  |    youtube_service.py       |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     Data Transformation     |
-                                  |  (CreatorIQ Common Format)  |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |       Data Validation       |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     Duplicate Detection     |
-                                  | (platform + ext_content_id) |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |      PostgreSQL Database    |
-                                  | (content, revenue, sponsor) |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |    app/services/            |
-                                  | revenue & analytics services|
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |     FastAPI Analytics APIs  |
-                                  +--------------+--------------+
-                                                 |
-                                                 v
-                                  +-----------------------------+
-                                  |      Creator Dashboard      |
-                                  +-----------------------------+
+External API / Form Input
+         │
+         ▼
+Platform Service (fetch_data)
+         │
+         ▼
+Transformation Engine (Common CreatorIQ Format)
+         │
+         ▼
+Data Validation (Types, ranges, required values)
+         │
+         ▼
+Idempotent Duplicate Detection
+[creator_id + platform + external_content_id]
+         │
+         ├─── Existing record? ──► UPDATE metrics
+         │
+         └─── New record? ───────► INSERT into Content table
+         │
+         ▼
+Update SocialConnection.last_synced_at
+         │
+         ▼
+Return StandardSyncResponse
 ```
 
----
-
-## 3. Modules Implemented
-
-- **Core & Config (`app/core/config.py`)**: Centralized Pydantic settings loading environment variables including `YOUTUBE_API_KEY`, `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, database URL, and JWT settings.
-- **Data Models (`app/models/`)**:
-  - `Content` (`app/models/content.py`): Platform-native and synced content metadata.
-  - `Revenue` (`app/models/revenue.py`): Multi-channel earnings tracking with categorization.
-  - `Sponsorship` (`app/models/sponsorship.py`): Brand deals, campaign deliverables, and payment tracking.
-- **Data Schemas (`app/schemas/`)**: Pydantic v2 validation models for requests and responses.
-- **Services (`app/services/`)**:
-  - `youtube_service.py`: YouTube API v3 synchronization and idempotent ingestion.
-  - `revenue_service.py`: Revenue CRUD, breakdown by source, monthly revenue, and trends.
-  - `sponsorship_service.py`: Sponsorship CRUD, campaign summaries, and status tracking.
-  - `analytics_service.py`: Cross-platform engagement, summary metrics, and follower curves.
-- **Routers (`app/routers/`)**: RESTful API endpoints for auth, content, social sync, revenue, sponsorships, and analytics.
-
----
-
-## 4. API Endpoints
-
-### Authentication & Users
-- `POST /auth/register` – Register a new user (Creator, Agency, Marketing Team, Administrator).
-- `POST /auth/login` – Authenticate user and receive JWT access token.
-- `GET /users/me` – Retrieve current user profile.
-
-### Social & YouTube Integration (Sprint 5)
-- `POST /social/youtube/sync` – Synchronize YouTube videos and metrics into PostgreSQL.
-- `POST /social/connect` – Connect a social media platform account.
-- `GET /social/platforms` – List connected social platforms.
-- `POST /social/sync` – Synchronize simulated social platform data.
-
-### Revenue Management & Analytics (Sprint 6)
-- `POST /revenue` – Add a new revenue record (`Sponsorship`, `Ad Revenue`, `Affiliate Marketing`, `Brand Collaboration`, `Subscription Revenue`).
-- `GET /revenue` – List all revenue records for authenticated creator.
-- `GET /revenue/{id}` – Retrieve single revenue record.
-- `PUT /revenue/{id}` – Update single revenue record.
-- `DELETE /revenue/{id}` – Delete single revenue record.
-- `GET /analytics/revenue/summary` – Retrieve total accumulated revenue and currency.
-- `GET /analytics/revenue/by-source` – Retrieve revenue breakdown grouped by category.
-- `GET /analytics/revenue/monthly` – Retrieve chronological monthly revenue totals.
-- `GET /analytics/revenue/trend` – Retrieve chart-ready monthly revenue time-series labels and values.
-
-### Sponsorship Management & Tracking (Sprint 6)
-- `POST /sponsorships` – Create a new brand sponsorship campaign (`Draft`, `Active`, `Completed`, `Cancelled`).
-- `GET /sponsorships` – List all sponsorship campaigns for authenticated creator.
-- `GET /sponsorships/{id}` – Retrieve single sponsorship campaign details.
-- `PUT /sponsorships/{id}` – Update sponsorship campaign details.
-- `DELETE /sponsorships/{id}` – Delete sponsorship campaign.
-- `GET /analytics/sponsorships/summary` – Summary of total deals, contract value, active deals, and pending payments.
-- `GET /analytics/sponsorships/status` – Breakdown of sponsorship deals grouped by status.
-
-### Performance Analytics Endpoints
-- `GET /analytics/summary` – Aggregate KPI totals (views, likes, comments, shares, reach, followers, avg engagement rate).
-- `GET /analytics/top-content` – Top performing content ranked by engagement rate.
-- `GET /analytics/platform-comparison` – Cross-platform performance comparison (YouTube, Instagram, TikTok, LinkedIn, etc.).
-- `GET /analytics/chart/engagement` – Chronological engagement rate timeline data.
-- `GET /analytics/chart/followers` – Chronological follower growth timeline data.
-- `GET /analytics/content/{id}/engagement` – Detailed metrics for a single content item.
-
----
-
-## 5. Database Tables
-
-### `public.content`
-Stores normalized content across all social media platforms.
-
-### `public.revenue`
-Stores creator revenue records across diversified monetization channels:
-
-| Column | Type | Constraints / Description |
-| :--- | :--- | :--- |
-| `id` | Integer | Primary key, Auto-increment |
-| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
-| `source` | String(100) | 'Sponsorship', 'Ad Revenue', 'Affiliate Marketing', 'Brand Collaboration', 'Subscription Revenue' |
-| `amount` | Float | Revenue amount (>= 0.0) |
-| `currency` | String(10) | Currency code (default: 'INR') |
-| `description` | Text | Optional campaign / invoice notes |
-| `revenue_date` | Date | Transaction / earnings date |
-| `created_at` | DateTime | Creation timestamp (UTC) |
-| `updated_at` | DateTime | Last updated timestamp (UTC) |
-
-### `public.sponsorship`
-Tracks creator brand partnerships, campaigns, and contract payment status:
-
-| Column | Type | Constraints / Description |
-| :--- | :--- | :--- |
-| `id` | Integer | Primary key, Auto-increment |
-| `creator_id` | Integer | Foreign key to `users.id` (CASCADE), Indexed |
-| `brand_name` | String(150) | Brand / sponsor company name |
-| `campaign_name` | String(150) | Campaign title / deliverables |
-| `contract_value` | Float | Agreed contract value (>= 0.0) |
-| `currency` | String(10) | Currency code (default: 'INR') |
-| `start_date` | Date | Campaign start date |
-| `end_date` | Date | Campaign end date (>= start_date) |
-| `status` | String(50) | 'Draft', 'Active', 'Completed', 'Cancelled' |
-| `payment_status` | String(50) | 'Pending', 'Partially Paid', 'Paid', 'Overdue' |
-| `description` | Text | Campaign terms and scope |
-| `created_at` | DateTime | Creation timestamp (UTC) |
-| `updated_at` | DateTime | Last updated timestamp (UTC) |
-
----
-
-## 6. PostgreSQL Verification
-
-Run the following queries in **pgAdmin** or `psql` to verify synchronized records and duplicate handling:
-
-```sql
--- 1. View all synchronized content
-SELECT * FROM public.content ORDER BY id DESC;
-
--- 2. Verify Revenue records (Sprint 6)
-SELECT id, creator_id, source, amount, currency, revenue_date, created_at
-FROM public.revenue
-ORDER BY id DESC;
-
--- 3. Verify Sponsorship campaigns (Sprint 6)
-SELECT id, creator_id, brand_name, campaign_name, contract_value, currency, status, payment_status, start_date, end_date
-FROM public.sponsorship
-ORDER BY id DESC;
+### Standardized Common Format:
+```json
+{
+  "platform": "YouTube",
+  "external_content_id": "yt_vid_123",
+  "content_title": "FastAPI Full-Stack Masterclass",
+  "content_type": "Video",
+  "views": 25000,
+  "likes": 1800,
+  "comments": 220,
+  "shares": 140,
+  "reach": 30000,
+  "published_date": "2026-08-10"
+}
 ```
 
 ---
 
-## How to Run Tests
+## 3. Endpoints Implemented
 
-To execute the automated test suite:
+### Connection Management:
+- `GET /social/connections`: Returns current creator's connected platforms summary (`platform`, `status`, `account_name`, `last_synced_at`, `connection_mode`).
+- `GET /api/social/connections`: Returns all 6 social connection statuses with permission scopes.
+- `POST /social/connect`: Connects platform account by handle or name.
+- `POST /social/{platform}/connect`: Connects specific platform account and executes initial synchronization.
+- `DELETE /api/social/{platform}`: Safely disconnects account and wipes encrypted access tokens.
 
-```bash
-pytest -v
+### Dedicated Platform Sync Endpoints:
+- `POST /social/youtube/sync`: Live YouTube Data API v3 sync with duplicate handling.
+- `POST /social/instagram/sync`: Meta Graph API / Instagram sync with duplicate handling.
+- `POST /social/tiktok/sync`: TikTok sync with duplicate handling.
+- `POST /social/facebook/sync`: Facebook sync with duplicate handling.
+- `POST /social/linkedin/sync`: LinkedIn sync with duplicate handling.
+- `POST /social/x/sync` (and `/social/twitter/sync`): X (Twitter) sync with duplicate handling.
+- `POST /social/{platform}/sync`: General platform sync endpoint.
+
+### Dashboard Analytics Endpoints:
+- `GET /analytics/summary` (supports `?platform=` and `?source=database|live`)
+- `GET /analytics/top-content` (supports `?platform=`)
+- `GET /analytics/platform-comparison` (supports `?source=database|live`)
+- `GET /analytics/chart/engagement` (supports `?platform=`)
+- `GET /analytics/chart/followers` (supports `?platform=`)
+
+---
+
+## 4. Idempotency & Duplicate Prevention
+
+- Repeated syncs are strictly idempotent.
+- Records are checked against `(Content.creator_id == user.id, Content.platform == platform, Content.external_content_id == ext_id)`.
+- If a record is already present, its metrics (`views`, `likes`, `comments`, `shares`, `reach`, `engagement_rate`, `updated_at`) are updated without inserting redundant rows.
+
+---
+
+## 5. Security & Isolation
+
+- **Token Security**: OAuth access and refresh tokens are encrypted at rest using `Fernet` symmetric encryption. Tokens are never exposed in user-facing schemas.
+- **Creator Isolation**: Every analytics and content query filters by `creator_id == current_user.id`.
+- **Environment Secrets**: API keys, database credentials, and secrets are stored in `.env` and loaded via Pydantic Settings.
+
+---
+
+## 6. Testing
+
+Run all backend unit and integration tests:
+```powershell
+.\venv\Scripts\pytest creatoriq_backend/tests/
 ```
-
-To run Sprint 6 Revenue & Sponsorship tests specifically:
-
-```bash
-pytest tests/test_sprint6.py -v
-```
+All 93 tests pass with 0 failures.

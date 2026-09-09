@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertCircle, ArrowRight, BarChart3, CheckCircle2, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import AuthBrandPanel from '../components/AuthBrandPanel'
 import { useAuth } from '../context/AuthContext'
+import { getSafeRedirectUrl } from '../utils/redirect'
 
 interface LocationState {
   registeredEmail?: string
   message?: string
+  from?: { pathname: string; search?: string } | string
 }
 
 export default function Login() {
-  const { login, error } = useAuth()
+  const { user, loading: authLoading, login, error } = useAuth()
+  const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const state = location.state as LocationState | null
 
   const [email, setEmail] = useState('')
@@ -20,6 +24,18 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+
+  // If already authenticated, redirect immediately away from /login
+  useEffect(() => {
+    if (!authLoading && user) {
+      const returnUrl = searchParams.get('returnUrl')
+      const from = typeof state?.from === 'object'
+        ? `${state.from.pathname}${state.from.search || ''}`
+        : state?.from || returnUrl
+      const destination = getSafeRedirectUrl(from, '/dashboard')
+      navigate(destination, { replace: true })
+    }
+  }, [user, authLoading, navigate, searchParams, state])
 
   useEffect(() => {
     if (state?.registeredEmail) {
@@ -49,7 +65,12 @@ export default function Login() {
     setSuccessMessage('')
     setLoading(true)
     try {
-      await login(email, password)
+      const returnUrl = searchParams.get('returnUrl')
+      const from = typeof state?.from === 'object'
+        ? `${state.from.pathname}${state.from.search || ''}`
+        : state?.from || returnUrl
+      const destination = getSafeRedirectUrl(from, '/dashboard')
+      await login(email, password, destination)
     } catch {
       // AuthContext stores API error state
     } finally {

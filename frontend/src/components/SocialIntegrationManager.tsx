@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   CheckCircle2, RefreshCw, AlertCircle, ExternalLink, BarChart2, 
-  Key, Settings2, X, PlusCircle, Globe
+  Key, Settings2, X, PlusCircle, Globe, Info, RotateCcw, Edit3
 } from 'lucide-react'
 import { socialService, SocialConnectionStatus } from '../services/socialService'
 import { useAuth } from '../context/AuthContext'
@@ -65,7 +65,16 @@ const PLATFORMS = [
     Icon: InstagramIcon,
     isManual: true,
     isImplemented: true,
-    desc: 'Track Instagram Reels, posts, and engagement via PostgreSQL database ingestion.' 
+    desc: 'Track Instagram Reels, posts, and engagement via automated platform ingestion.' 
+  },
+  { 
+    key: 'tiktok', 
+    name: 'TikTok', 
+    iconColor: 'text-cyan-600', 
+    Icon: TikTokIcon,
+    isManual: true,
+    isImplemented: true,
+    desc: 'Short-form viral video performance, sound analytics, and trends.' 
   },
   { 
     key: 'facebook', 
@@ -77,6 +86,15 @@ const PLATFORMS = [
     desc: 'Monitor Facebook page reach, video views, and audience interactions.' 
   },
   { 
+    key: 'twitter', 
+    name: 'X (Twitter)', 
+    iconColor: 'text-slate-800', 
+    Icon: TwitterIcon,
+    isManual: true,
+    isImplemented: true,
+    desc: 'Micro-blogging reach, retweets, and conversational metrics.' 
+  },
+  { 
     key: 'linkedin', 
     name: 'LinkedIn', 
     iconColor: 'text-blue-700', 
@@ -84,24 +102,6 @@ const PLATFORMS = [
     isManual: true,
     isImplemented: true,
     desc: 'Track professional articles, reaction rates, and corporate reach metrics.' 
-  },
-  { 
-    key: 'tiktok', 
-    name: 'TikTok', 
-    iconColor: 'text-cyan-600', 
-    Icon: TikTokIcon,
-    isManual: false,
-    isImplemented: false,
-    desc: 'Short-form viral video performance and sound analytics (Upcoming).' 
-  },
-  { 
-    key: 'twitter', 
-    name: 'X (Twitter)', 
-    iconColor: 'text-slate-800', 
-    Icon: TwitterIcon,
-    isManual: false,
-    isImplemented: false,
-    desc: 'Micro-blogging reach, retweets, and conversational metrics (Upcoming).' 
   },
 ]
 
@@ -123,10 +123,20 @@ export default function SocialIntegrationManager() {
   const [ytMaxResults, setYtMaxResults] = useState(10)
   const [ytConnecting, setYtConnecting] = useState(false)
 
-  // Generic Platform Connect Modal State (Instagram / Facebook / LinkedIn)
+  // Generic Platform Connect Modal State (Instagram / Facebook / LinkedIn / etc.)
   const [genericModalPlatform, setGenericModalPlatform] = useState<string | null>(null)
   const [genericAccountName, setGenericAccountName] = useState('')
   const [genericConnecting, setGenericConnecting] = useState(false)
+
+  // Edit Account Modal State
+  const [editModalPlatform, setEditModalPlatform] = useState<string | null>(null)
+  const [editDisplayName, setEditDisplayName] = useState('')
+  const [editUsername, setEditUsername] = useState('')
+  const [editProfileUrl, setEditProfileUrl] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+
+  // Info Modal State
+  const [infoModalPlatform, setInfoModalPlatform] = useState<string | null>(null)
 
   useEffect(() => {
     fetchConnections()
@@ -154,15 +164,51 @@ export default function SocialIntegrationManager() {
     }
   }
 
+  const getConnection = (platformKey: string) => {
+    return connections.find(c => c.platform?.toLowerCase() === platformKey.toLowerCase())
+  }
+
   const handleOpenConnectModal = (platformKey: string) => {
     setError(null)
     setSuccessMsg(null)
     if (platformKey === 'youtube') {
-      setYtAccountName(`${user?.full_name || 'Creator'} Channel`)
+      const existing = getConnection('youtube')
+      setYtAccountName(existing?.display_name || `${user?.full_name || 'Creator'} Channel`)
       setShowYtModal(true)
     } else {
-      setGenericAccountName(`${user?.full_name || 'Creator'} on ${platformKey.charAt(0).toUpperCase() + platformKey.slice(1)}`)
+      const existing = getConnection(platformKey)
+      setGenericAccountName(existing?.display_name || `${user?.full_name || 'Creator'} on ${platformKey.charAt(0).toUpperCase() + platformKey.slice(1)}`)
       setGenericModalPlatform(platformKey)
+    }
+  }
+
+  const handleOpenEditModal = (platformKey: string) => {
+    const conn = getConnection(platformKey)
+    setEditModalPlatform(platformKey)
+    setEditDisplayName(conn?.display_name || '')
+    setEditUsername(conn?.platform_username || '')
+    setEditProfileUrl(conn?.profile_url || '')
+  }
+
+  const handleSaveEditAccount = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editModalPlatform) return
+    setEditSaving(true)
+    setError(null)
+
+    try {
+      await socialService.updateAccount(editModalPlatform, {
+        display_name: editDisplayName.trim() || undefined,
+        platform_username: editUsername.trim() || undefined,
+        profile_url: editProfileUrl.trim() || undefined,
+      })
+      setEditModalPlatform(null)
+      setSuccessMsg(`Account details for ${editModalPlatform} updated successfully!`)
+      await fetchConnections()
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || `Failed to update account for ${editModalPlatform}.`)
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -182,7 +228,7 @@ export default function SocialIntegrationManager() {
       })
 
       setShowYtModal(false)
-      setSuccessMsg(`Connected to YouTube! Synchronized ${res.records_synced || 0} real videos into PostgreSQL.`)
+      setSuccessMsg(`Connected to YouTube! Synchronized ${res.records_synced || 0} videos into database.`)
       await fetchConnections()
     } catch (err: any) {
       setError(err?.response?.data?.detail || 'Failed to connect YouTube with the provided API key or Channel ID.')
@@ -198,7 +244,7 @@ export default function SocialIntegrationManager() {
       if (url) {
         window.location.href = url
       } else {
-        setError(`OAuth client credentials for ${platformKey} not configured in .env. Use API Key / Channel sync instead.`)
+        setError(`OAuth client credentials for ${platformKey} not configured in .env. Use direct connection modal instead.`)
       }
     } catch (err: any) {
       setError(err?.response?.data?.detail || `Failed to initiate OAuth for ${platformKey}.`)
@@ -229,9 +275,9 @@ export default function SocialIntegrationManager() {
       setError(null)
       await socialService.disconnect(platformKey)
       await fetchConnections()
-      setSuccessMsg(`Disconnected ${platformKey}.`)
-    } catch {
-      setError(`Failed to disconnect ${platformKey}.`)
+      setSuccessMsg(`Disconnected ${platformKey} successfully.`)
+    } catch (err: any) {
+      setError(err?.response?.data?.detail || `Failed to disconnect ${platformKey}.`)
     }
   }
 
@@ -242,21 +288,17 @@ export default function SocialIntegrationManager() {
       setSyncing(platformKey)
       if (platformKey === 'youtube') {
         const res = await socialService.syncYoutube({ max_results: 10 })
-        setSuccessMsg(`YouTube synchronized: ${res.records_synced} videos updated from YouTube Data API v3.`)
+        setSuccessMsg(`YouTube synchronized: ${res.records_synced || 0} videos updated.`)
       } else {
         await socialService.sync(platformKey)
-        setSuccessMsg(`${platformKey.toUpperCase()} data refreshed from PostgreSQL.`)
+        setSuccessMsg(`${platformKey.toUpperCase()} data refreshed successfully.`)
       }
       await fetchConnections()
     } catch (err: any) {
-      setError(err?.response?.data?.detail || `Platform data is already up to date in PostgreSQL for ${platformKey}.`)
+      setError(err?.response?.data?.detail || `Platform data is already up to date for ${platformKey}.`)
     } finally {
       setSyncing(null)
     }
-  }
-
-  const getConnection = (platformKey: string) => {
-    return connections.find(c => c.platform?.toLowerCase() === platformKey.toLowerCase())
   }
 
   if (loading) {
@@ -304,23 +346,20 @@ export default function SocialIntegrationManager() {
         {PLATFORMS.map((platform) => {
           const conn = getConnection(platform.key)
           const isYt = platform.key === 'youtube'
-          const isConnected = conn?.status === 'connected' || (!isYt && platform.isManual)
+          // Backend is the single source of truth for connection status
+          const isConnected = conn?.status === 'connected'
           const isComingSoon = !platform.isImplemented
           const Icon = platform.Icon
-          const connData = conn as any
 
-          let statusBadgeText = 'Disconnected'
+          let statusBadgeText = 'Not connected'
           let statusBadgeColor = 'text-slate-500 bg-slate-100 border-slate-200'
 
-          if (isComingSoon) {
+          if (isComingSoon && !isConnected) {
             statusBadgeText = 'Coming Soon'
             statusBadgeColor = 'text-amber-600 bg-amber-50 border-amber-200'
-          } else if (isYt && isConnected) {
-            statusBadgeText = 'Connected (Live API)'
-            statusBadgeColor = 'text-emerald-700 bg-emerald-50 border-emerald-200'
           } else if (isConnected) {
-            statusBadgeText = 'Connected (Manual Data)'
-            statusBadgeColor = 'text-indigo-700 bg-indigo-50 border-indigo-200'
+            statusBadgeText = isYt ? 'Connected (Live API)' : 'Connected'
+            statusBadgeColor = 'text-emerald-700 bg-emerald-50 border-emerald-200'
           }
 
           return (
@@ -334,7 +373,7 @@ export default function SocialIntegrationManager() {
                   <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${statusBadgeColor}`}>
                     {statusBadgeText}
                   </span>
-                  {isConnected && !isComingSoon && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
+                  {isConnected && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 </div>
               </div>
 
@@ -353,11 +392,12 @@ export default function SocialIntegrationManager() {
                   {platform.desc}
                 </p>
 
-                {isConnected && !isComingSoon ? (
+                {isConnected ? (
+                  /* Connected account information */
                   <div className="mt-3 space-y-1 rounded-xl bg-slate-50 p-3 border border-slate-100">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-bold text-slate-900 truncate">
-                        {connData?.display_name || (isYt ? 'YouTube Live Channel' : `${user?.full_name || 'Creator'} Channel`)}
+                        {conn?.display_name || (isYt ? 'YouTube Live Channel' : `${user?.full_name || 'Creator'} Channel`)}
                       </p>
                       {isYt && (
                         <span className="text-[10px] font-bold text-emerald-700 flex items-center gap-1">
@@ -366,59 +406,57 @@ export default function SocialIntegrationManager() {
                       )}
                     </div>
                     <p className="text-[11px] font-medium text-slate-500 truncate">
-                      {connData?.platform_username ? `${connData.platform_username}` : (isYt ? 'YouTube Data API v3 Active' : 'PostgreSQL Database Ingestion Active')}
+                      {conn?.platform_username || (isYt ? 'YouTube Data API v3 Active' : 'Ingestion Active')}
                     </p>
-                    {conn?.last_synced_at && (
+                    {conn?.last_synced_at ? (
                       <p className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-200/60 mt-1">
-                        Last synced: {new Date(conn.last_synced_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        Last sync: {new Date(conn.last_synced_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-slate-400 font-semibold pt-1 border-t border-slate-200/60 mt-1">
+                        Last sync: Never
                       </p>
                     )}
                   </div>
                 ) : (
                   !isComingSoon && (
-                    <div className="mt-3 rounded-xl bg-amber-50/70 p-3 border border-amber-100 text-[11px] text-amber-800 font-medium flex items-start gap-2">
-                      <Key className="h-3.5 w-3.5 mt-0.5 text-amber-600 shrink-0" />
-                      <span>Ready to link. Click Connect below to synchronize real data with your API key.</span>
+                    <div className="mt-3 rounded-xl bg-slate-50 p-3 border border-slate-100 text-[11px] text-slate-600 font-medium flex items-start gap-2">
+                      <Key className="h-3.5 w-3.5 mt-0.5 text-slate-400 shrink-0" />
+                      <span>Ready to link. Click Connect below to link and synchronize performance metrics.</span>
                     </div>
                   )
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2">
-                {isComingSoon ? (
+              {/* Actions Section */}
+              <div className="mt-6 pt-5 border-t border-slate-100 flex flex-col gap-2.5">
+                {isComingSoon && !isConnected ? (
+                  /* Unimplemented Coming Soon Roadmap Link */
                   <button 
                     onClick={() => navigate(`/platform/${platform.key}`)}
-                    className="w-full ciq-btn-secondary py-2 text-xs flex items-center justify-center gap-1.5"
+                    className="w-full ciq-btn-secondary py-2.5 text-xs flex items-center justify-center gap-1.5 font-bold"
                   >
                     <span>View Roadmap</span>
                     <ExternalLink className="h-3 w-3" />
                   </button>
                 ) : !isConnected ? (
-                  /* Disconnected State - Connect Button */
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleOpenConnectModal(platform.key)}
-                      className="flex-1 ciq-btn-primary py-2.5 text-xs flex items-center justify-center gap-1.5 font-bold"
-                    >
-                      <PlusCircle className="h-3.5 w-3.5" />
-                      <span>Connect {platform.name}</span>
-                    </button>
-                    <button
-                      onClick={() => navigate(`/platform/${platform.key}`)}
-                      className="ciq-btn-secondary py-2.5 px-3 text-xs"
-                      title="View Platform Analytics"
-                    >
-                      <BarChart2 className="h-3.5 w-3.5 text-slate-600" />
-                    </button>
-                  </div>
+                  /* DISCONNECTED STATE: ONLY ONE ACTION VISIBLE: CONNECT */
+                  <button
+                    onClick={() => handleOpenConnectModal(platform.key)}
+                    className="w-full ciq-btn-primary py-2.5 text-xs flex items-center justify-center gap-1.5 font-bold shadow-xs hover:shadow-sm"
+                  >
+                    <PlusCircle className="h-3.5 w-3.5" />
+                    <span>Connect</span>
+                  </button>
                 ) : (
-                  /* Connected State */
+                  /* CONNECTED STATE: ALL 6 ACTIONS VISIBLE */
                   <>
-                    <div className="flex gap-2">
+                    {/* Row 1: View Analytics & Sync / Refresh */}
+                    <div className="grid grid-cols-2 gap-2">
                       <button 
-                        onClick={() => navigate(`/platform/${platform.key}`)}
-                        className="flex-1 ciq-btn-secondary py-2 text-xs flex items-center justify-center gap-1 font-bold"
+                        onClick={() => navigate(`/analytics?platform=${encodeURIComponent(platform.name)}`)}
+                        className="ciq-btn-secondary py-2 px-3 text-xs flex items-center justify-center gap-1.5 font-bold"
+                        title="View platform analytics"
                       >
                         <BarChart2 className="h-3.5 w-3.5 text-indigo-600" />
                         <span>View Analytics</span>
@@ -426,35 +464,45 @@ export default function SocialIntegrationManager() {
                       <button 
                         onClick={() => handleSync(platform.key)}
                         disabled={syncing === platform.key}
-                        className="flex-1 ciq-btn-primary py-2 text-xs flex items-center justify-center gap-1.5 font-bold"
+                        className="ciq-btn-primary py-2 px-3 text-xs flex items-center justify-center gap-1.5 font-bold"
+                        title="Synchronize platform data"
                       >
                         <RefreshCw className={`h-3.5 w-3.5 ${syncing === platform.key ? 'animate-spin' : ''}`} />
-                        {syncing === platform.key ? 'Syncing...' : (isYt ? 'Sync Live Data' : 'Sync Available')}
+                        <span>{syncing === platform.key ? 'Syncing...' : 'Sync'}</span>
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                      {isYt ? (
-                        <button
-                          onClick={() => handleOpenConnectModal('youtube')}
-                          className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
-                        >
-                          <Settings2 className="h-3 w-3" />
-                          <span>Configure Channel</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleOpenConnectModal(platform.key)}
-                          className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
-                        >
-                          <Settings2 className="h-3 w-3" />
-                          <span>Edit Account</span>
-                        </button>
-                      )}
+                    {/* Row 2: Reconnect & Info */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => handleOpenConnectModal(platform.key)}
+                        className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <RotateCcw className="h-3 w-3 text-slate-500" />
+                        <span>Reconnect</span>
+                      </button>
+                      <button
+                        onClick={() => setInfoModalPlatform(platform.key)}
+                        className="rounded-xl border border-slate-200 bg-white py-1.5 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        <Info className="h-3 w-3 text-slate-500" />
+                        <span>Info</span>
+                      </button>
+                    </div>
+
+                    {/* Row 3: Edit Account & Disconnect */}
+                    <div className="flex items-center justify-between pt-1 text-xs">
+                      <button
+                        onClick={() => handleOpenEditModal(platform.key)}
+                        className="font-bold text-slate-600 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        <span>Edit Account</span>
+                      </button>
 
                       <button 
                         onClick={() => handleDisconnect(platform.key)}
-                        className="text-[11px] font-bold text-slate-400 hover:text-red-600 transition-colors"
+                        className="font-bold text-slate-400 hover:text-red-600 transition-colors"
                       >
                         Disconnect
                       </button>
@@ -466,6 +514,160 @@ export default function SocialIntegrationManager() {
           )
         })}
       </div>
+
+      {/* Info Modal */}
+      {infoModalPlatform && (() => {
+        const plat = PLATFORMS.find(p => p.key === infoModalPlatform)
+        const conn = getConnection(infoModalPlatform)
+        const Icon = plat?.Icon || Globe
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="ciq-card w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-xl bg-slate-50 border border-slate-100 ${plat?.iconColor}`}>
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-900">{plat?.name} Connection Info</h3>
+                    <p className="text-xs text-slate-500">Platform status and metadata</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setInfoModalPlatform(null)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="mt-5 space-y-3 text-xs">
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="font-semibold text-slate-500">Status</span>
+                  <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Connected
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="font-semibold text-slate-500">Display Name</span>
+                  <span className="font-bold text-slate-900">{conn?.display_name || 'Not set'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="font-semibold text-slate-500">Username / Handle</span>
+                  <span className="font-bold text-slate-900">{conn?.platform_username || 'Not set'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="font-semibold text-slate-500">Profile URL</span>
+                  <span className="font-bold text-slate-900 truncate max-w-[200px]">{conn?.profile_url || 'Not set'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-100">
+                  <span className="font-semibold text-slate-500">Last Synced</span>
+                  <span className="font-bold text-slate-900">
+                    {conn?.last_synced_at ? new Date(conn.last_synced_at).toLocaleString() : 'Never'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-3 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setInfoModalPlatform(null)}
+                  className="ciq-btn-secondary py-2 px-4 text-xs font-bold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Edit Account Modal */}
+      {editModalPlatform && (() => {
+        const plat = PLATFORMS.find(p => p.key === editModalPlatform)
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="ciq-card w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">Edit {plat?.name} Account</h3>
+                  <p className="text-xs text-slate-500">Update display name and account details</p>
+                </div>
+                <button
+                  onClick={() => setEditModalPlatform(null)}
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveEditAccount} className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Display Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editDisplayName}
+                    onChange={(e) => setEditDisplayName(e.target.value)}
+                    placeholder="e.g. CreatorIQ Studio"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Username / Handle
+                  </label>
+                  <input
+                    type="text"
+                    value={editUsername}
+                    onChange={(e) => setEditUsername(e.target.value)}
+                    placeholder="e.g. @creatoriq"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Profile URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editProfileUrl}
+                    onChange={(e) => setEditProfileUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setEditModalPlatform(null)}
+                    className="flex-1 ciq-btn-secondary py-2.5 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editSaving}
+                    className="flex-1 ciq-btn-primary py-2.5 text-xs font-extrabold flex items-center justify-center gap-1.5"
+                  >
+                    {editSaving ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    <span>{editSaving ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* YouTube Connection Modal */}
       {showYtModal && (
@@ -585,61 +787,64 @@ export default function SocialIntegrationManager() {
         </div>
       )}
 
-      {/* Generic Modal (Instagram, Facebook, LinkedIn) */}
-      {genericModalPlatform && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="ciq-card w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <h3 className="text-base font-extrabold text-slate-900">
-                Connect {genericModalPlatform.charAt(0).toUpperCase() + genericModalPlatform.slice(1)} Account
-              </h3>
-              <button
-                onClick={() => setGenericModalPlatform(null)}
-                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleConnectGeneric} className="mt-5 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Account / Page / Profile Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={genericAccountName}
-                  onChange={(e) => setGenericAccountName(e.target.value)}
-                  placeholder="e.g. Suresh Tech Hub"
-                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Connects your creator account to the PostgreSQL multi-platform ingestion engine.
-                </p>
-              </div>
-
-              <div className="pt-3 border-t border-slate-100 flex gap-2.5">
+      {/* Generic Modal (Instagram, TikTok, Facebook, X, LinkedIn) */}
+      {genericModalPlatform && (() => {
+        const plat = PLATFORMS.find(p => p.key === genericModalPlatform)
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="ciq-card w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Connect {plat?.name || genericModalPlatform} Account
+                </h3>
                 <button
-                  type="button"
                   onClick={() => setGenericModalPlatform(null)}
-                  className="flex-1 ciq-btn-secondary py-2.5 text-xs font-bold"
+                  className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={genericConnecting}
-                  className="flex-1 ciq-btn-primary py-2.5 text-xs font-extrabold flex items-center justify-center gap-1.5"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>{genericConnecting ? 'Connecting...' : 'Save & Connect'}</span>
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleConnectGeneric} className="mt-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Account / Page / Profile Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={genericAccountName}
+                    onChange={(e) => setGenericAccountName(e.target.value)}
+                    placeholder="e.g. CreatorIQ Official"
+                    className="w-full rounded-xl border border-slate-200 px-3.5 py-2 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Connects your creator account to the CreatorIQ multi-platform ingestion engine.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setGenericModalPlatform(null)}
+                    className="flex-1 ciq-btn-secondary py-2.5 text-xs font-bold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={genericConnecting}
+                    className="flex-1 ciq-btn-primary py-2.5 text-xs font-extrabold flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{genericConnecting ? 'Connecting...' : 'Save & Connect'}</span>
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Informational Architecture Banner */}
       <div className="ciq-card border border-indigo-100 bg-indigo-50/50 p-6 rounded-2xl flex items-start gap-4">
@@ -649,7 +854,7 @@ export default function SocialIntegrationManager() {
         <div>
           <h4 className="text-sm font-extrabold text-indigo-950">Live Social Media Integration & Ingestion Architecture</h4>
           <p className="mt-1 text-xs text-indigo-800 leading-relaxed">
-            Live API integration is used where credentials/access are available (YouTube Data API v3). Creators can connect real YouTube channels using their API keys or OAuth to pull real video statistics directly into PostgreSQL. For platforms where live third-party API keys are not configured, realistic platform data is synchronized and calculated from PostgreSQL using the standardized CreatorIQ data format.
+            Live API integration is used where credentials/access are available (YouTube Data API v3). Creators can connect real YouTube channels using their API keys or OAuth to pull real video statistics directly into the database. For platforms where live third-party API keys are not configured, realistic platform data is synchronized and calculated using the standardized CreatorIQ data format.
           </p>
         </div>
       </div>
