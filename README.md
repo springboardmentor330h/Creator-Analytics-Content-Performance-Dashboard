@@ -2,13 +2,49 @@
 
 ## Project Overview
 
-CreatorIQ is a backend analytics platform that helps content creators understand how their content performs across multiple social media platforms. It stores content performance data (views, likes, comments, shares, saves, watch time, reach), calculates engagement metrics, tracks audience demographics and follower growth, and synchronizes real analytics data from YouTube.
+CreatorIQ is a full-stack analytics platform designed to help content creators, agencies, influencers, and digital marketers track multi-platform social media performance, audience engagement, growth trends, and monetization insights through a centralized dashboard.
 
 The API is built with **FastAPI** and **PostgreSQL**, following a layered architecture that separates routing, business logic, and data access.
 
 ---
 
-## System Architecture
+## 🚀 Key Features & Modules
+
+### 👤 1. User & Access Management
+* **Role-Based Access Control (RBAC):** Distinct roles for Creators, Agencies, Marketing Teams, and Administrators.
+* **Authentication:** JWT-based authentication, OAuth2 social logins, and secure password hashing.
+* **Profile Management:** Creator profile setups, agency management, and account settings.
+
+### 📊 2. Content Analytics
+* **Performance Metrics:** Track Views, Likes, Comments, Shares, Saves, Watch Time, Reach, and Engagement Rate.
+* **Content Comparison & Ranking:** Compare performance across posts and identify top-performing content.
+* **Trend Analysis:** Monitor reach analysis and long-term content performance trends.
+
+### 👥 3. Audience Insights
+* **Demographic Breakdown:** Detailed records by Age, Gender, Geographic Location (Country/City), and Device Usage.
+* **Audience Growth:** Track follower growth rates, impressions, active hours, and engagement behavior.
+
+### 📈 4. Growth & Trend Forecasting
+* **Trend & Hashtag Analysis:** Identify trending topics and top-performing hashtags.
+* **Predictive Insights:** Content growth tracking, reach predictions, and audience growth forecasting.
+
+### 💰 5. Revenue & Monetization Analytics
+* **Revenue Tracking:** Track income from Sponsorships, Ad Revenue, Affiliate Marketing, Brand Collaborations, and Subscriptions.
+* **Financial Insights:** Monitor monetization trends, earn reports, and revenue performance over time.
+
+### 🔄 6. Social Media Integration
+* **Multi-Platform Support:** API integration with **YouTube**, **Instagram**, **TikTok**, **Facebook**, **X (Twitter)**, and **LinkedIn**.
+* **Data Syncing:** Scheduled synchronization and unified data formatting across platforms.
+
+### 📱 7. Interactive Dashboard & Reporting
+* **Visualizations:** Interactive charts powered by Chart.js / Recharts with KPI monitoring and real-time updates.
+* **Alerts & Exporting:** Automated performance alerts, scheduled email digests, and PDF/Excel report exports.
+
+---
+
+## 🏗️ System Architecture
+
+---
 
 ```
 Client (Swagger / Postman / React Dashboard)
@@ -28,31 +64,6 @@ Client (Swagger / Postman / React Dashboard)
               ▼
         PostgreSQL Database
 ```
-
-For real platform integration (YouTube):
-
-```
-YouTube Data API
-      │
-      ▼
-youtube_service.py  (fetch + transform)
-      │
-      ▼
-Common CreatorIQ Data Format
-      │
-      ▼
-POST /social/youtube/sync  (validate + create/update)
-      │
-      ▼
-PostgreSQL (content table)
-      │
-      ▼
-Analytics Service  (reads from the same content table)
-      │
-      ▼
-Analytics APIs → Dashboard
-```
-
 ---
 
 ## Modules Implemented
@@ -118,20 +129,6 @@ All tables are created automatically on application startup and are visible unde
 
 ---
 
-## YouTube API Integration
-
-`app/services/youtube_service.py` integrates with the real **YouTube Data API v3**:
-
-1. Calls the `search` endpoint to retrieve the latest video IDs for a given channel.
-2. Calls the `videos` endpoint to retrieve statistics (views, likes, comments) and snippet data (title, published date) for those videos.
-3. Transforms the raw API response into CreatorIQ's common content format.
-
-**Credential management:** the YouTube API key is loaded from the `YOUTUBE_API_KEY` environment variable via `app/core/config.py` (using `pydantic-settings`), and is never hardcoded. The `.env` file is excluded from version control via `.gitignore`.
-
-**Error handling** covers: missing/invalid API key, missing/invalid channel ID, network failures, non-200 API responses (including quota/rate-limit errors), invalid JSON, and empty result sets.
-
----
-
 ## Data Transformation Workflow
 
 Every platform's raw response is mapped into a single common format before being stored, so the analytics layer never needs platform-specific logic:
@@ -176,13 +173,96 @@ This prevents duplicate content records when synchronization is run more than on
 
 ---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-- **Framework:** FastAPI
-- **Database:** PostgreSQL
-- **ORM:** SQLAlchemy
-- **Validation:** Pydantic
-- **Authentication:** JWT (python-jose) + password hashing
-- **External API:** YouTube Data API v3
+* **Backend:** Python 3.10+, FastAPI, SQLAlchemy, Pydantic, Alembic, Celery, Redis
+* **Frontend:** JavaScript, React.js, Tailwind CSS, Chart.js / Recharts, Axios
+* **Database:** PostgreSQL (Primary), MongoDB (Secondary), Redis (Cache)
+* **Authentication:** JWT, OAuth2
+* **Integrations:** YouTube Data API, Instagram Graph API, TikTok API, Facebook Graph API, LinkedIn API
 
 ---
+
+## 📂 Project Structure
+
+```text
+├── backend/
+│   ├── app/
+│   │   ├── api/            # API endpoints/routers (auth, users, content, analytics, social)
+│   │   ├── core/           # Configuration, security, JWT helpers
+│   │   ├── db/             # Database session setup and Base models
+│   │   ├── models/         # SQLAlchemy ORM models
+│   │   ├── schemas/        # Pydantic validation models
+│   │   ├── services/       # Business logic and external API integrations
+│   │   └── main.py         # FastAPI application entry point
+│   ├── alembic/            # Database migrations
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # UI components & Recharts visualizations
+│   │   ├── pages/          # Dashboard views (Analytics, Audience, Revenue)
+│   │   ├── services/       # Axios API client routines
+│   │   └── App.js
+│   ├── Dockerfile
+│   └── package.json
+├── docker-compose.yml
+└── README.md
+
+```
+
+---
+
+## ⚙️ Getting Started
+
+### Prerequisites
+
+* [Docker](https://www.docker.com/) & [Docker Compose](https://docs.docker.com/compose/) installed
+* Python 3.10+ (for local backend development)
+* Node.js 18+ (for local frontend development)
+
+### Running with Docker
+
+1. **Clone the repository:**
+```bash
+git clone [https://github.com/springboardmentor330h/Creator-Analytics-Content-Performance-Dashboard.git](https://github.com/springboardmentor330h/Creator-Analytics-Content-Performance-Dashboard.git)
+cd Creator-Analytics-Content-Performance-Dashboard
+
+```
+
+
+2. **Set up Environment Variables:**
+Create a `.env` file in the root directory based on `.env.example`:
+```env
+DATABASE_URL=postgresql://user:password@db:5432/creatoriq_db
+SECRET_KEY=your_jwt_secret_key
+YOUTUBE_API_KEY=your_youtube_api_key
+
+```
+
+
+3. **Start services:**
+```bash
+docker-compose up --build
+
+```
+
+
+* **Frontend:** `http://localhost:3000`
+* **Backend API Docs (Swagger):** `http://localhost:8000/docs`
+
+
+
+---
+
+## 🗓️ Development Roadmap
+
+* [x] **Milestone 1:** Architecture Design, Project Setup, JWT Auth & Base Dashboard UI
+* [x] **Milestone 2:** Content Analytics Module & YouTube API Data Sync Integration
+* [ ] **Milestone 3:** Revenue Analytics, Notification Engine & Export Module (PDF/Excel)
+* [ ] **Milestone 4:** Full Cloud Deployment (AWS/Azure), Dockerization & Performance Optimization
+
+
+## Author
+
+Harsh Kumar — CreatorIQ Project
