@@ -1,12 +1,11 @@
 import React from 'react';
 import { Eye, Heart, MessageSquare, Share2, TrendingUp, BarChart2 } from 'lucide-react';
-import { formatNumber } from '../utils/format';
+import { formatNumber, rawNumber, FormattedNumber } from '../utils/format';
 import { YoutubeIcon, InstagramIcon, TikTokIcon, LinkedInIcon, TwitterIcon } from './PlatformIcons';
 
 const platformIconMap = {
   YouTube: YoutubeIcon,
   Instagram: InstagramIcon,
-  TikTok: TikTokIcon,
   LinkedIn: LinkedInIcon,
   Facebook: Share2,
   X: TwitterIcon,
@@ -17,7 +16,6 @@ const platformIconMap = {
 const platformColorMap = {
   YouTube: '#ef4444',
   Instagram: '#ec4899',
-  TikTok: '#06b6d4',
   LinkedIn: '#2563eb',
   Facebook: '#3b82f6',
   X: '#0284c7',
@@ -31,19 +29,19 @@ export default function PlatformComparison({ platformComparison }) {
   let comparisonMap = {};
   if (Array.isArray(platformComparison)) {
     platformComparison.forEach(item => {
-      if (item && item.platform) comparisonMap[item.platform] = item;
+      if (item && item.platform && item.platform.toLowerCase() !== 'tiktok') comparisonMap[item.platform] = item;
     });
   } else if (typeof platformComparison === 'object') {
     if (platformComparison.comparison && Array.isArray(platformComparison.comparison)) {
       platformComparison.comparison.forEach(item => {
-        if (item && item.platform) comparisonMap[item.platform] = item;
+        if (item && item.platform && item.platform.toLowerCase() !== 'tiktok') comparisonMap[item.platform] = item;
       });
     } else {
       comparisonMap = platformComparison;
     }
   }
 
-  const platforms = Object.keys(comparisonMap);
+  const platforms = Object.keys(comparisonMap).filter(p => p.toLowerCase() !== 'tiktok');
   if (platforms.length === 0) return null;
 
   const maxViews = Math.max(...platforms.map(p => comparisonMap[p]?.views || comparisonMap[p]?.total_views || 0), 1);
@@ -54,14 +52,71 @@ export default function PlatformComparison({ platformComparison }) {
         <div>
           <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <BarChart2 size={20} color="#2563eb" />
-            <span>Platform Comparison Analytics</span>
+            <span>Multi-Platform Comparison & Analytics Matrix</span>
           </h2>
           <p style={{ fontSize: '13px', color: '#64748b', margin: '4px 0 0 0' }}>
-            Comparative overview of views, reach, engagement rates, likes, and comments across social platforms
+            Omnichannel performance side-by-side analysis calculated directly from PostgreSQL database records
           </p>
         </div>
       </div>
 
+      {/* Structured Comparison Table */}
+      <div style={{ overflowX: 'auto', marginBottom: '24px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <thead>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 700 }}>
+              <th style={{ padding: '12px 16px' }}>Platform</th>
+              <th style={{ padding: '12px 16px' }}>Content Items</th>
+              <th style={{ padding: '12px 16px' }}>Total Views</th>
+              <th style={{ padding: '12px 16px' }}>Organic Reach</th>
+              <th style={{ padding: '12px 16px' }}>Total Likes</th>
+              <th style={{ padding: '12px 16px' }}>Total Comments</th>
+              <th style={{ padding: '12px 16px' }}>Total Shares</th>
+              <th style={{ padding: '12px 16px' }}>Engagement Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {platforms.map((p) => {
+              const data = comparisonMap[p] || {};
+              const IconComp = platformIconMap[p] || Share2;
+              const color = platformColorMap[p] || '#6366f1';
+              const pViews = data.views ?? data.total_views ?? 0;
+              const pLikes = data.likes ?? data.total_likes ?? 0;
+              const pComments = data.comments ?? data.total_comments ?? 0;
+              const pShares = data.shares ?? data.total_shares ?? 0;
+              const pReach = data.reach ?? data.total_reach ?? 0;
+              const pCount = data.content_count ?? data.total_content ?? '-';
+              const pEng = data.engagement_rate ?? data.average_engagement_rate ?? 0;
+
+              return (
+                <tr key={p} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: '#ffffff' }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ width: '26px', height: '26px', borderRadius: '6px', backgroundColor: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <IconComp size={16} color={color} />
+                      </div>
+                      <span>{p}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '12px 16px', color: '#475569', fontWeight: 600 }}><FormattedNumber value={pCount} /></td>
+                  <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}><FormattedNumber value={pViews} /></td>
+                  <td style={{ padding: '12px 16px', color: '#475569' }}><FormattedNumber value={pReach} /></td>
+                  <td style={{ padding: '12px 16px', color: '#475569' }}><FormattedNumber value={pLikes} /></td>
+                  <td style={{ padding: '12px 16px', color: '#475569' }}><FormattedNumber value={pComments} /></td>
+                  <td style={{ padding: '12px 16px', color: '#475569' }}><FormattedNumber value={pShares} /></td>
+                  <td style={{ padding: '12px 16px', fontWeight: 800, color: color }}>
+                    <span style={{ backgroundColor: `${color}15`, padding: '4px 10px', borderRadius: '12px' }}>
+                      {pEng}%
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Visual Platform Cards Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
         {platforms.map((p) => {
           const data = comparisonMap[p] || {};
@@ -103,7 +158,7 @@ export default function PlatformComparison({ platformComparison }) {
                   </div>
                   <div>
                     <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0, color: '#0f172a' }}>{p}</h4>
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>Connected Channel</span>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>PostgreSQL Synchronized</span>
                   </div>
                 </div>
 

@@ -13,8 +13,8 @@ VALID_REVENUE_SOURCES = [
 
 class RevenueBase(BaseModel):
     source: str = Field(..., description="Revenue source stream")
-    amount: float = Field(..., gt=0, description="Amount earned in USD or local currency")
-    currency: str = Field("USD", description="Currency code (e.g. USD, EUR, INR)")
+    amount: float = Field(..., gt=0, description="Amount earned in INR or local currency")
+    currency: str = Field("INR", description="Currency code (e.g. INR)")
     description: Optional[str] = Field(None, description="Additional context or notes for transaction")
     date: datetime.date = Field(..., description="Date when revenue was earned or recorded")
 

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MobileBottomNav from './components/MobileBottomNav';
 import Toast from './components/Toast';
+import { PageLoader, SyncingBanner } from './components/Loader';
 
 import DashboardView from './pages/DashboardView';
 import ContentView from './pages/ContentView';
@@ -19,14 +20,15 @@ import ContentModal from './components/ContentModal';
 import YouTubeSyncModal from './components/YouTubeSyncModal';
 import InstagramSyncModal from './components/InstagramSyncModal';
 import SocialConnectModal from './components/SocialConnectModal';
+import PlatformSyncModal from './components/PlatformSyncModal';
 import RevenueModal from './components/RevenueModal';
 import SponsorshipModal from './components/SponsorshipModal';
 
-import { api } from './api';
+import { api, getStoredToken, getStoredUser, clearAuthSession } from './api';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -54,7 +56,34 @@ export default function App() {
   // Platform Filter State
   const [selectedPlatform, setSelectedPlatform] = useState('All');
 
+  // Theme & Appearance Customizer States
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('creatoriq_theme') || 'light'; } catch { return 'light'; }
+  });
+  const [accentColor, setAccentColor] = useState(() => {
+    try { return localStorage.getItem('creatoriq_accent') || 'indigo'; } catch { return 'indigo'; }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('creatoriq_theme', theme);
+      localStorage.setItem('creatoriq_accent', accentColor);
+    } catch (e) {}
+    document.documentElement.className = `${theme === 'dark' ? 'dark-theme' : ''} accent-${accentColor}`;
+  }, [theme, accentColor]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleSelectAccent = (colorKey) => {
+    setAccentColor(colorKey);
+  };
+
   const [loading, setLoading] = useState(false);
+  const [isAutoSyncing, setIsAutoSyncing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('Syncing real-time social metrics...');
   const [error, setError] = useState(null);
 
   // Modals
@@ -68,6 +97,9 @@ export default function App() {
   const [isInstagramModalOpen, setIsInstagramModalOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
+  const [activeSyncPlatform, setActiveSyncPlatform] = useState('YouTube');
+  const [isPlatformSyncModalOpen, setIsPlatformSyncModalOpen] = useState(false);
+
   // Sprint 6 Modals
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [editingRevenue, setEditingRevenue] = useState(null);
@@ -79,21 +111,59 @@ export default function App() {
     setToast({ message, type });
   };
 
-  // Check login session on mount
+  const handleOpenPlatformModal = (platformName) => {
+    setIsYouTubeModalOpen(false);
+    setIsInstagramModalOpen(false);
+    setIsSocialModalOpen(false);
+    setActiveSyncPlatform(platformName);
+    setIsPlatformSyncModalOpen(true);
+  };
+
+  const handleOpenYouTubeModal = () => {
+    setIsPlatformSyncModalOpen(false);
+    setIsInstagramModalOpen(false);
+    setIsSocialModalOpen(false);
+    setIsYouTubeModalOpen(true);
+  };
+
+  const handleOpenInstagramModal = () => {
+    setIsPlatformSyncModalOpen(false);
+    setIsYouTubeModalOpen(false);
+    setIsSocialModalOpen(false);
+    setIsInstagramModalOpen(true);
+  };
+
+  const handleOpenSocialModal = () => {
+    setIsPlatformSyncModalOpen(false);
+    setIsYouTubeModalOpen(false);
+    setIsInstagramModalOpen(false);
+    setIsSocialModalOpen(true);
+  };
+
+  // Check login session on mount (30-day token persistence check)
   useEffect(() => {
-    const savedToken = localStorage.getItem('creatoriq_token');
-    const savedUser = localStorage.getItem('creatoriq_user');
+    const savedToken = getStoredToken();
+    const savedUser = getStoredUser();
+
     if (savedToken && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        setUser({ email: 'creator@creatoriq.com' });
-      }
+      setUser(savedUser);
+    } else {
+      setUser(null);
     }
+    setIsInitializing(false);
+
+    const handleUnauthorized = () => {
+      setUser(null);
+      showToast('Session expired. Please sign in to continue.', 'info');
+    };
+
+    window.addEventListener('creatoriq:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('creatoriq:unauthorized', handleUnauthorized);
   }, []);
 
   // Fetch all realtime backend data
   const fetchAllBackendData = async (platform = selectedPlatform) => {
+    if (!getStoredToken()) return;
     setLoading(true);
     setError(null);
     try {
@@ -120,8 +190,8 @@ export default function App() {
         api.getGrowthReport(platform).catch(() => []),
         api.getAudienceTrends(platform).catch(() => []),
         api.getReachBreakdown().catch(() => null),
-        api.getEngagementChart().catch(() => null),
-        api.getFollowerGrowthChart().catch(() => null),
+        api.getEngagementChart(platform).catch(() => null),
+        api.getFollowerGrowthChart(platform).catch(() => null),
         api.getPlatformComparison().catch(() => null),
         api.getConnectedSocialPlatforms().catch(() => null),
         api.getRevenueSummary().catch(() => null),
@@ -155,24 +225,27 @@ export default function App() {
   };
 
   useEffect(() => {
-    fetchAllBackendData(selectedPlatform);
-  }, [selectedPlatform]);
+    if (user) {
+      fetchAllBackendData(selectedPlatform);
+    }
+  }, [user, selectedPlatform]);
 
-  const handleLoginSuccess = (email) => {
-    setUser({ email });
-    setShowAuthModal(false);
-    showToast(`Welcome back, ${email.split('@')[0]}!`, 'success');
-    fetchAllBackendData();
+  const handleLoginSuccess = (userData) => {
+    const userObj = typeof userData === 'object' ? userData : { email: userData };
+    setUser(userObj);
+    showToast(`Welcome back, ${userObj.name || userObj.email.split('@')[0]}!`, 'success');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('creatoriq_token');
-    localStorage.removeItem('creatoriq_user');
+    clearAuthSession();
     setUser(null);
+    setSummary(null);
     showToast('Signed out successfully', 'info');
   };
 
   const handleSyncYouTube = async (channelId) => {
+    setIsSyncing(true);
+    setSyncMessage('Syncing live YouTube channel metrics & videos...');
     try {
       const res = await api.syncYouTube(channelId);
       await fetchAllBackendData();
@@ -180,10 +253,14 @@ export default function App() {
       return res;
     } catch (err) {
       showToast(`YouTube Sync Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   const handleSyncInstagram = async (handle) => {
+    setIsSyncing(true);
+    setSyncMessage('Syncing live Instagram media & reels...');
     try {
       const res = await api.syncInstagram(handle);
       await fetchAllBackendData();
@@ -191,38 +268,54 @@ export default function App() {
       return res;
     } catch (err) {
       showToast(`Instagram Sync Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
   const handleAutoSyncAll = async () => {
+    setIsAutoSyncing(true);
+    setIsSyncing(true);
+    setSyncMessage('Auto-syncing real-time social metrics from all saved channels & handles...');
     try {
       const res = await api.autoSyncAccounts();
       await fetchAllBackendData();
       showToast(res?.message || 'All saved channels & handles auto-synced successfully!', 'success');
     } catch (err) {
       showToast(`Auto-Sync Error: ${err.message}`, 'error');
+    } finally {
+      setIsAutoSyncing(false);
+      setIsSyncing(false);
     }
   };
 
   const handleConnectSocial = async (platform, accountName) => {
+    setIsSyncing(true);
+    setSyncMessage(`Connecting and syncing live data for ${platform}...`);
     try {
-      const res = await api.connectSocialPlatform(platform, accountName);
+      const res = await api.saveSocialAccount(platform, accountName, accountName);
       await fetchAllBackendData();
-      showToast(`${platform} channel connected!`, 'success');
+      showToast(`${platform} account '${accountName}' connected & synced!`, 'success');
       return res;
     } catch (err) {
       showToast(`Connection Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
-  const handleSyncSocial = async (platform) => {
+  const handleSyncSocial = async (platform, accountId) => {
+    setIsSyncing(true);
+    setSyncMessage(`Refreshing real-time ${platform} metrics${accountId ? ` for ${accountId}` : ''}...`);
     try {
-      const res = await api.syncSocialPlatform(platform);
+      const res = await api.syncPlatform(platform, accountId);
       await fetchAllBackendData();
-      showToast(`${platform} data refreshed!`, 'success');
+      showToast(res?.message || `${platform} data refreshed!`, 'success');
       return res;
     } catch (err) {
       showToast(`Sync Error: ${err.message}`, 'error');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -376,6 +469,10 @@ export default function App() {
   const headerInfo = getHeaderTitles();
 
   const renderActiveView = () => {
+    if (loading && !summary) {
+      return <PageLoader message="Loading Creator Analytics Workspace..." />;
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return (
@@ -420,6 +517,7 @@ export default function App() {
         return (
           <GrowthView
             growthTrends={growthTrends}
+            contents={contents}
             selectedPlatform={selectedPlatform}
             onSelectPlatform={setSelectedPlatform}
           />
@@ -448,6 +546,10 @@ export default function App() {
             user={user}
             onUpdateUser={(upUser) => setUser(upUser)}
             onOpenSocialModal={() => setIsSocialModalOpen(true)}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            accentColor={accentColor}
+            onSelectAccent={handleSelectAccent}
           />
         );
       default:
@@ -469,6 +571,21 @@ export default function App() {
         );
     }
   };
+
+  // If initializing session check, show page loader
+  if (isInitializing) {
+    return <PageLoader message="Initializing Session..." />;
+  }
+
+  // Gatekeeping: If user is not authenticated, show AuthView (Login/Register) ONLY
+  if (!user) {
+    return (
+      <>
+        <Toast toast={toast} onClose={() => setToast(null)} />
+        <AuthView onLoginSuccess={handleLoginSuccess} />
+      </>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -494,10 +611,16 @@ export default function App() {
           selectedPlatform={selectedPlatform}
           onPlatformChange={setSelectedPlatform}
           onAutoSync={handleAutoSyncAll}
+          isAutoSyncing={isAutoSyncing}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
+          accentColor={accentColor}
+          onSelectAccent={handleSelectAccent}
           onLogout={handleLogout}
-          onOpenYouTubeModal={() => setIsYouTubeModalOpen(true)}
-          onOpenInstagramModal={() => setIsInstagramModalOpen(true)}
-          onOpenSocialModal={() => setIsSocialModalOpen(true)}
+          onOpenYouTubeModal={handleOpenYouTubeModal}
+          onOpenInstagramModal={handleOpenInstagramModal}
+          onOpenSocialModal={handleOpenSocialModal}
+          onOpenPlatformModal={handleOpenPlatformModal}
           onOpenNotificationsTab={() => setActiveTab('notifications')}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
@@ -516,26 +639,14 @@ export default function App() {
         </main>
       </div>
 
+      {/* Floating Real-Time Data Sync Banner Notification */}
+      {isSyncing && <SyncingBanner message={syncMessage} />}
+
       {/* Smartphone Bottom Navbar (< 768px) */}
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
-
-      {/* Auth Modal Overlay */}
-      {showAuthModal && (
-        <div className="modal-overlay">
-          <div style={{ position: 'relative', width: '100%', maxWidth: '440px' }}>
-            <button
-              onClick={() => setShowAuthModal(false)}
-              style={{ position: 'absolute', top: '10px', right: '10px', background: '#e5e7eb', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', zIndex: 100 }}
-            >
-              ✕
-            </button>
-            <AuthView onLoginSuccess={handleLoginSuccess} />
-          </div>
-        </div>
-      )}
 
       {/* CRUD & Workflow Modals */}
       <AudienceModal
@@ -570,6 +681,13 @@ export default function App() {
         onConnect={handleConnectSocial}
         onSync={handleSyncSocial}
         connectedPlatforms={connectedPlatforms}
+      />
+
+      <PlatformSyncModal
+        isOpen={isPlatformSyncModalOpen}
+        onClose={() => setIsPlatformSyncModalOpen(false)}
+        platform={activeSyncPlatform}
+        onSync={handleSyncSocial}
       />
 
       <RevenueModal

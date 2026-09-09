@@ -13,8 +13,11 @@ class ConnectedPlatformsResponse(BaseModel):
 
 class SocialSyncRequest(BaseModel):
     platform: Optional[str] = None
+    account_id: Optional[str] = None
+    handle: Optional[str] = None
 
 class SocialSyncResponse(BaseModel):
     message: str
     platform: str
     synced_records: int
+

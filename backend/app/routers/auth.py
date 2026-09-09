@@ -41,5 +41,51 @@ def login(
     )
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.full_name or user.email.split("@")[0],
+            "role": user.role
+        }
+    }
+
+@router.post("/register")
+def register(
+    request: dict,
+    db: Session = Depends(get_db)
+):
+    email = request.get("email")
+    password = request.get("password")
+    full_name = request.get("full_name", email.split("@")[0] if email else "Creator")
+    role = request.get("role", "creator")
+
+    if not email or not password:
+        raise HTTPException(status_code=400, detail="Email and password are required")
+
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+
+    from backend.app.core.security import hash_password
+    new_user = User(
+        full_name=full_name,
+        email=email,
+        password=hash_password(password),
+        role=role
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    token = create_access_token({"sub": new_user.email, "role": new_user.role})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": new_user.id,
+            "email": new_user.email,
+            "name": new_user.full_name,
+            "role": new_user.role
+        }
     }

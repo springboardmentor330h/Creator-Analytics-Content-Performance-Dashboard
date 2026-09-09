@@ -1,7 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.db.database import Base, engine
-from backend.app.models.social_account import SocialAccount
 from backend.app.routers.users import router as users_router
 from backend.app.routers.auth import router as auth_router
 from backend.app.routers.content import router as content_router
@@ -15,7 +13,9 @@ from backend.app.routers.notifications import router as notifications_router
 from backend.app.routers.reports import router as reports_router
 from backend.app.routers.platforms import router as platforms_router
 
-Base.metadata.create_all(bind=engine)
+from backend.app.db.init_db import init_db
+
+init_db()
 
 app = FastAPI(
     title="CreatorIQ API - Multi-Platform Analytics Engine",
@@ -43,13 +43,19 @@ app.add_middleware(
 )
 
 app.include_router(users_router)
+app.include_router(users_router, prefix="/api")
 app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
 app.include_router(content_router)
+app.include_router(content_router, prefix="/api")
 app.include_router(analytics_router)
+app.include_router(analytics_router, prefix="/api")
 app.include_router(audience_router)
+app.include_router(audience_router, prefix="/api")
 app.include_router(youtube_router)
 app.include_router(youtube_router, prefix="/api")
 app.include_router(social_router)
+app.include_router(social_router, prefix="/api")
 app.include_router(platforms_router)
 app.include_router(platforms_router, prefix="/api")
 app.include_router(revenue_router)

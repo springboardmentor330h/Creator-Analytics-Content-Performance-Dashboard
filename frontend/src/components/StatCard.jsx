@@ -1,4 +1,5 @@
 import React from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { formatNumber, rawNumber } from '../utils/format';
 
 export default function StatCard({ label, value, trend, isUp = true }) {
@@ -19,8 +20,9 @@ export default function StatCard({ label, value, trend, isUp = true }) {
       </div>
       {trend && (
         <div>
-          <span className={`stat-trend ${isUp ? 'up' : 'down'}`}>
-            {isUp ? '▲ ' : '▼ '}{trend}
+          <span className={`stat-trend ${isUp ? 'up' : 'down'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+            {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            <span>{trend}</span>
           </span>
         </div>
       )}

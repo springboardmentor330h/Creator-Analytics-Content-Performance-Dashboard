@@ -6,7 +6,6 @@ import { YoutubeIcon, InstagramIcon, TikTokIcon, LinkedInIcon, TwitterIcon } fro
 const platformConfig = {
   YouTube: { color: '#ef4444', bgColor: '#fef2f2', icon: YoutubeIcon },
   Instagram: { color: '#ec4899', bgColor: '#fdf2f8', icon: InstagramIcon },
-  TikTok: { color: '#06b6d4', bgColor: '#ecfeff', icon: TikTokIcon },
   LinkedIn: { color: '#2563eb', bgColor: '#eff6ff', icon: LinkedInIcon },
   'Twitter/X': { color: '#0284c7', bgColor: '#f0f9ff', icon: TwitterIcon },
   Twitter: { color: '#0284c7', bgColor: '#f0f9ff', icon: TwitterIcon },
@@ -77,7 +76,7 @@ export default function PlatformReachBreakdown({ reachBreakdown, selectedPlatfor
         </div>
 
         {/* Individual Platform Reach Cards */}
-        {platform_breakdown && platform_breakdown.map((item) => {
+        {platform_breakdown && platform_breakdown.filter(item => item.platform.toLowerCase() !== 'tiktok').map((item) => {
           const cfg = platformConfig[item.platform] || { color: '#6366f1', bgColor: '#e0e7ff', icon: Globe };
           const IconComp = cfg.icon;
           const isSelected = selectedPlatform === item.platform;

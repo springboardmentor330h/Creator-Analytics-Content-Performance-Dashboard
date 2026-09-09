@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, X, CheckCircle2, Trash2, Plus } from 'lucide-react';
+import { RefreshCw, X, CheckCircle2, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import { InstagramIcon } from './PlatformIcons';
 import { api } from '../api';
 
@@ -106,8 +106,8 @@ export default function InstagramSyncModal({ isOpen, onClose, onSync }) {
         </div>
 
         {errorMsg && (
-          <div style={{ margin: '16px 24px 0 24px', backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
-            ⚠️ {errorMsg}
+          <div style={{ margin: '16px 24px 0 24px', backgroundColor: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={16} color="#991b1b" /> {errorMsg}
           </div>
         )}
 

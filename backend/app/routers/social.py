@@ -37,13 +37,20 @@ def get_connected_platforms():
 
 @router.post("/sync", response_model=SocialSyncResponse)
 @router.post("/sync/", response_model=SocialSyncResponse)
-def sync_social_data(payload: Optional[SocialSyncRequest] = None, platform: Optional[str] = None, db: Session = Depends(get_db)):
+def sync_social_data(
+    payload: Optional[SocialSyncRequest] = None,
+    platform: Optional[str] = Query(None),
+    account_id: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
     """
     Multi-platform synchronization workflow:
     Fetches platform data -> processes -> stores in PostgreSQL.
+    Supports custom User ID, Handle (@handle), or Profile Link for all platforms.
     """
     target_platform = (payload.platform if payload and payload.platform else platform)
-    res = SocialMediaService.sync_platform_data(db, platform=target_platform)
+    target_account = (payload.account_id if payload and payload.account_id else (payload.handle if payload and payload.handle else account_id))
+    res = SocialMediaService.sync_platform_data(db, platform=target_platform, account_id=target_account)
     return res
 
 @router.post("/youtube/sync")

@@ -4,7 +4,8 @@ import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "creatoriq_secret_key_change_in_production_2026")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
+# 30 Days Token Expiration (60 mins * 24 hours * 30 days)
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30
 
 def create_access_token(data: dict):
     to_encode = data.copy()

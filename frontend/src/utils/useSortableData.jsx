@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 
 /**
  * Custom hook for sorting table datasets.
@@ -66,7 +67,7 @@ export function useSortableData(items, initialConfig = null) {
 }
 
 /**
- * Sort indicator arrow header component.
+ * Sort indicator arrow header component using Lucide Icons.
  */
 export function SortHeader({ label, columnKey, sortConfig, onSort }) {
   const isSorted = sortConfig && sortConfig.key === columnKey;
@@ -85,12 +86,18 @@ export function SortHeader({ label, columnKey, sortConfig, onSort }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
         <span>{label}</span>
         <span style={{
-          fontSize: '11px',
-          fontWeight: 800,
+          display: 'inline-flex',
+          alignItems: 'center',
           opacity: isSorted ? 1 : 0.35,
           color: isSorted ? '#4f46e5' : 'inherit'
         }}>
-          {direction === 'asc' ? '▲' : direction === 'desc' ? '▼' : '↕'}
+          {direction === 'asc' ? (
+            <ChevronUp size={13} />
+          ) : direction === 'desc' ? (
+            <ChevronDown size={13} />
+          ) : (
+            <ChevronsUpDown size={13} />
+          )}
         </span>
       </div>
     </th>

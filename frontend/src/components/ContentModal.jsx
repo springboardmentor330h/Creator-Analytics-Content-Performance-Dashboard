@@ -169,7 +169,6 @@ export default function ContentModal({ isOpen, onClose, onSave, initialData }) {
                     <option value="YouTube">YouTube</option>
                     <option value="Instagram">Instagram</option>
                     <option value="LinkedIn">LinkedIn</option>
-                    <option value="TikTok">TikTok</option>
                     <option value="Twitter/X">Twitter/X</option>
                   </select>
                 </div>

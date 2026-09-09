@@ -11,7 +11,7 @@ class Revenue(Base):
     creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     source = Column(String, nullable=False, index=True)
     amount = Column(Float, nullable=False)
-    currency = Column(String, nullable=False, default="USD")
+    currency = Column(String, nullable=False, default="INR")
     description = Column(String, nullable=True)
     date = Column(Date, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

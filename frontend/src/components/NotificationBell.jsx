@@ -9,25 +9,35 @@ export default function NotificationBell({ onOpenFullNotifications }) {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
 
-  const fetchUnreadAndList = async () => {
+  const fetchUnreadCountOnly = async () => {
     try {
-      const [cntRes, notifList] = await Promise.all([
-        api.getUnreadNotificationCount().catch(() => ({ unread_count: 0 })),
-        api.getNotifications(false, null).catch(() => [])
-      ]);
+      const cntRes = await api.getUnreadNotificationCount().catch(() => ({ unread_count: 0 }));
       setUnreadCount(cntRes.unread_count || 0);
+    } catch (e) {
+      console.error('Unread count error:', e);
+    }
+  };
+
+  const fetchFullList = async () => {
+    try {
+      const notifList = await api.getNotifications(false, null).catch(() => []);
       setNotifications(Array.isArray(notifList) ? notifList : []);
     } catch (e) {
-      console.error('Failed to load notifications:', e);
+      console.error('Notification list error:', e);
     }
   };
 
   useEffect(() => {
-    fetchUnreadAndList();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchUnreadAndList, 30000);
+    fetchUnreadCountOnly();
+    const interval = setInterval(fetchUnreadCountOnly, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchFullList();
+    }
+  }, [isOpen]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -39,6 +49,11 @@ export default function NotificationBell({ onOpenFullNotifications }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const fetchUnreadAndList = async () => {
+    await fetchUnreadCountOnly();
+    await fetchFullList();
+  };
 
   const handleMarkAllRead = async () => {
     try {

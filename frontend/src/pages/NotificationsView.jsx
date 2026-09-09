@@ -3,6 +3,7 @@ import { Bell, RefreshCw, CheckCheck, Trash2, AlertTriangle, CheckCircle, Info, 
 import { api } from '../api';
 import EmptyState from '../components/EmptyState';
 import { useSortableData, SortHeader } from '../utils/useSortableData';
+import Pagination from '../components/Pagination';
 
 export default function NotificationsView() {
   const [notifications, setNotifications] = useState([]);
@@ -10,6 +11,9 @@ export default function NotificationsView() {
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -28,6 +32,9 @@ export default function NotificationsView() {
   }, [filterType, unreadOnly]);
 
   const { items: sortedNotifications, requestSort, sortConfig } = useSortableData(notifications, { key: 'created_at', direction: 'desc' });
+  const totalPages = Math.ceil(sortedNotifications.length / pageSize) || 1;
+  const paginatedNotifications = sortedNotifications.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
 
   const handleTriggerScan = async () => {
     setScanning(true);
@@ -208,15 +215,15 @@ export default function NotificationsView() {
               <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody key={currentPage} className="animate-fade-in">
             {loading ? (
               <tr>
                 <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                   Loading notifications...
                 </td>
               </tr>
-            ) : sortedNotifications.length > 0 ? (
-              sortedNotifications.map((notif) => (
+            ) : paginatedNotifications.length > 0 ? (
+              paginatedNotifications.map((notif) => (
                 <tr key={notif.id} style={{ backgroundColor: notif.is_read ? '#ffffff' : '#f0f9ff' }}>
                   <td>
                     {notif.is_read ? (
@@ -271,6 +278,15 @@ export default function NotificationsView() {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={sortedNotifications.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(newSize) => { setPageSize(newSize); setCurrentPage(1); }}
+      />
     </div>
   );
 }

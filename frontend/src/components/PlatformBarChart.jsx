@@ -5,7 +5,6 @@ import { formatNumber } from '../utils/format';
 const platformColorMap = {
   YouTube: '#ef4444',
   Instagram: '#ec4899',
-  TikTok: '#06b6d4',
   LinkedIn: '#2563eb',
   Twitter: '#0284c7',
   'Twitter/X': '#0284c7',
@@ -15,13 +14,38 @@ const platformColorMap = {
 export default function PlatformBarChart({ platformComparison }) {
   const [hoveredPlatform, setHoveredPlatform] = useState(null);
 
-  if (!platformComparison || Object.keys(platformComparison).length === 0) return null;
+  if (!platformComparison) return null;
 
-  const platforms = Object.keys(platformComparison);
+  let comparisonMap = {};
+  if (Array.isArray(platformComparison)) {
+    platformComparison.forEach(item => {
+      if (item && item.platform && item.platform.toLowerCase() !== 'tiktok') {
+        comparisonMap[item.platform] = item;
+      }
+    });
+  } else if (typeof platformComparison === 'object' && platformComparison !== null) {
+    if (platformComparison.comparison && Array.isArray(platformComparison.comparison)) {
+      platformComparison.comparison.forEach(item => {
+        if (item && item.platform && item.platform.toLowerCase() !== 'tiktok') {
+          comparisonMap[item.platform] = item;
+        }
+      });
+    } else {
+      Object.keys(platformComparison).forEach(key => {
+        if (!['creator_id', 'total_platforms_tracked', 'comparison'].includes(key)) {
+          comparisonMap[key] = platformComparison[key];
+        }
+      });
+    }
+  }
+
+  const platforms = Object.keys(comparisonMap).filter(p => p.toLowerCase() !== 'tiktok');
+  if (platforms.length === 0) return null;
+
   const maxVal = Math.max(
     ...platforms.flatMap(p => [
-      platformComparison[p]?.views || 0,
-      platformComparison[p]?.reach || 0
+      comparisonMap[p]?.views ?? comparisonMap[p]?.total_views ?? 0,
+      comparisonMap[p]?.reach ?? comparisonMap[p]?.total_reach ?? 0
     ]),
     1
   );
@@ -53,9 +77,9 @@ export default function PlatformBarChart({ platformComparison }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1, justifyContent: 'center' }}>
         {platforms.map((p) => {
-          const data = platformComparison[p] || {};
-          const views = data.views || 0;
-          const reach = data.reach || 0;
+          const data = comparisonMap[p] || {};
+          const views = data.views ?? data.total_views ?? 0;
+          const reach = data.reach ?? data.total_reach ?? 0;
           const viewsPct = Math.round((views / maxVal) * 100);
           const reachPct = Math.round((reach / maxVal) * 100);
           const brandColor = platformColorMap[p] || '#6366f1';
@@ -106,3 +130,4 @@ export default function PlatformBarChart({ platformComparison }) {
     </div>
   );
 }
+

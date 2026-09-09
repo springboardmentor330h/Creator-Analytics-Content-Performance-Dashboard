@@ -18,7 +18,7 @@ export default function PlatformPieChart({ reachBreakdown, selectedPlatform, onS
 
   if (!reachBreakdown || !reachBreakdown.platform_breakdown) return null;
 
-  const breakdown = reachBreakdown.platform_breakdown.filter(item => item.reach > 0);
+  const breakdown = reachBreakdown.platform_breakdown.filter(item => item.reach > 0 && item.platform.toLowerCase() !== 'tiktok');
   const totalReach = reachBreakdown.combined_total_reach || 1;
 
   if (breakdown.length === 0) return null;

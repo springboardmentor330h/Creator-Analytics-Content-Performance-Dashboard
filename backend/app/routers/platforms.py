@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
@@ -98,7 +99,7 @@ def save_social_account(
     elif p_norm.lower() == "instagram":
         InstagramService.sync_instagram_media(db, creator_id=current_user.id, instagram_handle=h_clean)
     else:
-        SocialMediaService.sync_platform_data(db, platform=p_norm, creator_id=current_user.id)
+        SocialMediaService.sync_platform_data(db, platform=p_norm, account_id=h_clean, creator_id=current_user.id)
 
     return {
         "message": f"Successfully saved and synchronized {p_norm} account '{h_clean}'",
@@ -155,7 +156,7 @@ def auto_sync_all_accounts(
         elif p_lower == "instagram":
             InstagramService.sync_instagram_media(db, creator_id=current_user.id, instagram_handle=acc.account_handle)
         else:
-            SocialMediaService.sync_platform_data(db, platform=acc.platform, creator_id=current_user.id)
+            SocialMediaService.sync_platform_data(db, platform=acc.platform, account_id=acc.account_handle, creator_id=current_user.id)
         
         acc.last_synced_at = datetime.utcnow()
         synced_details.append(f"{acc.platform}: {acc.account_handle}")
@@ -184,21 +185,11 @@ def sync_platform_data(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Synchronize content and engagement data from YouTube, Instagram, TikTok, LinkedIn, or X.
-    Extracts metrics, transforms to CreatorIQ Common Format, and updates PostgreSQL database.
+    Synchronize real-time content and engagement data from YouTube, Instagram, X (Twitter), Facebook, TikTok, or LinkedIn.
+    Extracts live metrics, transforms to CreatorIQ Common Format, and updates PostgreSQL database.
     """
-    p_lower = platform.strip().lower()
-    
-    if p_lower == "youtube":
-        res = YouTubeService.sync_youtube_videos(db, creator_id=current_user.id, channel_id=account_id)
-        return res
-    elif p_lower == "instagram":
-        res = InstagramService.sync_instagram_media(db, creator_id=current_user.id, instagram_handle=account_id)
-        return res
-    else:
-        # Use SocialMediaService omnichannel sync for TikTok, LinkedIn, X, Facebook
-        res = SocialMediaService.sync_platform_data(db, platform=platform.capitalize(), creator_id=current_user.id)
-        return res
+    res = SocialMediaService.sync_platform_data(db, platform=platform, account_id=account_id, creator_id=current_user.id)
+    return res
 
 @router.get("/comparison")
 def get_platform_comparison(
@@ -209,12 +200,20 @@ def get_platform_comparison(
     Fetch comprehensive cross-platform comparative metrics comparing YouTube, Instagram, TikTok, LinkedIn, and X.
     Returns side-by-side performance indicators (Views, Likes, Comments, Engagement Rate, Reach, Follower Share).
     """
-    contents = db.query(Content).filter(Content.creator_id == current_user.id).all()
-    if not contents:
-        contents = db.query(Content).all()
+    user_contents = db.query(Content).filter(Content.creator_id == current_user.id).all()
+    user_platforms = set(c.platform.capitalize() if c.platform else "" for c in user_contents)
+    default_platforms = ["YouTube", "Instagram", "Facebook", "LinkedIn", "X"]
+    missing = [p for p in default_platforms if p not in user_platforms]
+
+    if missing:
+        benchmark_contents = db.query(Content).filter(Content.platform.in_(missing)).all()
+        contents = list(user_contents) + list(benchmark_contents)
+    else:
+        contents = user_contents if user_contents else db.query(Content).all()
+
 
     platform_map: Dict[str, Dict[str, Any]] = {}
-    default_platforms = ["YouTube", "Instagram", "TikTok", "LinkedIn", "X"]
+    default_platforms = ["YouTube", "Instagram", "Facebook", "LinkedIn", "X"]
 
     for p in default_platforms:
         platform_map[p] = {

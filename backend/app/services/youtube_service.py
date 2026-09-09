@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 class YouTubeService:
     @staticmethod
-    @staticmethod
     def resolve_channel_id(channel_input: str, api_key: str) -> Optional[str]:
         """
         Resolves a user-provided Channel ID, Handle (@name), Username, or URL into a unique 24-character YouTube Channel ID.

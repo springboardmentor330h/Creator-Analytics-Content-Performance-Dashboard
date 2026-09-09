@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, AlertCircle } from 'lucide-react';
+import { Globe, MapPin, AlertCircle } from 'lucide-react';
 
 export default function TopCountries({ report }) {
   const topCountry = report?.top_country;
@@ -30,7 +30,7 @@ export default function TopCountries({ report }) {
           {topCountry && (
             <div className="country-item">
               <div className="country-info">
-                <span className="flag-icon">🌐</span>
+                <span className="flag-icon" style={{ display: 'flex', alignItems: 'center' }}><Globe size={16} color="#047857" /></span>
                 <span className="country-name">Top Country: {topCountry}</span>
               </div>
               <span className="country-val" style={{ color: '#047857', fontWeight: 700 }}>Primary</span>
@@ -39,7 +39,7 @@ export default function TopCountries({ report }) {
           {topCity && (
             <div className="country-item">
               <div className="country-info">
-                <span className="flag-icon">📍</span>
+                <span className="flag-icon" style={{ display: 'flex', alignItems: 'center' }}><MapPin size={16} color="#4338ca" /></span>
                 <span className="country-name">Top City: {topCity}</span>
               </div>
               <span className="country-val" style={{ color: '#4338ca', fontWeight: 700 }}>Primary</span>

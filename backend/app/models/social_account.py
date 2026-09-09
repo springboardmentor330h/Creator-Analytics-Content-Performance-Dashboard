@@ -7,7 +7,7 @@ class SocialAccount(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, nullable=False, index=True)
-    platform = Column(String, nullable=False, index=True) # YouTube, Instagram, TikTok, LinkedIn, X
+    platform = Column(String, nullable=False, index=True) # YouTube, Instagram, Facebook, LinkedIn, X
     account_handle = Column(String, nullable=False) # @CreatorIQ, UCxxxx
     account_name = Column(String, nullable=True) # Channel or Account Title
     account_id = Column(String, nullable=True) # Channel ID / External Account ID

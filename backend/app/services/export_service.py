@@ -1,13 +1,133 @@
 import io
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 
 class ExportService:
 
     @staticmethod
+    def _create_revenue_pie_chart(revenue_by_source: List[Dict[str, Any]]) -> Optional[Any]:
+        if not revenue_by_source:
+            return None
+        try:
+            from reportlab.graphics.shapes import Drawing
+            from reportlab.graphics.charts.piecharts import Pie
+            from reportlab.graphics.charts.legends import Legend
+            from reportlab.lib import colors
+
+            d = Drawing(520, 150)
+            
+            pc = Pie()
+            pc.x = 20
+            pc.y = 10
+            pc.width = 130
+            pc.height = 130
+            
+            amounts = [float(r.get("amount", 0.0)) for r in revenue_by_source]
+            total_amt = sum(amounts)
+            if total_amt == 0:
+                amounts = [1.0] * len(revenue_by_source)
+                
+            pc.data = amounts
+            pc.labels = [f"{r.get('percentage', 0.0):.1f}%" for r in revenue_by_source]
+            pc.simpleLabels = 0
+            
+            palette = [
+                colors.HexColor("#10b981"), # Emerald
+                colors.HexColor("#3b82f6"), # Blue
+                colors.HexColor("#8b5cf6"), # Purple
+                colors.HexColor("#f59e0b"), # Amber
+                colors.HexColor("#ec4899"), # Pink
+                colors.HexColor("#0284c7")  # Sky
+            ]
+            
+            for i in range(len(amounts)):
+                pc.slices[i].fillColor = palette[i % len(palette)]
+                pc.slices[i].strokeColor = colors.white
+                pc.slices[i].strokeWidth = 1.5
+
+            d.add(pc)
+
+            legend = Legend()
+            legend.x = 220
+            legend.y = 135
+            legend.dx = 10
+            legend.dy = 10
+            legend.fontName = 'Helvetica-Bold'
+            legend.fontSize = 8.5
+            legend.boxAnchor = 'nw'
+            legend.columnMaximum = 6
+            
+            legend_pairs = []
+            for i, r in enumerate(revenue_by_source):
+                source_name = str(r.get("source", "Stream"))
+                amt = float(r.get("amount", 0.0))
+                label_str = f"{source_name}: ₹{amt:,.2f}"
+                legend_pairs.append((palette[i % len(palette)], label_str))
+                
+            legend.colorNamePairs = legend_pairs
+            d.add(legend)
+            return d
+        except Exception as e:
+            print(f"Error building PDF pie chart: {e}")
+            return None
+
+    @staticmethod
+    def _create_platform_bar_chart(platform_performance: List[Dict[str, Any]]) -> Optional[Any]:
+        if not platform_performance:
+            return None
+        try:
+            from reportlab.graphics.shapes import Drawing
+            from reportlab.graphics.charts.barcharts import VerticalBarChart
+            from reportlab.lib import colors
+
+            d = Drawing(520, 150)
+            
+            bc = VerticalBarChart()
+            bc.x = 65
+            bc.y = 25
+            bc.height = 110
+            bc.width = 430
+            
+            p_names = [str(p.get("platform", "Platform")) for p in platform_performance]
+            p_views = [int(p.get("total_views", p.get("views", 0))) for p in platform_performance]
+            
+            bc.data = [p_views]
+            bc.categoryAxis.categoryNames = p_names
+            bc.categoryAxis.labels.fontName = 'Helvetica-Bold'
+            bc.categoryAxis.labels.fontSize = 8.5
+            bc.categoryAxis.labels.dy = -10
+            bc.categoryAxis.labels.fillColor = colors.HexColor("#1e293b")
+            
+            bc.valueAxis.valueMin = 0
+            bc.valueAxis.labels.fontName = 'Helvetica'
+            bc.valueAxis.labels.fontSize = 8
+            bc.valueAxis.labels.fillColor = colors.HexColor("#64748b")
+            
+            platform_colors = {
+                "YouTube": colors.HexColor("#ef4444"),
+                "Instagram": colors.HexColor("#ec4899"),
+                "Facebook": colors.HexColor("#2563eb"),
+                "LinkedIn": colors.HexColor("#0284c7"),
+                "X": colors.HexColor("#334155")
+            }
+            
+            for i, p in enumerate(platform_performance):
+                plat_name = str(p.get("platform", ""))
+                fill = platform_colors.get(plat_name, colors.HexColor("#3b82f6"))
+                bc.bars[(0, i)].fillColor = fill
+                bc.bars[(0, i)].strokeColor = colors.white
+                bc.bars[(0, i)].strokeWidth = 1
+                
+            d.add(bc)
+            return d
+        except Exception as e:
+            print(f"Error building PDF bar chart: {e}")
+            return None
+
+    @staticmethod
     def generate_pdf_report(report_data: Dict[str, Any]) -> bytes:
         """
-        Generates a styled, publication-grade PDF report using ReportLab.
+        Generates a styled, publication-grade PDF report using ReportLab with embedded visual charts.
         Returns bytes stream for binary HTTP response.
         """
         try:
@@ -63,8 +183,8 @@ class ExportService:
             'SectionHeading',
             parent=styles['Heading2'],
             fontName='Helvetica-Bold',
-            fontSize=14,
-            leading=18,
+            fontSize=13,
+            leading=17,
             textColor=PRIMARY_COLOR,
             spaceBefore=14,
             spaceAfter=8
@@ -126,13 +246,13 @@ class ExportService:
         kpi_cells = [
             [
                 [Paragraph("TOTAL VIEWS", kpi_title_style), Paragraph(f"{kpis.get('total_views', 0):,}", kpi_value_style)],
-                [Paragraph("TOTAL REVENUE", kpi_title_style), Paragraph(f"${kpis.get('total_revenue', 0.0):,.2f}", kpi_value_style)],
+                [Paragraph("TOTAL REVENUE", kpi_title_style), Paragraph(f"₹{kpis.get('total_revenue', 0.0):,.2f}", kpi_value_style)],
                 [Paragraph("AVG ENGAGEMENT", kpi_title_style), Paragraph(f"{kpis.get('average_engagement_rate', 0.0):.2f}%", kpi_value_style)],
                 [Paragraph("TOTAL FOLLOWERS", kpi_title_style), Paragraph(f"{kpis.get('total_followers', 0):,}", kpi_value_style)]
             ],
             [
                 [Paragraph("ORGANIC REACH", kpi_title_style), Paragraph(f"{kpis.get('combined_total_reach', 0):,}", kpi_value_style)],
-                [Paragraph("SPONSORSHIP REV", kpi_title_style), Paragraph(f"${kpis.get('total_sponsorship_revenue', 0.0):,.2f}", kpi_value_style)],
+                [Paragraph("SPONSORSHIP REV", kpi_title_style), Paragraph(f"₹{kpis.get('total_sponsorship_revenue', 0.0):,.2f}", kpi_value_style)],
                 [Paragraph("TOP PLATFORM", kpi_title_style), Paragraph(str(kpis.get('best_platform', 'YouTube')), kpi_value_style)],
                 [Paragraph("TOTAL CONTENT", kpi_title_style), Paragraph(f"{kpis.get('total_content_items', 0)} Items", kpi_value_style)]
             ]
@@ -153,7 +273,30 @@ class ExportService:
         elements.append(kpi_table)
         elements.append(Spacer(1, 14))
 
-        # 3. Insights & Strategic Recommendations
+        # 3. Visual Analytics & Charts Section
+        tables_data = report_data.get("tables", {})
+        revenue_sources = tables_data.get("revenue_by_source", [])
+        platform_perf = tables_data.get("platform_performance", [])
+
+        pie_drawing = ExportService._create_revenue_pie_chart(revenue_sources)
+        bar_drawing = ExportService._create_platform_bar_chart(platform_perf)
+
+        if pie_drawing or bar_drawing:
+            elements.append(Paragraph("Visual Analytics & Trajectory Charts", h2_style))
+            
+            if pie_drawing:
+                elements.append(Paragraph("<b>Revenue Stream Contribution Breakdown (%)</b>", body_style))
+                elements.append(Spacer(1, 4))
+                elements.append(pie_drawing)
+                elements.append(Spacer(1, 10))
+
+            if bar_drawing:
+                elements.append(Paragraph("<b>Cross-Platform Views Distribution</b>", body_style))
+                elements.append(Spacer(1, 4))
+                elements.append(bar_drawing)
+                elements.append(Spacer(1, 14))
+
+        # 4. Insights & Strategic Recommendations
         insights = report_data.get("insights", [])
         recommendations = report_data.get("recommendations", [])
 
@@ -177,8 +320,7 @@ class ExportService:
             elements.append(ins_table)
             elements.append(Spacer(1, 14))
 
-        # 4. Content Performance Table
-        tables_data = report_data.get("tables", {})
+        # 5. Content Performance Table
         content_perf = tables_data.get("content_performance", [])
 
         elements.append(Paragraph("Content Performance Breakdown", h2_style))
@@ -221,8 +363,7 @@ class ExportService:
 
         elements.append(Spacer(1, 14))
 
-        # 5. Revenue & Sponsorship Breakdown Table
-        revenue_sources = tables_data.get("revenue_by_source", [])
+        # 6. Revenue & Sponsorship Breakdown Table
         sponsorships = tables_data.get("sponsorships", [])
 
         elements.append(Paragraph("Revenue Streams & Sponsorship Deals", h2_style))
@@ -231,7 +372,7 @@ class ExportService:
                 [
                     Paragraph("Category / Stream / Brand", bold_style),
                     Paragraph("Type", bold_style),
-                    Paragraph("Amount (USD)", bold_style),
+                    Paragraph("Amount (₹ INR)", bold_style),
                     Paragraph("Status / Share", bold_style)
                 ]
             ]
@@ -240,7 +381,7 @@ class ExportService:
                 rev_rows.append([
                     Paragraph(str(r.get("source", "")), body_style),
                     Paragraph("Revenue Source", body_style),
-                    Paragraph(f"${r.get('amount', 0.0):,.2f}", body_style),
+                    Paragraph(f"₹{r.get('amount', 0.0):,.2f}", body_style),
                     Paragraph(f"{r.get('percentage', 0.0):.1f}% Share", body_style)
                 ])
 
@@ -249,7 +390,7 @@ class ExportService:
                 rev_rows.append([
                     Paragraph(f"{s.get('brand_name')} ({s.get('campaign_name')})", body_style),
                     Paragraph("Sponsorship Deal", body_style),
-                    Paragraph(f"${sp_val:,.2f}", body_style),
+                    Paragraph(f"₹{sp_val:,.2f}", body_style),
                     Paragraph(f"{s.get('status')} / {s.get('payment_status')}", body_style)
                 ])
 
@@ -348,11 +489,11 @@ class ExportService:
         kpis = report_data.get("kpis", {})
         kpi_list = [
             ("Total Views", kpis.get("total_views", 0), "Aggregated content views"),
-            ("Total Revenue", f"${kpis.get('total_revenue', 0.0):,.2f}", "Combined earnings across sources"),
+            ("Total Revenue", f"₹{kpis.get('total_revenue', 0.0):,.2f}", "Combined earnings across sources"),
             ("Average Engagement Rate", f"{kpis.get('average_engagement_rate', 0.0):.2f}%", "Views-to-engagement ratio"),
             ("Total Followers", kpis.get("total_followers", 0), "Combined social community"),
             ("Combined Organic Reach", kpis.get("combined_total_reach", 0), "Total cross-platform reach"),
-            ("Sponsorship Revenue", f"${kpis.get('total_sponsorship_revenue', 0.0):,.2f}", "Verified brand deal payouts"),
+            ("Sponsorship Revenue", f"₹{kpis.get('total_sponsorship_revenue', 0.0):,.2f}", "Verified brand deal payouts"),
             ("Top Platform", kpis.get("best_platform", "YouTube"), "Highest performing channel"),
             ("Total Content Items", kpis.get("total_content_items", 0), "Published videos & posts")
         ]
@@ -418,7 +559,7 @@ class ExportService:
         ws3.append(["Revenue Streams"])
         ws3.cell(row=1, column=1).font = TITLE_FONT
         
-        ws3.append(["Source Category", "Amount (USD)", "Contribution Share (%)"])
+        ws3.append(["Source Category", "Amount (₹ INR)", "Contribution Share (%)"])
         style_header_row(ws3, 3)
 
         rev_sources = report_data.get("tables", {}).get("revenue_by_source", [])
@@ -438,7 +579,7 @@ class ExportService:
         ws3.cell(row=ws3.max_row, column=1).font = TITLE_FONT
 
         spons_header_row = ws3.max_row + 1
-        ws3.append(["Deal ID", "Brand Partner", "Campaign Title", "Contract Amount ($)", "Campaign Status", "Payout Status", "Start Date", "End Date"])
+        ws3.append(["Deal ID", "Brand Partner", "Campaign Title", "Contract Amount (₹)", "Campaign Status", "Payout Status", "Start Date", "End Date"])
         style_header_row(ws3, spons_header_row)
 
         sponsorships = report_data.get("tables", {}).get("sponsorships", [])

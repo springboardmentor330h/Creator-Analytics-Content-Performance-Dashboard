@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Server, Link2, Shield, CheckCircle, RefreshCw, Key, Mail, UserCheck } from 'lucide-react';
+import { User, Lock, Server, Link2, Shield, CheckCircle, RefreshCw, Key, Mail, UserCheck, Sun, Moon, Palette } from 'lucide-react';
 import { api } from '../api';
 
-export default function SettingsView({ user, onUpdateUser, onOpenSocialModal }) {
-  const [fullName, setFullName] = useState(user?.full_name || user?.email?.split('@')[0] || 'Creator');
+export default function SettingsView({ user, onUpdateUser, onOpenSocialModal, theme = 'light', onToggleTheme, accentColor = 'indigo', onSelectAccent }) {
+  const [fullName, setFullName] = useState(user?.full_name || user?.name || user?.email?.split('@')[0] || 'Creator');
   const [email, setEmail] = useState(user?.email || 'creator@creatoriq.com');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -197,8 +197,77 @@ export default function SettingsView({ user, onUpdateUser, onOpenSocialModal }) 
         </div>
       </div>
 
+      {/* Theme & Appearance Customizer */}
+      <div className="section-card">
+        <div className="section-header">
+          <div>
+            <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Palette size={20} color="var(--primary-accent)" />
+              <span>Theme Mode & Appearance Customizer</span>
+            </h3>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
+              Switch between Light Mode and Obsidian Dark Glassmorphic Theme, or select your favorite accent color.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '14px' }}>
+          {/* Theme Mode Toggle Card */}
+          <div style={{ backgroundColor: 'var(--bg-main)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-primary)' }}>Theme Interface</div>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>Current: {theme === 'dark' ? 'Obsidian Dark Mode' : 'Light Executive Mode'}</div>
+            </div>
+
+            <button
+              onClick={onToggleTheme}
+              className="btn-add"
+              style={{ backgroundColor: theme === 'dark' ? '#f59e0b' : '#4f46e5', fontSize: '12px' }}
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+              <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+            </button>
+          </div>
+
+          {/* Accent Color Picker Card */}
+          <div style={{ backgroundColor: 'var(--bg-main)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-primary)' }}>Accent Color Palette</div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {[
+                { key: 'indigo', name: 'Indigo', color: '#4f46e5' },
+                { key: 'emerald', name: 'Emerald', color: '#10b981' },
+                { key: 'violet', name: 'Violet', color: '#8b5cf6' },
+                { key: 'cyan', name: 'Cyan', color: '#0284c7' },
+                { key: 'amber', name: 'Amber', color: '#d97706' }
+              ].map((acc) => (
+                <button
+                  key={acc.key}
+                  onClick={() => onSelectAccent && onSelectAccent(acc.key)}
+                  style={{
+                    flex: 1,
+                    height: '32px',
+                    borderRadius: '8px',
+                    backgroundColor: acc.color,
+                    border: accentColor === acc.key ? '2px solid #ffffff' : 'none',
+                    outline: accentColor === acc.key ? `2px solid ${acc.color}` : 'none',
+                    cursor: 'pointer',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: 800
+                  }}
+                  title={acc.name}
+                >
+                  {accentColor === acc.key ? '✓' : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Connected Social Media Integrations Status */}
       <div className="section-card">
+
         <div className="section-header">
           <div>
             <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -220,7 +289,7 @@ export default function SettingsView({ user, onUpdateUser, onOpenSocialModal }) 
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '14px' }}>
-          {['YouTube', 'Instagram', 'TikTok', 'LinkedIn', 'Twitter/X'].map((plat) => {
+          {['YouTube', 'Instagram', 'Facebook', 'LinkedIn', 'Twitter/X'].map((plat) => {
             const isConn = connectedPlatforms.some(p => p.platform?.toLowerCase() === plat.toLowerCase() || p.toLowerCase?.() === plat.toLowerCase());
             return (
               <div

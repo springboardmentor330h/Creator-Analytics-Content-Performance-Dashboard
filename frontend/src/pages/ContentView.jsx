@@ -1,19 +1,20 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Video, Search, Layers, Share2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Video, Search, Layers, Share2, Sparkles, TrendingUp, Zap } from 'lucide-react';
 import ContentModal from '../components/ContentModal';
 import StatCard from '../components/StatCard';
 import YouTubeSyncModal from '../components/YouTubeSyncModal';
 import EmptyState from '../components/EmptyState';
-import { YoutubeIcon, InstagramIcon, TikTokIcon, LinkedInIcon, TwitterIcon } from '../components/PlatformIcons';
-import { formatNumber, rawNumber } from '../utils/format';
+import { YoutubeIcon, InstagramIcon, LinkedInIcon, TwitterIcon } from '../components/PlatformIcons';
+import { formatNumber, rawNumber, FormattedNumber } from '../utils/format';
 import { useSortableData, SortHeader } from '../utils/useSortableData';
+import Pagination from '../components/Pagination';
 
-const platforms = ['All', 'YouTube', 'Instagram', 'TikTok', 'LinkedIn', 'Twitter/X'];
+
+const platforms = ['All', 'YouTube', 'Instagram', 'Facebook', 'LinkedIn', 'X'];
 
 const platformIconMap = {
   YouTube: { icon: YoutubeIcon, color: '#dc2626', bg: '#fee2e2' },
   Instagram: { icon: InstagramIcon, color: '#be185d', bg: '#fce7f3' },
-  TikTok: { icon: TikTokIcon, color: '#0891b2', bg: '#ecfeff' },
   LinkedIn: { icon: LinkedInIcon, color: '#1d4ed8', bg: '#eff6ff' },
   'Twitter/X': { icon: TwitterIcon, color: '#0284c7', bg: '#e0f2fe' },
   Twitter: { icon: TwitterIcon, color: '#0284c7', bg: '#e0f2fe' },
@@ -26,18 +27,40 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
   const [isYouTubeModalOpen, setIsYouTubeModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const filteredContents = (contents || []).filter(c => {
-    const matchesPlatform = !selectedPlatform || selectedPlatform === 'All' || (c.platform || '').toLowerCase() === selectedPlatform.toLowerCase();
+    const pStr = (c.platform || '').toLowerCase();
+    const sStr = (selectedPlatform || 'All').toLowerCase();
+
+    let matchesPlatform = sStr === 'all';
+    if (!matchesPlatform) {
+      if (sStr === 'twitter/x' || sStr === 'x' || sStr === 'twitter' || sStr === 'x (twitter)') {
+        matchesPlatform = (pStr === 'x' || pStr === 'twitter' || pStr === 'twitter/x');
+      } else {
+        matchesPlatform = pStr === sStr;
+      }
+    }
+
     const matchesSearch = !searchQuery || (c.content_title || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesPlatform && matchesSearch;
   });
 
   const { items: sortedContents, requestSort, sortConfig } = useSortableData(filteredContents, { key: 'views', direction: 'desc' });
 
+  const totalPages = Math.ceil(sortedContents.length / pageSize) || 1;
+  const paginatedContents = sortedContents.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+
   const totalViews = filteredContents.reduce((acc, c) => acc + (c.views || 0), 0);
   const totalLikes = filteredContents.reduce((acc, c) => acc + (c.likes || 0), 0);
+  const totalComments = filteredContents.reduce((acc, c) => acc + (c.comments || 0), 0);
   const totalReach = filteredContents.reduce((acc, c) => acc + (c.reach || 0), 0);
+
+  const avgEngagementRate = filteredContents.length > 0
+    ? (filteredContents.reduce((acc, c) => acc + (c.engagement_rate || ((c.likes + c.comments) / (c.views || 1) * 100)), 0) / filteredContents.length).toFixed(2)
+    : '0.00';
 
   const handleOpenAdd = () => {
     setEditingRecord(null);
@@ -54,6 +77,32 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
       onUpdate(editingRecord.id, data);
     } else {
       onAdd(data);
+    }
+  };
+
+  const getItemBadge = (item) => {
+    const views = item.views || 0;
+    const likes = item.likes || 0;
+    const rate = item.engagement_rate || ((likes / (views || 1)) * 100);
+
+    if (views > 1000000 || rate > 9.0) {
+      return (
+        <span style={{ backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <Sparkles size={11} color="#047857" /> Viral Top 1%
+        </span>
+      );
+    } else if (views > 300000 || rate > 6.0) {
+      return (
+        <span style={{ backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+          <TrendingUp size={11} color="#1d4ed8" /> High Virality
+        </span>
+      );
+    } else {
+      return (
+        <span style={{ backgroundColor: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', padding: '3px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+          Stable Growth
+        </span>
+      );
     }
   };
 
@@ -130,8 +179,8 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
         </div>
       </div>
 
-      {/* Top Metric Summary Cards */}
-      <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+      {/* Top Metric Summary Cards (4 Cards) */}
+      <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         <StatCard
           label={`${selectedPlatform && selectedPlatform !== 'All' ? selectedPlatform : 'Total'} Views`}
           value={formatNumber(totalViews)}
@@ -139,17 +188,22 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
         />
         <StatCard
           label="Total Engagements"
-          value={formatNumber(totalLikes)}
-          trend="Likes & Reactions"
+          value={formatNumber(totalLikes + totalComments)}
+          trend="Reactions & Comments"
         />
         <StatCard
           label="Filtered Organic Reach"
           value={formatNumber(totalReach)}
           trend="Unique Reach"
         />
+        <StatCard
+          label="Avg Library Engagement"
+          value={`${avgEngagementRate}%`}
+          trend="Virality Ratio"
+        />
       </div>
 
-      {/* Content Performance Table with Interactive Up/Down Arrow Sorting */}
+      {/* Content Performance Table */}
       <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.06)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #f1f5f9' }}>
           <div>
@@ -161,7 +215,7 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
               </span>
             </h3>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
-              Click column headers to sort by Views, Likes, Comments, Reach, or Date (▲ Ascending / ▼ Descending)
+              Click column headers to sort by Views, Likes, Comments, Reach, or Date
             </p>
           </div>
 
@@ -181,6 +235,7 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
                 <SortHeader label="ID" columnKey="id" sortConfig={sortConfig} onSort={requestSort} />
                 <SortHeader label="Platform" columnKey="platform" sortConfig={sortConfig} onSort={requestSort} />
                 <SortHeader label="Content Title" columnKey="content_title" sortConfig={sortConfig} onSort={requestSort} />
+                <SortHeader label="Virality Benchmark" columnKey="views" sortConfig={sortConfig} onSort={requestSort} />
                 <SortHeader label="Views" columnKey="views" sortConfig={sortConfig} onSort={requestSort} />
                 <SortHeader label="Likes" columnKey="likes" sortConfig={sortConfig} onSort={requestSort} />
                 <SortHeader label="Comments" columnKey="comments" sortConfig={sortConfig} onSort={requestSort} />
@@ -189,9 +244,9 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
                 <th style={{ padding: '14px 18px', fontSize: '11px', fontWeight: 800, color: '#475569', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
-            <tbody>
-              {sortedContents && sortedContents.length > 0 ? (
-                sortedContents.map((item) => {
+            <tbody key={currentPage} className="animate-fade-in">
+              {paginatedContents && paginatedContents.length > 0 ? (
+                paginatedContents.map((item) => {
                   const platMeta = platformIconMap[item.platform] || { icon: Share2, color: '#334155', bg: '#f1f5f9' };
                   const IconComp = platMeta.icon;
 
@@ -217,42 +272,31 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
                       <td style={{ padding: '14px 18px', fontWeight: 700, color: '#0f172a', maxWidth: '320px' }}>
                         {item.content_title}
                       </td>
-                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#1e293b' }} className="has-tooltip">
-                        {formatNumber(item.views || 0)}
-                        <span className="number-tooltip">Raw: {rawNumber(item.views || 0)}</span>
+                      <td style={{ padding: '14px 18px' }}>
+                        {getItemBadge(item)}
                       </td>
-                      <td style={{ padding: '14px 18px', color: '#334155' }} className="has-tooltip">
-                        {formatNumber(item.likes || 0)}
-                        <span className="number-tooltip">Raw: {rawNumber(item.likes || 0)}</span>
+                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#1e293b' }}>
+                        <FormattedNumber value={item.views || 0} />
                       </td>
-                      <td style={{ padding: '14px 18px', color: '#334155' }} className="has-tooltip">
-                        {formatNumber(item.comments || 0)}
-                        <span className="number-tooltip">Raw: {rawNumber(item.comments || 0)}</span>
+                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#059669' }}>
+                        <FormattedNumber value={item.likes || 0} />
                       </td>
-                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb' }} className="has-tooltip">
-                        {formatNumber(item.reach || 0)}
-                        <span className="number-tooltip">Raw: {rawNumber(item.reach || 0)}</span>
+                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#2563eb' }}>
+                        <FormattedNumber value={item.comments || 0} />
                       </td>
-                      <td style={{ padding: '14px 18px', color: '#64748b', fontSize: '13px' }}>
-                        {item.published_date || 'N/A'}
+                      <td style={{ padding: '14px 18px', fontWeight: 700, color: '#7c3aed' }}>
+                        <FormattedNumber value={item.reach || 0} />
+                      </td>
+                      <td style={{ padding: '14px 18px', color: '#64748b', fontSize: '12px' }}>
+                        {item.published_date ? new Date(item.published_date).toLocaleDateString() : 'N/A'}
                       </td>
                       <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          <button
-                            onClick={() => handleOpenEdit(item)}
-                            title="Edit Record"
-                            className="btn-small btn-edit"
-                          >
-                            <Edit2 size={13} />
-                            <span>Edit</span>
+                          <button className="btn-small btn-edit" onClick={() => handleOpenEdit(item)} title="Edit Content Item">
+                            <Edit2 size={13} /> Edit
                           </button>
-                          <button
-                            onClick={() => onDelete(item.id)}
-                            title="Delete Record"
-                            className="btn-small btn-delete"
-                          >
-                            <Trash2 size={13} />
-                            <span>Delete</span>
+                          <button className="btn-small btn-delete" onClick={() => onDelete(item.id)} title="Delete Content Item">
+                            <Trash2 size={13} /> Delete
                           </button>
                         </div>
                       </td>
@@ -261,12 +305,12 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
                 })
               ) : (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '32px' }}>
+                  <td colSpan="10" style={{ textAlign: 'center', padding: '32px' }}>
                     <EmptyState
                       icon={Video}
                       title="No Content Items Found"
-                      description={`No content items recorded for ${selectedPlatform || 'All Platforms'}.`}
-                      actionLabel="+ Add First Content Item"
+                      description="Add manual content entries or sync saved channels to populate your library analytics."
+                      actionLabel="+ Create First Content Item"
                       onAction={handleOpenAdd}
                     />
                   </td>
@@ -275,6 +319,15 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={pageSize}
+          totalItems={sortedContents.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setCurrentPage(1); }}
+        />
       </div>
 
       <ContentModal
@@ -284,13 +337,11 @@ export default function ContentView({ contents, onAdd, onUpdate, onDelete, onSyn
         initialData={editingRecord}
       />
 
-      {onSyncYouTube && (
-        <YouTubeSyncModal
-          isOpen={isYouTubeModalOpen}
-          onClose={() => setIsYouTubeModalOpen(false)}
-          onSync={onSyncYouTube}
-        />
-      )}
+      <YouTubeSyncModal
+        isOpen={isYouTubeModalOpen}
+        onClose={() => setIsYouTubeModalOpen(false)}
+        onSync={onSyncYouTube}
+      />
     </div>
   );
 }

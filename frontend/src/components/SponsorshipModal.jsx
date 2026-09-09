@@ -53,7 +53,7 @@ export default function SponsorshipModal({ isOpen, onClose, onSave, initialData 
     if (!formData.brand_name.trim()) errs.brand_name = 'Brand name is required';
     if (!formData.campaign_name.trim()) errs.campaign_name = 'Campaign name is required';
     if (!formData.contract_value || Number(formData.contract_value) <= 0) {
-      errs.contract_value = 'Contract value must be greater than $0';
+      errs.contract_value = 'Contract value must be greater than ₹0';
     }
     if (!formData.start_date) errs.start_date = 'Start date is required';
     setErrors(errs);
@@ -168,7 +168,7 @@ export default function SponsorshipModal({ isOpen, onClose, onSave, initialData 
               </div>
 
               <div className="form-group">
-                <label className="form-label">Contract Value ($)</label>
+                <label className="form-label">Contract Value (₹)</label>
                 <div className="input-icon-group">
                   <DollarSign size={16} className="input-prefix-icon" />
                   <input
@@ -178,7 +178,7 @@ export default function SponsorshipModal({ isOpen, onClose, onSave, initialData 
                     className="modal-input-field"
                     value={formData.contract_value}
                     onChange={(e) => setFormData({ ...formData, contract_value: e.target.value })}
-                    placeholder="3000.00"
+                    placeholder="30000.00"
                     required
                   />
                 </div>

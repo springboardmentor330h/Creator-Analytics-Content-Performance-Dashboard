@@ -178,7 +178,7 @@ class NotificationService:
             if total_revenue >= 1000:
                 add_if_distinct(
                     title="💰 Revenue Target Achieved",
-                    message=f"Your cumulative recorded earnings have reached ${total_revenue:,.2f} USD!",
+                    message=f"Your cumulative recorded earnings have reached ₹{total_revenue:,.2f} INR!",
                     notif_type="revenue",
                     severity="success",
                     action_url="#revenue"
@@ -188,7 +188,7 @@ class NotificationService:
             if youtube_rev > 0:
                 add_if_distinct(
                     title="📺 YouTube AdSense Update",
-                    message=f"YouTube AdSense revenue tracked at ${youtube_rev:,.2f} USD.",
+                    message=f"YouTube AdSense revenue tracked at ₹{youtube_rev:,.2f} INR.",
                     notif_type="revenue",
                     severity="info",
                     action_url="#revenue"
@@ -201,7 +201,7 @@ class NotificationService:
                 total_pending = sum(getattr(s, 'contract_value', 0.0) for s in pending_payments)
                 add_if_distinct(
                     title="⏳ Pending Sponsorship Payment",
-                    message=f"You have {len(pending_payments)} sponsorship deal(s) with pending payouts totaling ${total_pending:,.2f}.",
+                    message=f"You have {len(pending_payments)} sponsorship deal(s) with pending payouts totaling ₹{total_pending:,.2f}.",
                     notif_type="revenue",
                     severity="alert",
                     action_url="#revenue"

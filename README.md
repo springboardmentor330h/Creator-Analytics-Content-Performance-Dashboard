@@ -1,12 +1,54 @@
 
 
-  # Creator Analytics & Content Performance Dashboard
+  # CreatorIQ - Multi-Platform Analytics System
 
-  A FastAPI-based backend for managing creator content and generating analytics such as engagement rate, top-performing content, platform performance, and dashboard summaries.
+A full-stack, enterprise-grade creator analytics system powered by **FastAPI, PostgreSQL, and React**. CreatorIQ processes, analyzes, and visualizes social media performance data from multiple platforms using a unified data architecture and common API services.
 
-  ---
+---
 
-  ## 1. Tech Stack
+## 🌟 Multi-Platform Analytics Architecture
+
+The system supports live API integrations for platforms where API access is available (**YouTube API / RSS Feed**, **Instagram Graph API / Profile Scraper**) and rich historical PostgreSQL datasets for platforms where external API credentials are restricted (**TikTok, Facebook, LinkedIn, X / Twitter**).
+
+### Multi-Platform Workflow Architecture:
+```text
+YouTube API / RSS Feed  ──┐
+                          ├──> PostgreSQL Database  ──> FastAPI Backend  ──> React Dashboard
+Instagram / TikTok /      │    (contents, growth,       (AnalyticsService &    (Platform Selector, KPIs,
+Facebook / LinkedIn / X   ──┘     audience, social)       Platform Routers)     Charts, Comparison)
+```
+
+---
+
+## 🚀 Supported Platforms & Common CreatorIQ Data Format
+
+All platforms map to standard CreatorIQ metrics in PostgreSQL (`contents` table):
+- `platform`: Social Media Platform (`YouTube`, `Instagram`, `TikTok`, `Facebook`, `LinkedIn`, `X`)
+- `external_content_id`: Unique platform content identifier
+- `content_title`: Content headline or post caption
+- `views`: Total view count / impressions
+- `likes`: Total reaction / like count
+- `comments`: Total comment count
+- `shares`: Total share / retweet count
+- `saves`: Total bookmark / save count
+- `reach`: Total organic reach
+- `watch_time`: Cumulative view duration (seconds)
+- `published_date`: Content publication timestamp
+
+---
+
+## 📊 Sprint Deliverables & Key Features
+
+1. **Common Platform Data Structure**: Unified schema in PostgreSQL for all 6 social media platforms.
+2. **PostgreSQL Database Persistence**: Automatic multi-platform database seeding (`seed_data.py` & `init_db.py`) populates PostgreSQL with 150+ content records and historical growth logs across 6 months.
+3. **Omnichannel Analytics Services**: Case-insensitive filtering and aggregation across all endpoints (`/analytics/summary`, `/analytics/platform-performance`, `/analytics/top-content`, `/analytics/reach-breakdown`).
+4. **React Dashboard Platform Selector**: Header dropdown (`[ All Platforms ▼ ]`, `YouTube`, `Instagram`, `TikTok`, `Facebook`, `LinkedIn`, `X`) dynamically filters dashboard KPIs, charts, and library items.
+5. **Cross-Platform Comparison Matrix**: Side-by-side comparison table & visual card grid comparing Views, Likes, Comments, Shares, Organic Reach, and Engagement Rates across platforms.
+6. **No Frontend Hardcoding**: All metrics, graphs, tables, and reports are dynamically computed from PostgreSQL records through FastAPI APIs.
+
+---
+
+## 1. Tech Stack
 
   * Python 3.9+
   * FastAPI

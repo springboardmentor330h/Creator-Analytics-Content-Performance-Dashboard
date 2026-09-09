@@ -18,16 +18,16 @@ export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
     if (initialData) {
       setFormData({
         source: initialData.source || 'Sponsorships',
-        amount: initialData.amount ?? 1500,
-        currency: initialData.currency || 'USD',
+        amount: initialData.amount ?? 15000,
+        currency: initialData.currency || 'INR',
         description: initialData.description || '',
         date: initialData.date ? initialData.date.split('T')[0] : new Date().toISOString().split('T')[0]
       });
     } else {
       setFormData({
         source: 'Sponsorships',
-        amount: 1500,
-        currency: 'USD',
+        amount: 15000,
+        currency: 'INR',
         description: '',
         date: new Date().toISOString().split('T')[0]
       });
@@ -142,7 +142,7 @@ export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Amount ($)</label>
+                <label className="form-label">Amount (₹)</label>
                 <div className="input-icon-group">
                   <DollarSign size={16} className="input-prefix-icon" />
                   <input
@@ -152,7 +152,7 @@ export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
                     className="modal-input-field"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="1500.00"
+                    placeholder="15000.00"
                     required
                   />
                 </div>
@@ -168,10 +168,10 @@ export default function RevenueModal({ isOpen, onClose, onSave, initialData }) {
                     value={formData.currency}
                     onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
                   >
+                    <option value="INR">INR (₹)</option>
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option>
-                    <option value="INR">INR (₹)</option>
                   </select>
                 </div>
               </div>

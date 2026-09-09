@@ -120,7 +120,7 @@ class SponsorshipService:
                 creator_id=sponsorship.creator_id,
                 source="Sponsorships",
                 amount=sponsorship.contract_value,
-                currency="USD",
+                currency="INR",
                 description=revenue_desc,
                 date=sponsorship.start_date or date.today()
             )

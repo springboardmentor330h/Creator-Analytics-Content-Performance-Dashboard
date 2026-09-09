@@ -1,71 +1,45 @@
-// CreatorIQ API Integration - Vite Dev Server Proxy (Zero-CORS Preflight Delay)
+import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 
 const API_BASE_URL = typeof window !== 'undefined' && window.location.origin.includes(':5173')
   ? '/api-backend'
   : 'http://127.0.0.1:8000';
 
-let autoAuthPromise = null;
-
-// Singleton Auto-Authentication Promise to prevent concurrent request stampedes
-async function ensureDemoSession() {
-  const existingToken = localStorage.getItem('creatoriq_token');
-  if (existingToken) return existingToken;
-
-  if (autoAuthPromise) {
-    return await autoAuthPromise;
-  }
-
-  autoAuthPromise = (async () => {
-    try {
-      const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'demo@creatoriq.com', password: 'password123' })
-      });
-
-      if (loginRes.ok) {
-        const data = await loginRes.json();
-        localStorage.setItem('creatoriq_token', data.access_token);
-        localStorage.setItem('creatoriq_user', JSON.stringify(data.user || { email: 'demo@creatoriq.com' }));
-        return data.access_token;
-      }
-
-      // If demo account doesn't exist yet, register it
-      const regRes = await fetch(`${API_BASE_URL}/users/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: 'Demo Creator',
-          email: 'demo@creatoriq.com',
-          password: 'password123',
-          role: 'creator'
-        })
-      });
-
-      if (regRes.ok) {
-        const regData = await regRes.json();
-        localStorage.setItem('creatoriq_token', regData.access_token);
-        localStorage.setItem('creatoriq_user', JSON.stringify(regData.user || { email: 'demo@creatoriq.com' }));
-        return regData.access_token;
-      }
-    } catch (e) {
-      console.warn('Auto-auth notice:', e.message);
-    } finally {
-      autoAuthPromise = null;
-    }
-    return null;
-  })();
-
-  return await autoAuthPromise;
+export function getStoredToken() {
+  return getCookie('creatoriq_token') || localStorage.getItem('creatoriq_token');
 }
 
-async function request(endpoint, options = {}, isRetry = false) {
-  let token = localStorage.getItem('creatoriq_token');
-  
-  if (!token && !isRetry) {
-    token = await ensureDemoSession();
+export function getStoredUser() {
+  const raw = getCookie('creatoriq_user') || localStorage.getItem('creatoriq_user');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return { email: raw };
   }
+}
 
+export function saveAuthSession(token, user) {
+  if (token) {
+    setCookie('creatoriq_token', token, 30);
+    localStorage.setItem('creatoriq_token', token);
+  }
+  if (user) {
+    const userStr = typeof user === 'string' ? user : JSON.stringify(user);
+    setCookie('creatoriq_user', userStr, 30);
+    localStorage.setItem('creatoriq_user', userStr);
+  }
+}
+
+export function clearAuthSession() {
+  deleteCookie('creatoriq_token');
+  deleteCookie('creatoriq_user');
+  localStorage.removeItem('creatoriq_token');
+  localStorage.removeItem('creatoriq_user');
+}
+
+async function request(endpoint, options = {}) {
+  const token = getStoredToken();
+  
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -77,12 +51,10 @@ async function request(endpoint, options = {}, isRetry = false) {
     headers
   });
 
-  // Handle 401 Unauthorized cleanly with max 1 retry
-  if (response.status === 401 && !isRetry) {
-    localStorage.removeItem('creatoriq_token');
-    const newToken = await ensureDemoSession();
-    if (newToken) {
-      return await request(endpoint, options, true);
+  if (response.status === 401) {
+    clearAuthSession();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('creatoriq:unauthorized'));
     }
   }
 
@@ -100,11 +72,8 @@ async function request(endpoint, options = {}, isRetry = false) {
   return await response.json();
 }
 
-async function requestBlob(endpoint, filename, options = {}, isRetry = false) {
-  let token = localStorage.getItem('creatoriq_token');
-  if (!token && !isRetry) {
-    token = await ensureDemoSession();
-  }
+async function requestBlob(endpoint, filename, options = {}) {
+  const token = getStoredToken();
 
   const headers = {
     'Content-Type': 'application/json',
@@ -117,11 +86,10 @@ async function requestBlob(endpoint, filename, options = {}, isRetry = false) {
     headers
   });
 
-  if (response.status === 401 && !isRetry) {
-    localStorage.removeItem('creatoriq_token');
-    const newToken = await ensureDemoSession();
-    if (newToken) {
-      return await requestBlob(endpoint, filename, options, true);
+  if (response.status === 401) {
+    clearAuthSession();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('creatoriq:unauthorized'));
     }
   }
 
@@ -151,17 +119,25 @@ async function requestBlob(endpoint, filename, options = {}, isRetry = false) {
 export const api = {
   // Auth APIs
   login: async (email, password) => {
-    return await request('/auth/login', {
+    const res = await request('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
+    if (res && res.access_token) {
+      saveAuthSession(res.access_token, res.user || { email });
+    }
+    return res;
   },
 
   register: async (fullName, email, password, role = 'creator') => {
-    return await request('/users/register', {
+    const res = await request('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ full_name: fullName, email, password, role })
     });
+    if (res && res.access_token) {
+      saveAuthSession(res.access_token, res.user || { email, full_name: fullName });
+    }
+    return res;
   },
 
   // Dashboard & Analytics APIs
@@ -198,12 +174,19 @@ export const api = {
     return await request(`/analytics/platform-performance${query}`);
   },
 
-  getEngagementChart: async () => {
-    return await request('/analytics/chart/engagement');
+  getEngagementChart: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/chart/engagement${query}`);
   },
 
-  getFollowerGrowthChart: async () => {
-    return await request('/analytics/chart/followers');
+  getFollowerGrowthChart: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/chart/followers${query}`);
+  },
+
+  getSentimentAnalysis: async (platform) => {
+    const query = platform && platform !== 'All' ? `?platform=${encodeURIComponent(platform)}` : '';
+    return await request(`/analytics/sentiment${query}`);
   },
 
   getPlatformComparison: async () => {
