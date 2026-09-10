@@ -3,29 +3,27 @@ from app.models.content import Content
 
 
 def calculate_engagement_rate(content):
+    """Engagement rate = (likes+comments+shares+saves) / reach * 100.
+
+    `shares` and `reach` can be NULL when a platform doesn't report them.
+    NULL values are treated as 0 for this calculation.
+    """
     total_engagement = (
         content.likes
         + content.comments
-        + content.shares
+        + (content.shares or 0)
         + content.saves
     )
 
-    if content.reach == 0:
+    reach = content.reach or 0
+    if reach == 0:
         return 0
 
-    return round(
-        (total_engagement / content.reach) * 100,
-        2
-    )
+    return round((total_engagement / reach) * 100, 2)
 
 
 def get_content_engagement(db: Session, content_id: int):
-
-    content = (
-        db.query(Content)
-        .filter(Content.id == content_id)
-        .first()
-    )
+    content = db.query(Content).filter(Content.id == content_id).first()
 
     if not content:
         return None
@@ -33,7 +31,7 @@ def get_content_engagement(db: Session, content_id: int):
     total_engagement = (
         content.likes
         + content.comments
-        + content.shares
+        + (content.shares or 0)
         + content.saves
     )
 
@@ -43,77 +41,91 @@ def get_content_engagement(db: Session, content_id: int):
         "views": content.views,
         "reach": content.reach,
         "total_engagement": total_engagement,
-        "engagement_rate": calculate_engagement_rate(content)
+        "engagement_rate": calculate_engagement_rate(content),
     }
 
 
-def get_top_content(db: Session):
+def get_top_content(
+    db: Session,
+    creator_id: int | None = None,
+    platform: str | None = None,
+):
+    query = db.query(Content)
 
-    contents = db.query(Content).all()
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
 
-    result = []
+    if platform is not None:
+        query = query.filter(Content.platform == platform)
 
-    for content in contents:
+    contents = query.all()
 
-        result.append({
+    result = [
+        {
             "content_title": content.content_title,
             "platform": content.platform,
             "views": content.views,
             "reach": content.reach,
             "watch_time": content.watch_time,
-            "engagement_rate": calculate_engagement_rate(content)
-        })
+            "engagement_rate": calculate_engagement_rate(content),
+        }
+        for content in contents
+    ]
 
-    result.sort(
-        key=lambda x: x["engagement_rate"],
-        reverse=True
-    )
+    result.sort(key=lambda x: x["engagement_rate"], reverse=True)
 
     return result[:5]
 
 
-def get_platform_performance(db: Session):
+def get_platform_performance(
+    db: Session,
+    creator_id: int | None = None,
+    platform: str | None = None,
+):
+    query = db.query(Content)
 
-    contents = db.query(Content).all()
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
+
+    if platform is not None:
+        query = query.filter(Content.platform == platform)
+
+    contents = query.all()
 
     platforms = {}
 
     for content in contents:
+        platform_name = content.platform
 
-        platform = content.platform
-
-        if platform not in platforms:
-            platforms[platform] = {
-                "platform": platform,
+        if platform_name not in platforms:
+            platforms[platform_name] = {
+                "platform": platform_name,
                 "total_views": 0,
                 "total_likes": 0,
                 "total_comments": 0,
                 "total_reach": 0,
-                "engagement_rates": []
+                "engagement_rates": [],
             }
 
-        platforms[platform]["total_views"] += content.views
-        platforms[platform]["total_likes"] += content.likes
-        platforms[platform]["total_comments"] += content.comments
-        platforms[platform]["total_reach"] += content.reach
+        platforms[platform_name]["total_views"] += content.views or 0
+        platforms[platform_name]["total_likes"] += content.likes
+        platforms[platform_name]["total_comments"] += content.comments
+        platforms[platform_name]["total_reach"] += content.reach or 0
 
-        platforms[platform]["engagement_rates"].append(
+        platforms[platform_name]["engagement_rates"].append(
             calculate_engagement_rate(content)
         )
 
     result = []
 
     for platform_data in platforms.values():
-
         rates = platform_data["engagement_rates"]
 
-        average_rate = 0
-
-        if rates:
-            average_rate = round(
-                sum(rates) / len(rates),
-                2
-            )
+        average_rate = (
+            round(sum(rates) / len(rates), 2)
+            if rates
+            else 0
+        )
 
         result.append({
             "platform": platform_data["platform"],
@@ -121,24 +133,37 @@ def get_platform_performance(db: Session):
             "total_likes": platform_data["total_likes"],
             "total_comments": platform_data["total_comments"],
             "total_reach": platform_data["total_reach"],
-            "average_engagement_rate": average_rate
+            "average_engagement_rate": average_rate,
         })
 
     return result
 
 
-def get_dashboard_summary(db: Session):
+def get_dashboard_summary(
+    db: Session,
+    creator_id: int | None = None,
+    platform: str | None = None,
+):
+    query = db.query(Content)
 
-    contents = db.query(Content).all()
+    if creator_id is not None:
+        query = query.filter(Content.creator_id == creator_id)
+
+    if platform is not None:
+        query = query.filter(Content.platform == platform)
+
+    contents = query.all()
 
     total_content = len(contents)
 
     total_views = sum(
-        content.views for content in contents
+        content.views or 0
+        for content in contents
     )
 
     total_reach = sum(
-        content.reach for content in contents
+        content.reach or 0
+        for content in contents
     )
 
     engagement_rates = [
@@ -146,33 +171,38 @@ def get_dashboard_summary(db: Session):
         for content in contents
     ]
 
-    average_engagement_rate = 0
-
-    if engagement_rates:
-        average_engagement_rate = round(
+    average_engagement_rate = (
+        round(
             sum(engagement_rates) / len(engagement_rates),
-            2
+            2,
         )
+        if engagement_rates
+        else 0
+    )
 
-    platform_data = get_platform_performance(db)
+    platform_data = get_platform_performance(
+        db,
+        creator_id,
+        platform,
+    )
 
-    best_platform = None
-
-    if platform_data:
-        best_platform = max(
+    best_platform = (
+        max(
             platform_data,
-            key=lambda x: x["average_engagement_rate"]
+            key=lambda x: x["average_engagement_rate"],
         )["platform"]
+        if platform_data
+        else None
+    )
 
-    top_content = None
-
-    if contents:
-        best_content = max(
+    top_content = (
+        max(
             contents,
-            key=calculate_engagement_rate
-        )
-
-        top_content = best_content.content_title
+            key=calculate_engagement_rate,
+        ).content_title
+        if contents
+        else None
+    )
 
     return {
         "total_content": total_content,
@@ -180,5 +210,5 @@ def get_dashboard_summary(db: Session):
         "total_reach": total_reach,
         "average_engagement_rate": average_engagement_rate,
         "best_platform": best_platform,
-        "top_content": top_content
+        "top_content": top_content,
     }

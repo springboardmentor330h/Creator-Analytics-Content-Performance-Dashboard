@@ -1,8 +1,11 @@
+import Register from "./pages/Register";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import RoleGuard from "./routes/RoleGuard";
 import Layout from "./components/Layout";
 
+
+import ProfileSettings from "./pages/ProfileSettings";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ContentAnalytics from "./pages/ContentAnalytics";
@@ -20,6 +23,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           <Route element={<RoleGuard />}>
             <Route element={<Layout />}>
@@ -32,6 +36,7 @@ export default function App() {
               <Route path="/social" element={<SocialMedia />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/profile" element={<ProfileSettings />} />
             </Route>
           </Route>
         </Routes>

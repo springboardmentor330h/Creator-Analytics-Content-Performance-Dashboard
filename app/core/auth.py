@@ -47,6 +47,20 @@ def get_current_user(
     return user
 
 
+def assert_owner_or_admin(current_user: User, creator_id: int) -> None:
+    """Raises 403 unless the current user owns this creator_id or is an admin.
+
+    Used on every creator-scoped route (content, audience, growth, revenue,
+    sponsorships, notifications, reports) so users can only see/modify their
+    own data.
+    """
+    if current_user.role != UserRole.ADMINISTRATOR and current_user.id != creator_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only access your own data",
+        )
+
+
 def require_roles(*allowed_roles: UserRole):
     """Dependency factory for role-gated endpoints.
 

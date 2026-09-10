@@ -45,6 +45,16 @@ export function AuthProvider({ children }) {
     return me.data;
   };
 
+const updateUser = (updatedUser) => {
+  localStorage.setItem(
+    "creatoriq_user",
+    JSON.stringify(updatedUser)
+  );
+
+  setUser(updatedUser);
+};
+
+
   const logout = () => {
     localStorage.removeItem("creatoriq_token");
     localStorage.removeItem("creatoriq_user");
@@ -52,7 +62,15 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider
+  value={{
+    user,
+    login,
+    logout,
+    updateUser,
+    loading,
+  }}
+>
       {children}
     </AuthContext.Provider>
   );

@@ -81,9 +81,9 @@ def transform_youtube_video(video: dict, creator_id: int) -> dict:
         "views": int(stats.get("viewCount", 0)),
         "likes": int(stats.get("likeCount", 0)),
         "comments": int(stats.get("commentCount", 0)),
-        "shares": 0,       # not exposed by the public API
+        "shares": None,    # not exposed by the public API
         "saves": 0,        # not exposed by the public API
         "watch_time": 0,   # requires YouTube Analytics API (OAuth), not Data API
-        "reach": int(stats.get("viewCount", 0)),
+        "reach": None,     # YouTube doesn't expose a "reach" metric via the Data API
         "published_date": published_date,
     }

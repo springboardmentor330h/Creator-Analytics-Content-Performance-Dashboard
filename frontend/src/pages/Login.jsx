@@ -70,9 +70,16 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="text-xs text-slate-400 text-center mt-6">
-          No account yet? Create one via <code>POST /users/</code> in the API docs.
-        </p>
+       <p className="text-sm text-slate-500 text-center mt-6">
+  Don't have an account?{" "}
+  <button
+    type="button"
+    onClick={() => navigate("/register")}
+    className="text-brand-600 hover:text-brand-700 font-medium"
+  >
+    Create an account
+  </button>
+</p>
       </div>
     </div>
   );

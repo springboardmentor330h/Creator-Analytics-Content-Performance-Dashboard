@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.auth import assert_owner_or_admin, get_current_user
 from app.db.database import get_db
 from app.models.content import Content
+from app.models.user import User
 from app.services.social_service import (
     SUPPORTED_PLATFORMS,
     generate_mock_content,
@@ -24,10 +26,13 @@ def list_platforms():
 
 
 @router.post("/connect")
-def connect_platform(platform: str, creator_id: int):
-    """Simulated OAuth handshake. Real integrations (beyond YouTube) require
-    per-platform developer approval, so this models the workflow the frontend
-    needs without pretending we have live credentials we don't have."""
+def connect_platform(
+    platform: str,
+    creator_id: int,
+    current_user: User = Depends(get_current_user),
+):
+    assert_owner_or_admin(current_user, creator_id)
+
     if platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
 
@@ -62,7 +67,14 @@ def _save_content_rows(db: Session, rows: list[dict]) -> dict:
 
 
 @router.post("/youtube/sync")
-def sync_youtube(channel_id: str, creator_id: int, db: Session = Depends(get_db)):
+def sync_youtube(
+    channel_id: str,
+    creator_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    assert_owner_or_admin(current_user, creator_id)
+
     try:
         videos = fetch_channel_videos(channel_id)
     except YouTubeAPIError as e:
@@ -75,8 +87,15 @@ def sync_youtube(channel_id: str, creator_id: int, db: Session = Depends(get_db)
 
 
 @router.post("/{platform}/sync")
-def sync_platform(platform: str, creator_id: int, db: Session = Depends(get_db)):
+def sync_platform(
+    platform: str,
+    creator_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     """Mock sync for platforms without live API access yet (see README)."""
+    assert_owner_or_admin(current_user, creator_id)
+
     if platform not in SUPPORTED_PLATFORMS:
         raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
 

@@ -1,7 +1,16 @@
 import { NavLink } from "react-router-dom";
 import {
-  LayoutDashboard, FileBarChart, Users, TrendingUp, DollarSign,
-  Handshake, Bell, FileText, Share2, X,
+  LayoutDashboard,
+  FileBarChart,
+  Users,
+  TrendingUp,
+  DollarSign,
+  Handshake,
+  Bell,
+  FileText,
+  Share2,
+  UserRound,
+  X,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -14,6 +23,11 @@ const NAV_ITEMS = [
   { to: "/social", label: "Social Media", icon: Share2 },
   { to: "/notifications", label: "Notifications", icon: Bell },
   { to: "/reports", label: "Reports", icon: FileText },
+  {
+  to: "/profile",
+  label: "Profile & Settings",
+  icon: UserRound,
+},
 ];
 
 export default function Sidebar({ open, onClose }) {

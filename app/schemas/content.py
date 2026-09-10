@@ -9,13 +9,13 @@ class ContentCreate(BaseModel):
     platform: str
     content_title: str = Field(..., min_length=3)
 
-    views: int = Field(default=0, ge=0)
+    views: Optional[int] = Field(default=None, ge=0)
     likes: int = Field(default=0, ge=0)
     comments: int = Field(default=0, ge=0)
-    shares: int = Field(default=0, ge=0)
+    shares: Optional[int] = Field(default=None, ge=0)
     saves: int = Field(default=0, ge=0)
     watch_time: int = Field(default=0, ge=0)
-    reach: int = Field(default=0, ge=0)
+    reach: Optional[int] = Field(default=None, ge=0)
 
     published_date: date
 
@@ -43,13 +43,13 @@ class ContentResponse(BaseModel):
     external_content_id: Optional[str] = None
     content_title: str
 
-    views: int
+    views: Optional[int] = None
     likes: int
     comments: int
-    shares: int
+    shares: Optional[int] = None
     saves: int
     watch_time: int
-    reach: int
+    reach: Optional[int] = None
 
     published_date: date
 

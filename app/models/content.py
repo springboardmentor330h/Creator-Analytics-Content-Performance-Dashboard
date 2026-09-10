@@ -20,14 +20,14 @@ class Content(Base):
 
     content_title = Column(String(255), nullable=False)
 
-    views = Column(Integer, nullable=False, default=0)
+    views = Column(Integer, nullable=True)  # NULL = platform doesn't report this metric
     likes = Column(Integer, nullable=False, default=0)
     comments = Column(Integer, nullable=False, default=0)
-    shares = Column(Integer, nullable=False, default=0)
+    shares = Column(Integer, nullable=True)  # NULL = platform doesn't report this metric
     saves = Column(Integer, nullable=False, default=0)
 
     watch_time = Column(Integer, nullable=False, default=0)
 
-    reach = Column(Integer, nullable=False, default=0)
+    reach = Column(Integer, nullable=True)  # NULL = platform doesn't report this metric
 
     published_date = Column(Date, nullable=False)

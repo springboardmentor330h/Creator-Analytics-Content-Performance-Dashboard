@@ -79,10 +79,13 @@ def get_notifications_for_creator(db: Session, creator_id: int):
     )
 
 
-def mark_as_read(db: Session, notification_id: int):
+def mark_as_read(db: Session, notification_id: int, current_user):
+    from app.core.auth import assert_owner_or_admin
+
     note = db.query(Notification).filter(Notification.id == notification_id).first()
     if not note:
         return None
+    assert_owner_or_admin(current_user, note.creator_id)
     note.is_read = True
     db.commit()
     db.refresh(note)

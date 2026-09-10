@@ -21,3 +21,4 @@ python-jose==3.5.0
 rsa==4.9.1
 six==1.17.0
 python-jose[cryptography]
+alembic==1.13.3
