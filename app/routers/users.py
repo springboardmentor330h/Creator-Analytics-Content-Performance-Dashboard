@@ -54,8 +54,22 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    # Users can only update their own profile.
+    # Administrators can update any user.
     if current_user.role != UserRole.ADMINISTRATOR and current_user.id != user_id:
-        raise HTTPException(status_code=403, detail="You can only update your own profile")
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update your own profile",
+        )
+
+    # Only administrators can change roles or active status.
+    if current_user.role != UserRole.ADMINISTRATOR:
+        if user_in.role is not None or user_in.is_active is not None:
+            raise HTTPException(
+                status_code=403,
+                detail="Only administrators can change role or active status",
+            )
+
     return UserService.update(db, user_id, user_in)
 
 

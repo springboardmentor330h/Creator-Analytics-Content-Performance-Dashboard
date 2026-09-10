@@ -69,9 +69,11 @@ export default function ContentAnalytics() {
               <tr key={c.id} className="border-t border-slate-100">
                 <td className="px-4 py-3 font-medium text-slate-800">{c.content_title}</td>
                 <td className="px-4 py-3 text-slate-500">{c.platform}</td>
-                <td className="px-4 py-3">{c.views.toLocaleString()}</td>
-                <td className="px-4 py-3">{c.likes.toLocaleString()}</td>
-                <td className="px-4 py-3">{c.reach.toLocaleString()}</td>
+                <td className="px-4 py-3">{(c.views ?? 0).toLocaleString()}</td>
+<td className="px-4 py-3">{(c.likes ?? 0).toLocaleString()}</td>
+<td className="px-4 py-3">
+  {c.reach == null ? "—" : c.reach.toLocaleString()}
+</td>
                 <td className="px-4 py-3 text-slate-400">{c.published_date}</td>
               </tr>
             ))}

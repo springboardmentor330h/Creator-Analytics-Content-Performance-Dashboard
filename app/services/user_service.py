@@ -29,12 +29,12 @@ class UserService:
                 detail="Email already registered",
             )
         db_user = User(
-            full_name=user_in.full_name,
-            email=user_in.email,
-            hashed_password=get_password_hash(user_in.password),
-            role=user_in.role,
-            bio=user_in.bio,
-        )
+    full_name=user_in.full_name,
+    email=user_in.email,
+    hashed_password=get_password_hash(user_in.password),
+    role=UserRole.CREATOR,
+    bio=user_in.bio,
+)
         db.add(db_user)
         db.commit()
         db.refresh(db_user)

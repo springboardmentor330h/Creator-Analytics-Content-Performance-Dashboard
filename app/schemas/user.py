@@ -12,8 +12,11 @@ class UserBase(BaseModel):
     bio: Optional[str] = None
 
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    full_name: str
+    email: EmailStr
     password: str
+    bio: Optional[str] = None
 
 
 class UserUpdate(BaseModel):

@@ -15,8 +15,8 @@ from app.services.revenue_service import get_revenue_summary
 def build_creator_report_data(db: Session, creator_id: int):
     """Pulls together everything a combined report needs, reusing existing services."""
     return {
-        "summary": get_dashboard_summary(db),
-        "platform_performance": get_platform_performance(db),
+        "summary": get_dashboard_summary(db, creator_id),
+"platform_performance": get_platform_performance(db, creator_id),
         "audience": get_audience_demographics(db, creator_id),
         "revenue": get_revenue_summary(db, creator_id),
     }

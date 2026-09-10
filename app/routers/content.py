@@ -80,7 +80,26 @@ def update_content(
 
     assert_owner_or_admin(current_user, content.creator_id)
 
-    for field, value in content_data.model_dump(exclude_unset=True).items():
+@router.put("/{content_id}", response_model=dict)
+def update_content(
+    content_id: int,
+    content_data: ContentUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    content = db.query(Content).filter(Content.id == content_id).first()
+    if not content:
+        raise HTTPException(status_code=404, detail="Content not found")
+
+    assert_owner_or_admin(current_user, content.creator_id)
+
+    update_data = content_data.model_dump(exclude_unset=True)
+
+    # Only administrators can transfer content ownership.
+    if current_user.role != UserRole.ADMINISTRATOR:
+        update_data.pop("creator_id", None)
+
+    for field, value in update_data.items():
         setattr(content, field, value)
 
     db.commit()
