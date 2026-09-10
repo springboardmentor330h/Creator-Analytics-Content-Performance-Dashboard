@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { getContentReport } from "../services/api";
+import { getContentReport, fetchYouTubeChannel, fetchYouTubeVideos } from "../services/api";
 import PlatformSelector from "../components/PlatformSelector";
-import { Video, Eye, Heart, MessageSquare, Share2, Search, RefreshCw, Bookmark, Sparkles, Filter, CheckCircle2 } from "lucide-react";
+import { Video, Eye, Heart, MessageSquare, Share2, Search, RefreshCw, Bookmark, Sparkles, Filter, CheckCircle2, Youtube, AlertCircle } from "lucide-react";
 
 function ContentAnalytics() {
   const [data, setData] = useState(null);
@@ -11,6 +11,13 @@ function ContentAnalytics() {
   const [selectedPlatform, setSelectedPlatform] = useState("All");
   const [error, setError] = useState("");
   const [refreshNotice, setRefreshNotice] = useState("");
+
+  // Live YouTube Channel Lookup State
+  const [ytInput, setYtInput] = useState("");
+  const [ytLoading, setYtLoading] = useState(false);
+  const [ytError, setYtError] = useState("");
+  const [ytData, setYtData] = useState(null);
+  const [ytVideos, setYtVideos] = useState([]);
 
   const loadContent = async (platform = selectedPlatform, isManualRefresh = false) => {
     try {
@@ -40,6 +47,34 @@ function ContentAnalytics() {
   useEffect(() => {
     loadContent(selectedPlatform);
   }, [selectedPlatform]);
+
+  const handleFetchYouTubeChannel = async (e) => {
+    if (e) e.preventDefault();
+    if (!ytInput || !ytInput.trim()) {
+      setYtError("Please enter a YouTube Channel ID or Channel URL.");
+      return;
+    }
+    try {
+      setYtLoading(true);
+      setYtError("");
+      setYtData(null);
+      setYtVideos([]);
+
+      const [channelData, videosData] = await Promise.all([
+        fetchYouTubeChannel(ytInput.trim()),
+        fetchYouTubeVideos(ytInput.trim(), 10).catch(() => []),
+      ]);
+
+      setYtData(channelData);
+      setYtVideos(Array.isArray(videosData) ? videosData : []);
+    } catch (err) {
+      console.error("Fetch YouTube Channel error:", err);
+      const detail = err.response?.data?.detail || err.message || "Failed to fetch YouTube channel info.";
+      setYtError(detail);
+    } finally {
+      setYtLoading(false);
+    }
+  };
 
   const report = data || {};
   const rawList = Array.isArray(report.content)
@@ -164,6 +199,182 @@ function ContentAnalytics() {
       </div>
 
       {error && <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">{error}</div>}
+
+      {/* Real YouTube Channel Lookup Card (Visible above table) */}
+      {(selectedPlatform === "YouTube" || selectedPlatform === "All") && (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                <Youtube className="w-4.5 h-4.5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Live YouTube Channel Lookup</h3>
+                <p className="text-[11px] text-slate-500 font-medium">Fetch real-time channel profile and statistics directly from YouTube Data API v3</p>
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+              Live API
+            </span>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <form onSubmit={handleFetchYouTubeChannel} className="space-y-3">
+              <div>
+                <label htmlFor="yt-channel-input" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  YouTube Channel ID or URL
+                </label>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    id="yt-channel-input"
+                    type="text"
+                    value={ytInput}
+                    onChange={(e) => setYtInput(e.target.value)}
+                    placeholder="e.g. UCX6OQ3DkcsbYNE6H8uQQuVA or https://www.youtube.com/@MrBeast"
+                    className="flex-1 px-3.5 py-2 text-xs border border-slate-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 bg-white shadow-2xs"
+                  />
+                  <button
+                    type="submit"
+                    disabled={ytLoading || !ytInput.trim()}
+                    className="px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-xs"
+                  >
+                    {ytLoading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Fetching...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-3.5 h-3.5" />
+                        Fetch Channel
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* Loading State */}
+            {ytLoading && (
+              <div className="p-4 bg-rose-50/50 border border-rose-100 rounded-xl text-xs text-slate-600 flex items-center gap-2.5">
+                <RefreshCw className="w-4 h-4 text-rose-600 animate-spin shrink-0" />
+                <span>Fetching real YouTube channel information from YouTube API...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {ytError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <span>{ytError}</span>
+              </div>
+            )}
+
+            {/* Real Channel Data Display */}
+            {ytData && (
+              <div className="p-5 bg-gradient-to-br from-slate-50 to-rose-50/30 border border-slate-200/90 rounded-xl space-y-4">
+                <div className="flex items-start gap-4">
+                  {ytData.thumbnail ? (
+                    <img
+                      src={ytData.thumbnail}
+                      alt={ytData.title}
+                      className="w-14 h-14 rounded-full border-2 border-white shadow-sm object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shrink-0">
+                      {ytData.title ? ytData.title.charAt(0) : "Y"}
+                    </div>
+                  )}
+                  <div className="space-y-1 min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-extrabold text-slate-900 truncate">{ytData.title}</h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+                        REAL YOUTUBE DATA
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 font-mono truncate">
+                      Channel ID: <span className="text-slate-700 font-semibold">{ytData.channel_id}</span>
+                    </p>
+                    {ytData.description && (
+                      <p className="text-xs text-slate-600 line-clamp-2 mt-1 italic">
+                        "{ytData.description}"
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-200/80">
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 text-center shadow-2xs">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subscribers</span>
+                    <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
+                      {typeof ytData.subscribers === "number" ? ytData.subscribers.toLocaleString() : ytData.subscribers}
+                    </span>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 text-center shadow-2xs">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Videos</span>
+                    <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
+                      {typeof ytData.videos === "number" ? ytData.videos.toLocaleString() : ytData.videos}
+                    </span>
+                  </div>
+                  <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 text-center shadow-2xs">
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Views</span>
+                    <span className="text-base font-extrabold text-slate-900 mt-0.5 block">
+                      {typeof ytData.views === "number" ? ytData.views.toLocaleString() : ytData.views}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Real YouTube Videos Table */}
+                {ytVideos.length > 0 && (
+                  <div className="pt-3 border-t border-slate-200/80 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-rose-600" /> Real Videos from YouTube ({ytVideos.length})
+                      </h4>
+                      <span className="text-[10px] text-slate-400 font-medium">Fetched live via YouTube Data API v3</span>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-200/80 rounded-xl bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-wider border-b border-slate-100">
+                          <tr>
+                            <th className="px-4 py-2.5">Thumbnail</th>
+                            <th className="px-4 py-2.5">Video Title</th>
+                            <th className="px-4 py-2.5">Published Date</th>
+                            <th className="px-4 py-2.5">Views</th>
+                            <th className="px-4 py-2.5">Likes</th>
+                            <th className="px-4 py-2.5">Comments</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {ytVideos.map((v, i) => (
+                            <tr key={v.video_id || v.id || i} className="hover:bg-slate-50/70 transition">
+                              <td className="px-4 py-2.5">
+                                {v.thumbnail ? (
+                                  <img src={v.thumbnail} alt={v.title} className="w-16 h-10 object-cover rounded-md border border-slate-200 shrink-0" />
+                                ) : (
+                                  <div className="w-16 h-10 bg-slate-100 rounded-md flex items-center justify-center text-slate-400 font-bold text-[10px]">No Image</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-2.5 font-bold text-slate-900 max-w-xs truncate">
+                                {v.title}
+                              </td>
+                              <td className="px-4 py-2.5 text-slate-500 font-medium">{v.published_date || "-"}</td>
+                              <td className="px-4 py-2.5 font-bold text-slate-900">{typeof v.views === "number" ? v.views.toLocaleString() : v.views}</td>
+                              <td className="px-4 py-2.5 text-slate-600 font-medium">{typeof v.likes === "number" ? v.likes.toLocaleString() : v.likes}</td>
+                              <td className="px-4 py-2.5 text-slate-600 font-medium">{typeof v.comments === "number" ? v.comments.toLocaleString() : v.comments}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content Table Card */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">

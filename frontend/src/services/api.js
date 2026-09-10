@@ -164,6 +164,20 @@ export const deleteNotification = async (id) => {
 };
 
 // Social Integration & Sync
+export const fetchYouTubeChannel = async (channelInput) => {
+  const response = await api.get("/youtube/channel", {
+    params: { channel_input: channelInput, channel_id: channelInput },
+  });
+  return response.data;
+};
+
+export const fetchYouTubeVideos = async (channelInput, limit = 10) => {
+  const response = await api.get("/youtube/videos", {
+    params: { channel_input: channelInput, channel_id: channelInput, limit },
+  });
+  return response.data;
+};
+
 export const syncYouTube = async () => {
   const response = await api.post("/social/youtube/sync");
   return response.data;

@@ -20,10 +20,59 @@ from fastapi.openapi.utils import get_openapi
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import os
 import hmac
 import hashlib
 import base64
 import json
+from dotenv import load_dotenv
+
+# Load backend/.env environment variables explicitly
+_backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_env_path = os.path.join(_backend_dir, ".env")
+if not os.path.exists(_env_path):
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(dotenv_path=_env_path, override=True)
+
+try:
+    import bcrypt
+except ImportError:
+    bcrypt = None
+
+try:
+    import psycopg2
+    import psycopg2.extras
+except ImportError:
+    psycopg2 = None
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/creatoriq_db")
+
+def verify_password(plain_password: str, stored_hash: str) -> bool:
+    if not stored_hash or not plain_password:
+        return False
+    if stored_hash.startswith(("$2a$", "$2b$", "$2y$")) and bcrypt:
+        try:
+            return bcrypt.checkpw(plain_password.encode('utf-8')[:72], stored_hash.encode('utf-8'))
+        except Exception as e:
+            print("bcrypt error:", e)
+            return False
+    return plain_password == stored_hash
+
+def get_user_from_db(email: str):
+    if not psycopg2:
+        return None
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("SELECT id, full_name, email, password, role FROM users WHERE LOWER(email) = LOWER(%s);", (email,))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        if row:
+            return dict(row)
+    except Exception as e:
+        print("DB lookup error:", e)
+    return None
 
 tags_metadata = [
     {"name": "default", "description": "Core authentication, user management, and system endpoints"},
@@ -578,8 +627,27 @@ def auth_register_default(user_data: UserRegister):
 
 @app.post("/auth/login", tags=["default"], summary="Login")
 def auth_login_default(credentials: UserLogin):
-    user = next((u for u in USERS if u["email"].lower() == credentials.email.lower()), None)
-    if not user or credentials.password != "password123":
+    email = credentials.email.lower().strip()
+    password = credentials.password
+    
+    user = None
+    db_user = get_user_from_db(email)
+    if db_user:
+        if verify_password(password, db_user["password"]):
+            user = {
+                "id": db_user["id"],
+                "full_name": db_user.get("full_name") or "Monika Chowdary",
+                "email": db_user["email"],
+                "role": db_user.get("role") or "admin"
+            }
+    
+    if not user:
+        static_user = next((u for u in USERS if u["email"].lower() == email), None)
+        if static_user:
+            if password in ["password123", "Admin@123"] or verify_password(password, static_user.get("password", "")):
+                user = static_user
+    
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     token = generate_jwt_token({
@@ -752,27 +820,79 @@ def get_social_media_platforms():
         {"platform": "Facebook", "connected": True, "handle": "Monika Tech Community"}
     ]
 
-@app.get("/social/sync", tags=["social media"], summary="Sync Multi-Platform Data")
+@app.get("/social/sync", tags=["social media"], summary="Get Multi-Platform Sync Status")
+@app.get("/social-media/sync", tags=["social media"], summary="Get Multi-Platform Sync Status")
+def get_sync_social_media(platform: Optional[str] = Query(None, description="Optional platform filter")):
+    target_platform = platform or "All"
+    return {"status": "success", "synced_channels": 6, "synced_posts": 46, "platform": target_platform, "last_synced": datetime.now().isoformat()}
+
 @app.post("/social/sync", tags=["social media"], summary="Sync Multi-Platform Data")
-@app.get("/social-media/sync", tags=["social media"], summary="Sync Multi-Platform Data")
 @app.post("/social-media/sync", tags=["social media"], summary="Sync Multi-Platform Data")
 def sync_social_media(payload: Optional[Dict[str, Any]] = Body(None)):
     platform = payload.get("platform") if payload else "All"
     return {"status": "success", "synced_channels": 6, "synced_posts": 46, "platform": platform, "last_synced": datetime.now().isoformat()}
 
-@app.get("/social/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
+@app.get("/social/youtube/sync", tags=["social media"], summary="Get Live YouTube Sync Status")
+@app.get("/youtube/sync", tags=["social media"], summary="Get Live YouTube Sync Status")
+def get_sync_youtube():
+    return {"status": "success", "synced_videos": 7, "channel": "@monikacreator", "last_synced": datetime.now().isoformat()}
+
 @app.post("/social/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
-@app.get("/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
 @app.post("/youtube/sync", tags=["social media"], summary="Sync Live YouTube Telemetry")
 def sync_youtube_tag(payload: Optional[Dict[str, Any]] = Body(None)):
     return {"status": "success", "synced_videos": 7, "channel": "@monikacreator", "last_synced": datetime.now().isoformat()}
 
 @app.get("/youtube/channel", tags=["social media"], summary="Get YouTube Channel Profile")
-def get_youtube_channel_tag():
-    return {"channel_id": "UC_monikacreator", "title": "Monika Tech", "subscribers": 89900, "videos": 7}
+def get_youtube_channel_tag(
+    channel_input: Optional[str] = Query(
+        None,
+        description="YouTube Channel ID, Handle (@name), or Channel URL (e.g. UC_x5XG1OV2P6uZZ5FSM9Ttw or https://www.youtube.com/@mkbhd)"
+    ),
+    channel_id: Optional[str] = Query(None, description="Alternative Channel ID parameter")
+):
+    target = channel_input or channel_id
+    if not target or not target.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="YouTube Channel ID or URL parameter is required."
+        )
+
+    api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="YOUTUBE_API_KEY is missing or empty. Please configure a valid YOUTUBE_API_KEY in backend/.env"
+        )
+
+    from main import resolve_youtube_channel
+    res = resolve_youtube_channel(target, api_key)
+    if isinstance(res, dict) and res.get("error"):
+        raise HTTPException(status_code=res.get("status_code", 400), detail=res.get("detail", "Error fetching YouTube channel"))
+    return res
 
 @app.get("/youtube/videos", tags=["social media"], summary="List YouTube Synced Videos")
-def get_youtube_videos_tag():
+def get_youtube_videos_tag(
+    channel_input: Optional[str] = Query(None, description="YouTube Channel ID, Handle (@name), or Channel URL (e.g. UCX6OQ3DkcsbYNE6H8uQQuVA or https://www.youtube.com/@MrBeast)"),
+    channel_id: Optional[str] = Query(None, description="Alternative Channel ID parameter"),
+    limit: int = Query(10, ge=1, le=50, description="Number of videos to fetch")
+):
+    target = channel_input or channel_id
+    if target and target.strip():
+        api_key = os.getenv("YOUTUBE_API_KEY", "").strip()
+        if not api_key:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="YOUTUBE_API_KEY is missing or empty. Please configure a valid YOUTUBE_API_KEY in backend/.env"
+            )
+        from main import fetch_real_youtube_videos
+        res = fetch_real_youtube_videos(target.strip(), api_key, limit=limit)
+        if isinstance(res, dict) and res.get("error"):
+            raise HTTPException(
+                status_code=res.get("status_code", 400),
+                detail=res.get("detail", "Error fetching YouTube videos")
+            )
+        return res
+
     return [c for c in CONTENTS if c.get("platform") == "YouTube"]
 
 # =======================================================
@@ -934,7 +1054,7 @@ def mark_notification_read_tag(notification_id: int):
 # 9. reports
 # =======================================================
 @app.get("/reports", tags=["reports"], summary="Get Creator Performance Report")
-def get_reports_tag(platform: Optional[str] = None):
+def get_reports_tag(platform: Optional[str] = Query(None, description="Optional platform filter")):
     filtered_c = CONTENTS
     if is_valid_platform(platform):
         filtered_c = [c for c in CONTENTS if (c.get("platform") or "").lower() == platform.lower()]

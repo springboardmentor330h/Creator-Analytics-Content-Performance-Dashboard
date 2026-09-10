@@ -59,7 +59,7 @@ def _filter_items(platform: Optional[str]):
     return MOCK_CONTENTS
 
 @router.get("")
-def get_reports(platform: Optional[str] = Query(None)):
+def get_reports(platform: Optional[str] = Query(None, include_in_schema=False)):
     items = _filter_items(platform)
     return {
         "creator_id": 1,
@@ -84,7 +84,7 @@ def get_reports(platform: Optional[str] = Query(None)):
     }
 
 @router.get("/content")
-def get_content_report(platform: Optional[str] = Query(None)):
+def get_content_report(platform: Optional[str] = Query(None, include_in_schema=False)):
     items = _filter_items(platform)
     return {
         "creator_id": 1,
@@ -101,11 +101,11 @@ def get_content_report(platform: Optional[str] = Query(None)):
     }
 
 @router.get("/audience")
-def get_audience_report(platform: Optional[str] = Query(None)):
+def get_audience_report(platform: Optional[str] = Query(None, include_in_schema=False)):
     return {"creator_id": 1, "total_records": 18, "data": []}
 
 @router.get("/revenue")
-def get_revenue_report(platform: Optional[str] = Query(None)):
+def get_revenue_report(platform: Optional[str] = Query(None, include_in_schema=False)):
     return {"creator_id": 1, "total_records": 11, "total_revenue": 368500, "data": []}
 
 @router.get("/platforms")
