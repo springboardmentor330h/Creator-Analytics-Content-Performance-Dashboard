@@ -25,6 +25,7 @@ export default function Register() {
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [emailEditable, setEmailEditable] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [role, setRole] = useState('Creator')
@@ -142,8 +143,11 @@ export default function Register() {
                 <input
                   type="email"
                   required
-                  autoComplete="email"
+                  name="registration-email"
+                  autoComplete="new-password"
+                  readOnly={!emailEditable}
                   value={email}
+                  onFocus={() => setEmailEditable(true)}
                   onChange={(e) => setEmail(e.target.value)}
                   className="ciq-input pl-10"
                   placeholder="you@example.com"

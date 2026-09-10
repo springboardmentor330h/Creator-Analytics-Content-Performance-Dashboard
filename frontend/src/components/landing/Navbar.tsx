@@ -75,7 +75,7 @@ export default function Navbar() {
             to="/register"
             className="inline-flex items-center gap-2 rounded-xl bg-[#635BFF] px-4 py-2 text-xs font-bold text-white shadow-md shadow-[#635BFF]/20 hover:bg-[#5248E5] transition-all group"
           >
-            <span>Create Account</span>
+            <span>Get Started</span>
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
@@ -126,7 +126,7 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#635BFF] py-2.5 text-xs font-bold text-white shadow-md shadow-[#635BFF]/20 hover:bg-[#5248E5] transition-all"
             >
-              <span>Create Account</span>
+              <span>Get Started</span>
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
