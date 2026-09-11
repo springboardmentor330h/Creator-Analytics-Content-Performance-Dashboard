@@ -50,15 +50,15 @@ def content_engagement(
 
 @router.get("/top-content")
 def top_content(
+    platform: str = "All",
     db: Session = Depends(get_db)
 ):
-    result = get_top_content(db)
+    result = get_top_content(db, platform)
 
     return {
         "message": "Top performing content fetched successfully",
         "data": result
     }
-
 
 # =========================================================
 # PLATFORM PERFORMANCE
@@ -66,9 +66,10 @@ def top_content(
 
 @router.get("/platform-performance")
 def platform_performance(
+    platform: str = "All",
     db: Session = Depends(get_db)
 ):
-    result = get_platform_performance(db)
+    result = get_platform_performance(db, platform)
 
     return {
         "message": "Platform performance fetched successfully",
@@ -77,14 +78,15 @@ def platform_performance(
 
 
 # =========================================================
-# DASHBOARD SUMMARY
+# DASHBOARD SUMMARY      
 # =========================================================
 
 @router.get("/summary")
 def dashboard_summary(
+    platform: str = "All",
     db: Session = Depends(get_db)
 ):
-    result = get_kpi_summary(db)
+    result = get_kpi_summary(db, platform)
 
     return {
         "message": "KPI summary fetched successfully",
@@ -98,12 +100,14 @@ def dashboard_summary(
 
 @router.get("/chart/engagement")
 def engagement_chart(
+    platform: str = "All",
     db: Session = Depends(get_db)
 ):
-    result = get_engagement_chart(db)
+    result = get_engagement_chart(db, platform)
 
     return {
         "message": "Engagement chart data fetched successfully",
+        "platform": platform,
         "data": result
     }
 

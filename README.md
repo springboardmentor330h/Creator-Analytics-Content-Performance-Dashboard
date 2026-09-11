@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-CreatorIQ is a creator analytics platform that helps creators analyze their social media content, audience, engagement, reach, and follower growth.
+CreatorIQ is a creator analytics platform that helps creators analyze their social mediadone content, audience, engagement, reach, and follower growth.
 
 The system collects content and audience data, stores it in PostgreSQL, processes analytics using a FastAPI backend, and provides dashboard-ready APIs for a future React frontend.
 

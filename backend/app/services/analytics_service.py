@@ -37,10 +37,15 @@ def get_content_engagement(db: Session, content_id: int):
         "total_engagement": total_engagement,
         "engagement_rate": round(engagement_rate, 2)
     }
+def get_top_content(db: Session, platform: str = "All"):
+    query = db.query(Content)
 
+    if platform.lower() != "all":
+        query = query.filter(
+            func.lower(Content.platform) == platform.lower()
+        )
 
-def get_top_content(db: Session):
-    contents = db.query(Content).all()
+    contents = query.all()
 
     result = []
 
@@ -66,7 +71,9 @@ def get_top_content(db: Session):
             "views": content.views,
             "reach": content.reach,
             "watch_time": content.watch_time,
-            "engagement_rate": round(engagement_rate, 2)
+            "engagement_rate": round(
+                engagement_rate, 2
+            )
         })
 
     result.sort(
@@ -76,9 +83,15 @@ def get_top_content(db: Session):
 
     return result[:5]
 
+def get_platform_performance(db: Session, platform: str = "All"):
+    query = db.query(Content)
 
-def get_platform_performance(db: Session):
-    contents = db.query(Content).all()
+    if platform.lower() != "all":
+        query = query.filter(
+            func.lower(Content.platform) == platform.lower()
+        )
+
+    contents = query.all()
 
     platforms = {}
 
@@ -118,7 +131,7 @@ def get_platform_performance(db: Session):
 
     result = []
 
-    for platform, data in platforms.items():
+    for platform_name, data in platforms.items():
 
         if data["engagement_rates"]:
             average_engagement_rate = (
@@ -129,7 +142,7 @@ def get_platform_performance(db: Session):
             average_engagement_rate = 0
 
         result.append({
-            "platform": platform,
+            "platform": platform_name,
             "total_views": data["total_views"],
             "total_likes": data["total_likes"],
             "total_comments": data["total_comments"],
@@ -213,8 +226,15 @@ def get_dashboard_summary(db: Session):
         "best_platform": best_platform,
         "top_content": top_content_title
     }
-def get_kpi_summary(db: Session):
-    contents = db.query(Content).all()
+def get_kpi_summary(db: Session, platform: str = "All"):
+    query = db.query(Content)
+
+    if platform.lower() != "all":
+        query = query.filter(
+            func.lower(Content.platform) == platform.lower()
+        )
+
+    contents = query.all()
     audiences = db.query(Audience).all()
 
     total_views = sum(content.views for content in contents)
@@ -256,6 +276,7 @@ def get_kpi_summary(db: Session):
         average_engagement_rate = 0
 
     return {
+        "platform": platform,
         "total_views": total_views,
         "total_likes": total_likes,
         "total_comments": total_comments,
@@ -365,9 +386,16 @@ def get_platform_comparison(db: Session):
         }
 
     return result
-def get_engagement_chart(db: Session):
+def get_engagement_chart(db: Session, platform: str = "All"):
+    query = db.query(Content)
+
+    if platform.lower() != "all":
+        query = query.filter(
+            func.lower(Content.platform) == platform.lower()
+        )
+
     contents = (
-        db.query(Content)
+        query
         .order_by(Content.published_date)
         .all()
     )
@@ -392,24 +420,6 @@ def get_engagement_chart(db: Session):
 
         labels.append(str(content.published_date))
         values.append(round(engagement_rate, 2))
-
-    return {
-        "labels": labels,
-        "values": values
-    }
-def get_follower_growth_chart(db: Session):
-    growth_data = (
-        db.query(Growth)
-        .order_by(Growth.date)
-        .all()
-    )
-
-    labels = []
-    values = []
-
-    for record in growth_data:
-        labels.append(str(record.date))
-        values.append(record.followers)
 
     return {
         "labels": labels,

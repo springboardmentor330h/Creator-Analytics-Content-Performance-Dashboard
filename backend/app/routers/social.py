@@ -7,7 +7,7 @@ from app.db.database import get_db
 from app.models.content import Content
 from app.services.social_media import get_available_platforms
 from app.services.youtube_service import get_channel_videos
-
+from app.services.instagram_service import get_instagram_sample_data
 
 router = APIRouter(
     prefix="/social",
@@ -156,4 +156,100 @@ def sync_youtube(
         raise HTTPException(
             status_code=500,
             detail=f"YouTube synchronization failed: {str(error)}"
+        )
+    # --------------------------------------------------
+# Instagram Sample Data Synchronization
+# --------------------------------------------------
+
+@router.post("/instagram/sync")
+def sync_instagram(
+    creator_id: int = 1,
+    db: Session = Depends(get_db)
+):
+
+    try:
+        # 1. Get Instagram sample data
+        instagram_data = get_instagram_sample_data()
+
+        if not instagram_data:
+            return {
+                "platform": "Instagram",
+                "status": "success",
+                "records_synced": 0,
+                "message": "No Instagram data found"
+            }
+
+        records_synced = 0
+        records_updated = 0
+
+        # 2. Process each Instagram content
+        for data in instagram_data:
+
+            external_id = data["external_content_id"]
+
+            # 3. Check duplicate record
+            existing_content = (
+                db.query(Content)
+                .filter(
+                    Content.platform == "Instagram",
+                    Content.external_content_id == external_id
+                )
+                .first()
+            )
+
+            if existing_content:
+
+                # 4. Update existing record
+                existing_content.creator_id = creator_id
+                existing_content.content_title = data["content_title"]
+                existing_content.views = data["views"]
+                existing_content.likes = data["likes"]
+                existing_content.comments = data["comments"]
+                existing_content.shares = data["shares"]
+                existing_content.saves = data["saves"]
+                existing_content.watch_time = data["watch_time"]
+                existing_content.reach = data["reach"]
+                existing_content.published_date = data["published_date"]
+
+                records_updated += 1
+
+            else:
+
+                # 5. Create new record
+                new_content = Content(
+                    creator_id=creator_id,
+                    platform=data["platform"],
+                    external_content_id=external_id,
+                    content_title=data["content_title"],
+                    views=data["views"],
+                    likes=data["likes"],
+                    comments=data["comments"],
+                    shares=data["shares"],
+                    saves=data["saves"],
+                    watch_time=data["watch_time"],
+                    reach=data["reach"],
+                    published_date=data["published_date"]
+                )
+
+                db.add(new_content)
+
+                records_synced += 1
+
+        # 6. Save to PostgreSQL
+        db.commit()
+
+        return {
+            "platform": "Instagram",
+            "status": "success",
+            "records_synced": records_synced,
+            "records_updated": records_updated
+        }
+
+    except Exception as error:
+
+        db.rollback()
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Instagram synchronization failed: {str(error)}"
         )

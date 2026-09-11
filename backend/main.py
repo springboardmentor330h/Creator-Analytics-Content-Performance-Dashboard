@@ -12,6 +12,7 @@ from app.db.database import Base, engine
 from app.models.user import User
 from app.models.content import Content
 
+from app.routers import notification
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -29,3 +30,4 @@ app.include_router(social_router)
 app.include_router(revenue.router)
 app.include_router(sponsorship.router)
 
+app.include_router(notification.router)
