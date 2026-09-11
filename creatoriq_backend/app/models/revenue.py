@@ -21,6 +21,15 @@ class Revenue(Base):
         index=True,
     )
 
+    sponsorship_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "sponsorships.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+        index=True,
+    )
+
     source: Mapped[str] = mapped_column(
         String(100),
         nullable=False,
@@ -40,3 +49,4 @@ class Revenue(Base):
         String(500),
         nullable=True,
     )
+

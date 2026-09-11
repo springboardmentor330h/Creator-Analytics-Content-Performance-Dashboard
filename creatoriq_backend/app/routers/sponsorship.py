@@ -31,10 +31,16 @@ def create_sponsorship_api(
     sponsorship_data: SponsorshipCreate,
     db: Session = Depends(get_db),
 ):
-    return create_sponsorship(
-        db,
-        sponsorship_data,
-    )
+    try:
+        return create_sponsorship(
+            db,
+            sponsorship_data,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
 
 
 @router.get(

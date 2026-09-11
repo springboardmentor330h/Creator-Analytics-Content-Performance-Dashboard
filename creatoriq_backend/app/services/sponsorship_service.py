@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 
 from app.models.sponsorship import Sponsorship
+from app.models.user import User
 from app.schemas.sponsorship import (
     SponsorshipCreate,
     SponsorshipUpdate,
@@ -11,6 +12,19 @@ def create_sponsorship(
     db: Session,
     sponsorship_data: SponsorshipCreate,
 ):
+    creator = (
+        db.query(User)
+        .filter(
+            User.id == sponsorship_data.creator_id
+        )
+        .first()
+    )
+
+    if creator is None:
+        raise ValueError(
+            "Creator does not exist"
+        )
+
     sponsorship = Sponsorship(
         creator_id=sponsorship_data.creator_id,
         brand_name=sponsorship_data.brand_name,
@@ -23,8 +37,13 @@ def create_sponsorship(
     )
 
     db.add(sponsorship)
-    db.commit()
-    db.refresh(sponsorship)
+
+    try:
+        db.commit()
+        db.refresh(sponsorship)
+    except Exception:
+        db.rollback()
+        raise
 
     return sponsorship
 
@@ -66,14 +85,18 @@ def update_sponsorship(
     sponsorship_data: SponsorshipUpdate,
 ):
     update_data = sponsorship_data.model_dump(
-        exclude_unset=True,
+        exclude_unset=True
     )
 
     for field, value in update_data.items():
         setattr(sponsorship, field, value)
 
-    db.commit()
-    db.refresh(sponsorship)
+    try:
+        db.commit()
+        db.refresh(sponsorship)
+    except Exception:
+        db.rollback()
+        raise
 
     return sponsorship
 
@@ -82,5 +105,9 @@ def delete_sponsorship(
     db: Session,
     sponsorship: Sponsorship,
 ):
-    db.delete(sponsorship)
-    db.commit()
+    try:
+        db.delete(sponsorship)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise

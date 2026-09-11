@@ -1,152 +1,79 @@
 from io import BytesIO
+from typing import Any
 
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.styles import (
+    Alignment,
+    Border,
+    Font,
+    PatternFill,
+    Side,
+)
 from openpyxl.utils import get_column_letter
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import (
-    getSampleStyleSheet,
     ParagraphStyle,
+    getSampleStyleSheet,
 )
-from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
 
 
-# ============================================================
-# PDF REPORT
-# ============================================================
+def money(value: Any) -> str:
+    try:
+        return f"₹{float(value):,.2f}"
+    except (TypeError, ValueError):
+        return str(value)
 
-def generate_pdf_report(report_data: dict):
-    """
-    Generate a structured PDF analytics report.
 
-    The function consumes the existing report_data generated
-    by the reporting service. No analytics logic is duplicated.
-    """
+def pretty_label(value: Any) -> str:
+    return str(value).replace(
+        "_",
+        " ",
+    ).title()
 
-    buffer = BytesIO()
 
-    document = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=40,
-        leftMargin=40,
-        topMargin=40,
-        bottomMargin=40,
-        title="CreatorIQ Analytics Report",
-    )
-
-    styles = getSampleStyleSheet()
-
-    title_style = ParagraphStyle(
-        "ReportTitle",
-        parent=styles["Title"],
-        fontSize=20,
-        leading=24,
-        alignment=TA_CENTER,
-        spaceAfter=12,
-    )
-
-    subtitle_style = ParagraphStyle(
-        "ReportSubtitle",
-        parent=styles["Normal"],
-        fontSize=10,
-        leading=14,
-        alignment=TA_CENTER,
-        spaceAfter=20,
-    )
-
-    heading_style = ParagraphStyle(
-        "ReportHeading",
-        parent=styles["Heading2"],
-        fontSize=14,
-        leading=18,
-        spaceBefore=12,
-        spaceAfter=8,
-    )
-
-    normal_style = ParagraphStyle(
-        "ReportNormal",
-        parent=styles["Normal"],
-        fontSize=9,
-        leading=12,
-    )
-
-    story = []
-
-    creator_id = report_data.get("creator_id", "N/A")
-
-    # --------------------------------------------------------
-    # TITLE
-    # --------------------------------------------------------
-
-    story.append(
-        Paragraph(
-            "CreatorIQ Analytics Report",
-            title_style,
-        )
-    )
-
-    story.append(
-        Paragraph(
-            f"Creator ID: {creator_id}",
-            subtitle_style,
-        )
-    )
-
-    # --------------------------------------------------------
-    # HELPER FUNCTIONS
-    # --------------------------------------------------------
-
-    def money(value):
-        try:
-            return f"₹{float(value):,.2f}"
-        except (TypeError, ValueError):
-            return str(value)
-
-    def add_section_title(title):
+def add_pdf_table(
+    story,
+    headers,
+    rows,
+    heading_style,
+    normal_style,
+):
+    if not rows:
         story.append(
             Paragraph(
-                title,
-                heading_style,
+                "No data available.",
+                normal_style,
             )
         )
+        story.append(
+            Spacer(1, 8)
+        )
+        return
 
-    def add_simple_table(headers, rows):
-        if not rows:
-            story.append(
-                Paragraph(
-                    "No data available.",
-                    normal_style,
-                )
-            )
-            return
-
-        table_data = [headers] + rows
-
-        table = Table(
-            table_data,
+    story.append(
+        Table(
+            [headers] + rows,
             repeatRows=1,
             hAlign="LEFT",
-        )
-
-        table.setStyle(
-            TableStyle(
+            style=TableStyle(
                 [
                     (
                         "BACKGROUND",
                         (0, 0),
                         (-1, 0),
-                        colors.HexColor("#1F4E78"),
+                        colors.HexColor(
+                            "#1F4E78"
+                        ),
                     ),
                     (
                         "TEXTCOLOR",
@@ -159,12 +86,6 @@ def generate_pdf_report(report_data: dict):
                         (0, 0),
                         (-1, 0),
                         "Helvetica-Bold",
-                    ),
-                    (
-                        "FONTNAME",
-                        (0, 1),
-                        (-1, -1),
-                        "Helvetica",
                     ),
                     (
                         "FONTSIZE",
@@ -185,7 +106,9 @@ def generate_pdf_report(report_data: dict):
                         (-1, -1),
                         [
                             colors.white,
-                            colors.HexColor("#F3F6F9"),
+                            colors.HexColor(
+                                "#F3F6F9"
+                            ),
                         ],
                     ),
                     (
@@ -210,250 +133,584 @@ def generate_pdf_report(report_data: dict):
                         "TOPPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        5,
                     ),
                     (
                         "BOTTOMPADDING",
                         (0, 0),
                         (-1, -1),
-                        6,
+                        5,
                     ),
                 ]
-            )
+            ),
+        )
+    )
+
+    story.append(
+        Spacer(1, 12)
+    )
+
+
+def generate_pdf_report(
+    report_data: dict,
+):
+    buffer = BytesIO()
+
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36,
+        title="CreatorIQ Analytics Report",
+    )
+
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "CreatorIQTitle",
+        parent=styles["Title"],
+        fontSize=20,
+        leading=24,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+    )
+
+    subtitle_style = ParagraphStyle(
+        "CreatorIQSubtitle",
+        parent=styles["Normal"],
+        fontSize=10,
+        leading=14,
+        alignment=TA_CENTER,
+        spaceAfter=18,
+    )
+
+    heading_style = ParagraphStyle(
+        "CreatorIQHeading",
+        parent=styles["Heading2"],
+        fontSize=14,
+        leading=18,
+        spaceBefore=12,
+        spaceAfter=8,
+    )
+
+    normal_style = ParagraphStyle(
+        "CreatorIQNormal",
+        parent=styles["Normal"],
+        fontSize=8.5,
+        leading=11,
+    )
+
+    story = []
+
+    creator_id = report_data.get(
+        "creator_id",
+        "N/A",
+    )
+
+    story.append(
+        Paragraph(
+            "CreatorIQ Analytics Report",
+            title_style,
+        )
+    )
+
+    story.append(
+        Paragraph(
+            f"Creator ID: {creator_id}",
+            subtitle_style,
+        )
+    )
+
+    # ========================================================
+    # CONTENT
+    # ========================================================
+
+    content = report_data.get(
+        "content_performance",
+        {},
+    )
+
+    story.append(
+        Paragraph(
+            "Content Performance",
+            heading_style,
+        )
+    )
+
+    content_summary = content.get(
+        "summary",
+        {},
+    )
+
+    add_pdf_table(
+        story,
+        ["Metric", "Value"],
+        [
+            [
+                "Total Content",
+                content_summary.get(
+                    "total_content",
+                    0,
+                ),
+            ],
+            [
+                "Total Views",
+                content_summary.get(
+                    "total_views",
+                    0,
+                ),
+            ],
+            [
+                "Total Reach",
+                content_summary.get(
+                    "total_reach",
+                    0,
+                ),
+            ],
+            [
+                "Average Engagement Rate",
+                f"{content_summary.get(
+                    'average_engagement_rate',
+                    0,
+                ):.2f}%",
+            ],
+            [
+                "Best Platform",
+                content_summary.get(
+                    "best_platform",
+                    "N/A",
+                ),
+            ],
+            [
+                "Top Content",
+                content_summary.get(
+                    "top_content",
+                    "N/A",
+                ),
+            ],
+        ],
+        heading_style,
+        normal_style,
+    )
+
+    top_content = content.get(
+        "top_content",
+        [],
+    )
+
+    if top_content:
+        add_pdf_table(
+            story,
+            [
+                "Content",
+                "Platform",
+                "Views",
+                "Reach",
+                "Engagement",
+            ],
+            [
+                [
+                    item.get(
+                        "content_title",
+                        "N/A",
+                    ),
+                    item.get(
+                        "platform",
+                        "N/A",
+                    ),
+                    item.get(
+                        "views",
+                        0,
+                    ),
+                    item.get(
+                        "reach",
+                        0,
+                    ),
+                    f"{item.get(
+                        'engagement_rate',
+                        0,
+                    ):.2f}%",
+                ]
+                for item in top_content
+            ],
+            heading_style,
+            normal_style,
         )
 
-        story.append(table)
-        story.append(Spacer(1, 12))
+    # ========================================================
+    # AUDIENCE
+    # ========================================================
 
-    # --------------------------------------------------------
+    audience = report_data.get(
+        "audience_analytics",
+        {},
+    )
+
+    story.append(
+        Paragraph(
+            "Audience Analytics",
+            heading_style,
+        )
+    )
+
+    audience_summary = audience.get(
+        "summary",
+        {},
+    )
+
+    add_pdf_table(
+        story,
+        ["Metric", "Value"],
+        [
+            [
+                "Total Followers",
+                audience_summary.get(
+                    "total_followers",
+                    0,
+                ),
+            ],
+            [
+                "Total Reach",
+                audience_summary.get(
+                    "total_reach",
+                    0,
+                ),
+            ],
+            [
+                "Total Impressions",
+                audience_summary.get(
+                    "total_impressions",
+                    0,
+                ),
+            ],
+        ],
+        heading_style,
+        normal_style,
+    )
+
+    gender = audience.get(
+        "gender_distribution",
+        {},
+    )
+
+    if gender:
+        add_pdf_table(
+            story,
+            ["Gender", "Percentage"],
+            [
+                [
+                    key,
+                    f"{value:.2f}%",
+                ]
+                for key, value in gender.items()
+            ],
+            heading_style,
+            normal_style,
+        )
+
+    age = audience.get(
+        "age_distribution",
+        {},
+    )
+
+    if age:
+        add_pdf_table(
+            story,
+            ["Age Group", "Percentage"],
+            [
+                [
+                    key,
+                    f"{value:.2f}%",
+                ]
+                for key, value in age.items()
+            ],
+            heading_style,
+            normal_style,
+        )
+
+    countries = audience.get(
+        "top_countries",
+        [],
+    )
+
+    if countries:
+        add_pdf_table(
+            story,
+            ["Country", "Audience Count"],
+            [
+                [
+                    item.get(
+                        "country",
+                        "N/A",
+                    ),
+                    item.get(
+                        "count",
+                        0,
+                    ),
+                ]
+                for item in countries
+            ],
+            heading_style,
+            normal_style,
+        )
+
+    # ========================================================
     # REVENUE
-    # --------------------------------------------------------
+    # ========================================================
 
-    revenue = report_data.get("revenue", {})
+    revenue = report_data.get(
+        "revenue",
+        {},
+    )
 
-    if revenue:
-
-        add_section_title("Revenue Analytics")
-
-        revenue_summary = revenue.get(
-            "revenue_summary",
-            {},
+    story.append(
+        Paragraph(
+            "Revenue Analytics",
+            heading_style,
         )
+    )
 
-        total_revenue = revenue_summary.get(
-            "total_revenue",
-            0,
-        )
+    revenue_summary = revenue.get(
+        "revenue_summary",
+        {},
+    )
 
-        summary_rows = [
+    add_pdf_table(
+        story,
+        ["Metric", "Value"],
+        [
             [
                 "Creator ID",
-                str(
-                    revenue_summary.get(
-                        "creator_id",
-                        creator_id,
-                    )
+                revenue_summary.get(
+                    "creator_id",
+                    creator_id,
                 ),
             ],
             [
                 "Total Revenue",
-                money(total_revenue),
+                money(
+                    revenue_summary.get(
+                        "total_revenue",
+                        0,
+                    )
+                ),
             ],
-        ]
+        ],
+        heading_style,
+        normal_style,
+    )
 
-        add_simple_table(
+    source_rows = revenue.get(
+        "revenue_by_source",
+        {},
+    ).get(
+        "revenue_by_source",
+        [],
+    )
+
+    if source_rows:
+        add_pdf_table(
+            story,
             [
-                "Metric",
-                "Value",
+                "Revenue Source",
+                "Amount",
             ],
-            summary_rows,
-        )
-
-        # ----------------------------------------------------
-        # REVENUE BY SOURCE
-        # ----------------------------------------------------
-
-        revenue_by_source = revenue.get(
-            "revenue_by_source",
-            {},
-        )
-
-        source_rows = revenue_by_source.get(
-            "revenue_by_source",
-            [],
-        )
-
-        if source_rows:
-
-            add_section_title(
-                "Revenue by Source"
-            )
-
-            rows = []
-
-            for item in source_rows:
-
-                if not isinstance(item, dict):
-                    continue
-
-                rows.append(
-                    [
-                        str(
-                            item.get(
-                                "source",
-                                "Unknown",
-                            )
-                        ),
-                        money(
-                            item.get(
-                                "amount",
-                                0,
-                            )
-                        ),
-                    ]
-                )
-
-            add_simple_table(
+            [
                 [
-                    "Revenue Source",
-                    "Amount",
-                ],
-                rows,
-            )
-
-        # ----------------------------------------------------
-        # MONTHLY REVENUE
-        # ----------------------------------------------------
-
-        monthly_revenue = revenue.get(
-            "monthly_revenue",
-            {},
+                    item.get(
+                        "source",
+                        "Unknown",
+                    ),
+                    money(
+                        item.get(
+                            "amount",
+                            0,
+                        )
+                    ),
+                ]
+                for item in source_rows
+            ],
+            heading_style,
+            normal_style,
         )
 
-        monthly_rows = monthly_revenue.get(
-            "monthly_revenue",
-            [],
-        )
+    monthly_rows = revenue.get(
+        "monthly_revenue",
+        {},
+    ).get(
+        "monthly_revenue",
+        [],
+    )
 
-        if monthly_rows:
-
-            add_section_title(
-                "Monthly Revenue"
-            )
-
-            rows = []
-
-            for item in monthly_rows:
-
-                if not isinstance(item, dict):
-                    continue
-
-                rows.append(
-                    [
-                        str(
-                            item.get(
-                                "month",
-                                "Unknown",
-                            )
-                        ),
-                        money(
-                            item.get(
-                                "amount",
-                                0,
-                            )
-                        ),
-                    ]
-                )
-
-            add_simple_table(
+    if monthly_rows:
+        add_pdf_table(
+            story,
+            [
+                "Month",
+                "Revenue",
+            ],
+            [
                 [
-                    "Month",
-                    "Revenue",
-                ],
-                rows,
-            )
-
-    # --------------------------------------------------------
-    # OTHER REPORT SECTIONS
-    # --------------------------------------------------------
-
-    def add_generic_section(
-        section_name,
-        section_data,
-    ):
-        if not section_data:
-            return
-
-        add_section_title(
-            section_name
+                    item.get(
+                        "month",
+                        "Unknown",
+                    ),
+                    money(
+                        item.get(
+                            "amount",
+                            0,
+                        )
+                    ),
+                ]
+                for item in monthly_rows
+            ],
+            heading_style,
+            normal_style,
         )
 
-        if isinstance(section_data, dict):
+    # ========================================================
+    # GROWTH
+    # ========================================================
 
-            rows = []
-
-            for key, value in section_data.items():
-
-                if isinstance(value, list):
-                    continue
-
-                if isinstance(value, dict):
-                    continue
-
-                rows.append(
-                    [
-                        str(key).replace(
-                            "_",
-                            " ",
-                        ).title(),
-                        str(value),
-                    ]
-                )
-
-            if rows:
-                add_simple_table(
-                    [
-                        "Metric",
-                        "Value",
-                    ],
-                    rows,
-                )
-
-    # These sections can be populated by your
-    # existing reporting service without changing
-    # this export layer.
-
-    add_generic_section(
-        "Content Performance",
-        report_data.get(
-            "content_performance"
-        ),
+    growth = report_data.get(
+        "growth_trends",
+        {},
     )
 
-    add_generic_section(
-        "Audience Analytics",
-        report_data.get(
-            "audience_analytics"
-        ),
+    growth_rows = growth.get(
+        "growth_trend",
+        [],
     )
 
-    add_generic_section(
-        "Growth Trends",
-        report_data.get(
-            "growth_trends"
-        ),
+    story.append(
+        Paragraph(
+            "Growth Trends",
+            heading_style,
+        )
     )
 
-    add_generic_section(
-        "Platform Comparison",
-        report_data.get(
-            "platform_comparison"
-        ),
+    if growth_rows:
+        add_pdf_table(
+            story,
+            [
+                "Date",
+                "Followers",
+                "Daily Growth",
+                "Growth %",
+                "Reach",
+                "Engagement",
+            ],
+            [
+                [
+                    item.get(
+                        "date",
+                        "N/A",
+                    ),
+                    item.get(
+                        "followers",
+                        0,
+                    ),
+                    item.get(
+                        "daily_growth",
+                        0,
+                    ),
+                    f"{item.get(
+                        'growth_percentage',
+                        0,
+                    ):.2f}%",
+                    item.get(
+                        "reach",
+                        0,
+                    ),
+                    f"{item.get(
+                        'engagement_rate',
+                        0,
+                    ):.2f}%",
+                ]
+                for item in growth_rows
+            ],
+            heading_style,
+            normal_style,
+        )
+    else:
+        story.append(
+            Paragraph(
+                "No growth data available.",
+                normal_style,
+            )
+        )
+
+    # ========================================================
+    # PLATFORM
+    # ========================================================
+
+    platform = report_data.get(
+        "platform_comparison",
+        {},
     )
 
-    # --------------------------------------------------------
-    # BUILD PDF
-    # --------------------------------------------------------
+    platform_rows = platform.get(
+        "platform_comparison",
+        {},
+    )
+
+    story.append(
+        Paragraph(
+            "Platform Comparison",
+            heading_style,
+        )
+    )
+
+    if platform_rows:
+        add_pdf_table(
+            story,
+            [
+                "Platform",
+                "Views",
+                "Reach",
+                "Likes",
+                "Comments",
+                "Engagement",
+            ],
+            [
+                [
+                    platform_name,
+                    values.get(
+                        "views",
+                        0,
+                    ),
+                    values.get(
+                        "reach",
+                        0,
+                    ),
+                    values.get(
+                        "likes",
+                        0,
+                    ),
+                    values.get(
+                        "comments",
+                        0,
+                    ),
+                    f"{values.get(
+                        'engagement_rate',
+                        0,
+                    ):.2f}%",
+                ]
+                for platform_name, values
+                in platform_rows.items()
+            ],
+            heading_style,
+            normal_style,
+        )
+    else:
+        story.append(
+            Paragraph(
+                "No platform data available.",
+                normal_style,
+            )
+        )
 
     document.build(story)
 
@@ -462,31 +719,19 @@ def generate_pdf_report(report_data: dict):
     return buffer
 
 
-# ============================================================
-# EXCEL REPORT
-# ============================================================
-
-def generate_excel_report(report_data: dict):
-    """
-    Generate a structured Excel analytics report.
-
-    Uses the existing report_data from the reporting service.
-    """
-
+def generate_excel_report(
+    report_data: dict,
+):
     workbook = Workbook()
 
     worksheet = workbook.active
 
     if worksheet is None:
         raise RuntimeError(
-            "Unable to access the active Excel worksheet."
+            "Unable to access Excel worksheet."
         )
 
     worksheet.title = "Creator Report"
-
-    # --------------------------------------------------------
-    # STYLES
-    # --------------------------------------------------------
 
     title_font = Font(
         bold=True,
@@ -514,46 +759,46 @@ def generate_excel_report(report_data: dict):
     )
 
     thin_border = Border(
-        left=Side(style="thin", color="B7B7B7"),
-        right=Side(style="thin", color="B7B7B7"),
-        top=Side(style="thin", color="B7B7B7"),
-        bottom=Side(style="thin", color="B7B7B7"),
+        left=Side(
+            style="thin",
+            color="B7B7B7",
+        ),
+        right=Side(
+            style="thin",
+            color="B7B7B7",
+        ),
+        top=Side(
+            style="thin",
+            color="B7B7B7",
+        ),
+        bottom=Side(
+            style="thin",
+            color="B7B7B7",
+        ),
     )
-
-    # --------------------------------------------------------
-    # HELPERS
-    # --------------------------------------------------------
 
     row = 1
 
     def add_title(title):
         nonlocal row
 
-        worksheet.cell(
+        cell = worksheet.cell(
             row=row,
             column=1,
             value=title,
         )
 
-        worksheet.cell(
-            row=row,
-            column=1,
-        ).font = title_font
+        cell.font = title_font
 
         row += 1
 
     def add_section(title):
         nonlocal row
 
-        worksheet.cell(
-            row=row,
-            column=1,
-            value=title,
-        )
-
         cell = worksheet.cell(
             row=row,
             column=1,
+            value=title,
         )
 
         cell.font = section_font
@@ -561,18 +806,19 @@ def generate_excel_report(report_data: dict):
 
         row += 1
 
-    def add_table(headers, data_rows):
+    def add_table(
+        headers,
+        rows,
+    ):
         nonlocal row
 
-        if not data_rows:
+        if not rows:
             return
 
-        # Header
         for column_index, header in enumerate(
             headers,
             start=1,
         ):
-
             cell = worksheet.cell(
                 row=row,
                 column=column_index,
@@ -588,14 +834,11 @@ def generate_excel_report(report_data: dict):
 
         row += 1
 
-        # Data
-        for data_row in data_rows:
-
+        for data_row in rows:
             for column_index, value in enumerate(
                 data_row,
                 start=1,
             ):
-
                 cell = worksheet.cell(
                     row=row,
                     column=column_index,
@@ -604,22 +847,21 @@ def generate_excel_report(report_data: dict):
 
                 cell.border = thin_border
 
-                if isinstance(value, (int, float)):
-                    cell.number_format = '#,##0.00'
+                if isinstance(
+                    value,
+                    (int, float),
+                ):
+                    cell.number_format = (
+                        "#,##0.00"
+                    )
 
             row += 1
 
         row += 1
 
-    def money_value(value):
-        try:
-            return float(value)
-        except (TypeError, ValueError):
-            return value
-
-    # --------------------------------------------------------
+    # ========================================================
     # TITLE
-    # --------------------------------------------------------
+    # ========================================================
 
     add_title(
         "CreatorIQ Analytics Report"
@@ -642,245 +884,419 @@ def generate_excel_report(report_data: dict):
 
     row += 2
 
-    # --------------------------------------------------------
+    # ========================================================
+    # CONTENT
+    # ========================================================
+
+    content = report_data.get(
+        "content_performance",
+        {},
+    )
+
+    add_section(
+        "Content Performance"
+    )
+
+    content_summary = content.get(
+        "summary",
+        {},
+    )
+
+    add_table(
+        [
+            "Metric",
+            "Value",
+        ],
+        [
+            [
+                "Total Content",
+                content_summary.get(
+                    "total_content",
+                    0,
+                ),
+            ],
+            [
+                "Total Views",
+                content_summary.get(
+                    "total_views",
+                    0,
+                ),
+            ],
+            [
+                "Total Reach",
+                content_summary.get(
+                    "total_reach",
+                    0,
+                ),
+            ],
+            [
+                "Average Engagement Rate",
+                content_summary.get(
+                    "average_engagement_rate",
+                    0,
+                ),
+            ],
+            [
+                "Best Platform",
+                content_summary.get(
+                    "best_platform",
+                    "N/A",
+                ),
+            ],
+        ],
+    )
+
+    top_content = content.get(
+        "top_content",
+        [],
+    )
+
+    if top_content:
+        add_table(
+            [
+                "Content",
+                "Platform",
+                "Views",
+                "Reach",
+                "Engagement",
+            ],
+            [
+                [
+                    item.get(
+                        "content_title",
+                        "N/A",
+                    ),
+                    item.get(
+                        "platform",
+                        "N/A",
+                    ),
+                    item.get(
+                        "views",
+                        0,
+                    ),
+                    item.get(
+                        "reach",
+                        0,
+                    ),
+                    item.get(
+                        "engagement_rate",
+                        0,
+                    ),
+                ]
+                for item in top_content
+            ],
+        )
+
+    # ========================================================
+    # AUDIENCE
+    # ========================================================
+
+    audience = report_data.get(
+        "audience_analytics",
+        {},
+    )
+
+    add_section(
+        "Audience Analytics"
+    )
+
+    audience_summary = audience.get(
+        "summary",
+        {},
+    )
+
+    add_table(
+        [
+            "Metric",
+            "Value",
+        ],
+        [
+            [
+                "Total Followers",
+                audience_summary.get(
+                    "total_followers",
+                    0,
+                ),
+            ],
+            [
+                "Total Reach",
+                audience_summary.get(
+                    "total_reach",
+                    0,
+                ),
+            ],
+            [
+                "Total Impressions",
+                audience_summary.get(
+                    "total_impressions",
+                    0,
+                ),
+            ],
+        ],
+    )
+
+    gender = audience.get(
+        "gender_distribution",
+        {},
+    )
+
+    if gender:
+        add_table(
+            [
+                "Gender",
+                "Percentage",
+            ],
+            [
+                [
+                    key,
+                    value,
+                ]
+                for key, value
+                in gender.items()
+            ],
+        )
+
+    age = audience.get(
+        "age_distribution",
+        {},
+    )
+
+    if age:
+        add_table(
+            [
+                "Age Group",
+                "Percentage",
+            ],
+            [
+                [
+                    key,
+                    value,
+                ]
+                for key, value
+                in age.items()
+            ],
+        )
+
+    # ========================================================
     # REVENUE
-    # --------------------------------------------------------
+    # ========================================================
 
     revenue = report_data.get(
         "revenue",
         {},
     )
 
-    if revenue:
+    add_section(
+        "Revenue Analytics"
+    )
 
-        add_section(
-            "Revenue Summary"
-        )
+    revenue_summary = revenue.get(
+        "revenue_summary",
+        {},
+    )
 
-        revenue_summary = revenue.get(
-            "revenue_summary",
-            {},
-        )
+    add_table(
+        [
+            "Metric",
+            "Value",
+        ],
+        [
+            [
+                "Creator ID",
+                revenue_summary.get(
+                    "creator_id",
+                    report_data.get(
+                        "creator_id"
+                    ),
+                ),
+            ],
+            [
+                "Total Revenue",
+                revenue_summary.get(
+                    "total_revenue",
+                    0,
+                ),
+            ],
+        ],
+    )
 
-        total_revenue = revenue_summary.get(
-            "total_revenue",
-            0,
-        )
+    source_rows = revenue.get(
+        "revenue_by_source",
+        {},
+    ).get(
+        "revenue_by_source",
+        [],
+    )
 
+    if source_rows:
         add_table(
             [
-                "Metric",
-                "Value",
+                "Revenue Source",
+                "Amount",
             ],
             [
                 [
-                    "Creator ID",
-                    revenue_summary.get(
-                        "creator_id",
-                        report_data.get(
-                            "creator_id"
-                        ),
+                    item.get(
+                        "source",
+                        "Unknown",
                     ),
-                ],
-                [
-                    "Total Revenue",
-                    money_value(
-                        total_revenue
+                    item.get(
+                        "amount",
+                        0,
                     ),
-                ],
+                ]
+                for item in source_rows
             ],
         )
 
-        # ----------------------------------------------------
-        # SOURCE
-        # ----------------------------------------------------
+    monthly_rows = revenue.get(
+        "monthly_revenue",
+        {},
+    ).get(
+        "monthly_revenue",
+        [],
+    )
 
-        revenue_by_source = revenue.get(
-            "revenue_by_source",
-            {},
-        )
-
-        source_rows = revenue_by_source.get(
-            "revenue_by_source",
-            [],
-        )
-
-        if source_rows:
-
-            add_section(
-                "Revenue by Source"
-            )
-
-            rows = []
-
-            for item in source_rows:
-
-                if not isinstance(item, dict):
-                    continue
-
-                rows.append(
-                    [
-                        item.get(
-                            "source",
-                            "Unknown",
-                        ),
-                        money_value(
-                            item.get(
-                                "amount",
-                                0,
-                            )
-                        ),
-                    ]
-                )
-
-            add_table(
+    if monthly_rows:
+        add_table(
+            [
+                "Month",
+                "Revenue",
+            ],
+            [
                 [
-                    "Revenue Source",
-                    "Amount",
-                ],
-                rows,
-            )
-
-        # ----------------------------------------------------
-        # MONTHLY
-        # ----------------------------------------------------
-
-        monthly_revenue = revenue.get(
-            "monthly_revenue",
-            {},
-        )
-
-        monthly_rows = monthly_revenue.get(
-            "monthly_revenue",
-            [],
-        )
-
-        if monthly_rows:
-
-            add_section(
-                "Monthly Revenue"
-            )
-
-            rows = []
-
-            for item in monthly_rows:
-
-                if not isinstance(item, dict):
-                    continue
-
-                rows.append(
-                    [
-                        item.get(
-                            "month",
-                            "Unknown",
-                        ),
-                        money_value(
-                            item.get(
-                                "amount",
-                                0,
-                            )
-                        ),
-                    ]
-                )
-
-            add_table(
-                [
-                    "Month",
-                    "Revenue",
-                ],
-                rows,
-            )
-
-    # --------------------------------------------------------
-    # OTHER ANALYTICS
-    # --------------------------------------------------------
-
-    def add_generic_excel_section(
-        section_name,
-        section_data,
-    ):
-        if not section_data:
-            return
-
-        if not isinstance(
-            section_data,
-            dict,
-        ):
-            return
-
-        simple_rows = []
-
-        for key, value in section_data.items():
-
-            if isinstance(value, (dict, list)):
-                continue
-
-            simple_rows.append(
-                [
-                    str(key).replace(
-                        "_",
-                        " ",
-                    ).title(),
-                    value,
+                    item.get(
+                        "month",
+                        "Unknown",
+                    ),
+                    item.get(
+                        "amount",
+                        0,
+                    ),
                 ]
-            )
+                for item in monthly_rows
+            ],
+        )
 
-        if simple_rows:
+    # ========================================================
+    # GROWTH
+    # ========================================================
 
-            add_section(
-                section_name
-            )
+    growth = report_data.get(
+        "growth_trends",
+        {},
+    )
 
-            add_table(
+    add_section(
+        "Growth Trends"
+    )
+
+    growth_rows = growth.get(
+        "growth_trend",
+        [],
+    )
+
+    if growth_rows:
+        add_table(
+            [
+                "Date",
+                "Followers",
+                "Daily Growth",
+                "Growth %",
+                "Reach",
+                "Engagement",
+            ],
+            [
                 [
-                    "Metric",
-                    "Value",
-                ],
-                simple_rows,
-            )
+                    item.get(
+                        "date",
+                        "N/A",
+                    ),
+                    item.get(
+                        "followers",
+                        0,
+                    ),
+                    item.get(
+                        "daily_growth",
+                        0,
+                    ),
+                    item.get(
+                        "growth_percentage",
+                        0,
+                    ),
+                    item.get(
+                        "reach",
+                        0,
+                    ),
+                    item.get(
+                        "engagement_rate",
+                        0,
+                    ),
+                ]
+                for item in growth_rows
+            ],
+        )
 
-    add_generic_excel_section(
-        "Content Performance",
-        report_data.get(
-            "content_performance"
-        ),
+    # ========================================================
+    # PLATFORM
+    # ========================================================
+
+    platform = report_data.get(
+        "platform_comparison",
+        {},
     )
 
-    add_generic_excel_section(
-        "Audience Analytics",
-        report_data.get(
-            "audience_analytics"
-        ),
+    add_section(
+        "Platform Comparison"
     )
 
-    add_generic_excel_section(
-        "Growth Trends",
-        report_data.get(
-            "growth_trends"
-        ),
+    platform_rows = platform.get(
+        "platform_comparison",
+        {},
     )
 
-    add_generic_excel_section(
-        "Platform Comparison",
-        report_data.get(
-            "platform_comparison"
-        ),
-    )
-
-    # --------------------------------------------------------
-    # EXCEL FORMATTING
-    # --------------------------------------------------------
+    if platform_rows:
+        add_table(
+            [
+                "Platform",
+                "Views",
+                "Reach",
+                "Likes",
+                "Comments",
+                "Engagement",
+            ],
+            [
+                [
+                    platform_name,
+                    values.get(
+                        "views",
+                        0,
+                    ),
+                    values.get(
+                        "reach",
+                        0,
+                    ),
+                    values.get(
+                        "likes",
+                        0,
+                    ),
+                    values.get(
+                        "comments",
+                        0,
+                    ),
+                    values.get(
+                        "engagement_rate",
+                        0,
+                    ),
+                ]
+                for platform_name, values
+                in platform_rows.items()
+            ],
+        )
 
     worksheet.freeze_panes = "A5"
 
-    worksheet.column_dimensions["A"].width = 32
-    worksheet.column_dimensions["B"].width = 24
-    worksheet.column_dimensions["C"].width = 24
-    worksheet.column_dimensions["D"].width = 24
-
-    # Auto-adjust other populated columns.
     for column_cells in worksheet.columns:
-
         column_index = column_cells[0].column
 
         if column_index is None:
@@ -890,19 +1306,10 @@ def generate_excel_report(report_data: dict):
             column_index
         )
 
-        current_width = (
-            worksheet.column_dimensions[
-                column_letter
-            ].width
-            or 0
-        )
-
-        max_length = current_width
+        max_length = 12
 
         for cell in column_cells:
-
             if cell.value is not None:
-
                 max_length = max(
                     max_length,
                     len(str(cell.value)),
@@ -911,13 +1318,9 @@ def generate_excel_report(report_data: dict):
         worksheet.column_dimensions[
             column_letter
         ].width = min(
-            max(max_length + 2, 12),
+            max_length + 2,
             45,
         )
-
-    # --------------------------------------------------------
-    # SAVE
-    # --------------------------------------------------------
 
     buffer = BytesIO()
 
@@ -926,8 +1329,5 @@ def generate_excel_report(report_data: dict):
     buffer.seek(0)
 
     return buffer
-
-
-
 
 

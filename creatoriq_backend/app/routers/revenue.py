@@ -31,10 +31,16 @@ def create_revenue_api(
     revenue_data: RevenueCreate,
     db: Session = Depends(get_db),
 ):
-    return create_revenue(
-        db,
-        revenue_data,
-    )
+    try:
+        return create_revenue(
+            db,
+            revenue_data,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
 
 
 @router.get(
@@ -74,7 +80,6 @@ def get_revenue_api(
 
     return revenue
 
-
 @router.put(
     "/{revenue_id}",
     response_model=RevenueResponse,
@@ -97,12 +102,17 @@ def update_revenue_api(
             detail="Revenue record not found",
         )
 
-    return update_revenue(
-        db,
-        revenue,
-        revenue_data,
-    )
-
+    try:
+        return update_revenue(
+            db,
+            revenue,
+            revenue_data,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
 
 @router.delete(
     "/{revenue_id}",

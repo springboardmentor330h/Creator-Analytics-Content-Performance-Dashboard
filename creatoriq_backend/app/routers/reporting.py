@@ -1,13 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_user
 from app.db.database import get_db
+from app.models.user import User
 from app.schemas.report import ReportResponse
+
 from app.services.export_service import (
     generate_excel_report,
     generate_pdf_report,
 )
+
 from app.services.reporting_service import (
     generate_audience_report,
     generate_content_report,
@@ -24,6 +33,31 @@ router = APIRouter(
 )
 
 
+def verify_report_access(
+    creator_id: int,
+    current_user: User,
+):
+    """
+    Creators can access only their own reports.
+    Administrators can access creator reports.
+    """
+
+    role = (
+        current_user.role or ""
+    ).strip().lower()
+
+    is_admin = role in {
+        "admin",
+        "administrator",
+    }
+
+    if not is_admin and current_user.id != creator_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can access only your own reports.",
+        )
+
+
 @router.get(
     "/creator/{creator_id}",
     response_model=ReportResponse,
@@ -31,7 +65,13 @@ router = APIRouter(
 def creator_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_creator_report(
         db,
         creator_id,
@@ -44,7 +84,13 @@ def creator_report_api(
 def revenue_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_revenue_report(
         db,
         creator_id,
@@ -57,7 +103,13 @@ def revenue_report_api(
 def content_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_content_report(
         db,
         creator_id,
@@ -70,7 +122,13 @@ def content_report_api(
 def audience_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_audience_report(
         db,
         creator_id,
@@ -83,7 +141,13 @@ def audience_report_api(
 def growth_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_growth_report(
         db,
         creator_id,
@@ -96,7 +160,13 @@ def growth_report_api(
 def platform_report_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     return generate_platform_report(
         db,
         creator_id,
@@ -109,7 +179,13 @@ def platform_report_api(
 def export_pdf_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     report = generate_creator_report(
         db,
         creator_id,
@@ -124,7 +200,8 @@ def export_pdf_api(
         media_type="application/pdf",
         headers={
             "Content-Disposition": (
-                f"attachment; filename=creator_{creator_id}_report.pdf"
+                f"attachment; "
+                f"filename=creator_{creator_id}_report.pdf"
             )
         },
     )
@@ -136,7 +213,13 @@ def export_pdf_api(
 def export_excel_api(
     creator_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
+    verify_report_access(
+        creator_id,
+        current_user,
+    )
+
     report = generate_creator_report(
         db,
         creator_id,
@@ -154,7 +237,8 @@ def export_excel_api(
         ),
         headers={
             "Content-Disposition": (
-                f"attachment; filename=creator_{creator_id}_report.xlsx"
+                f"attachment; "
+                f"filename=creator_{creator_id}_report.xlsx"
             )
         },
     )

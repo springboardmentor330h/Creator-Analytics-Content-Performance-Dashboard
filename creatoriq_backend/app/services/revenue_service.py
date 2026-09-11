@@ -5,19 +5,51 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.revenue import Revenue
+from app.models.sponsorship import Sponsorship
 from app.schemas.revenue import RevenueCreate, RevenueUpdate
-
 
 # -------------------------
 # Revenue CRUD
 # -------------------------
 
+def validate_sponsorship(
+    db: Session,
+    creator_id: int,
+    sponsorship_id: int | None,
+):
+    if sponsorship_id is None:
+        return None
+
+    sponsorship = (
+        db.query(Sponsorship)
+        .filter(
+            Sponsorship.id == sponsorship_id,
+            Sponsorship.creator_id == creator_id,
+        )
+        .first()
+    )
+
+    if sponsorship is None:
+        raise ValueError(
+            "Sponsorship does not exist or does not belong to this creator"
+        )
+
+    return sponsorship
+
+
 def create_revenue(
     db: Session,
     revenue_data: RevenueCreate,
 ):
+    validate_sponsorship(
+        db,
+        revenue_data.creator_id,
+        revenue_data.sponsorship_id,
+    )
+
     revenue = Revenue(
         creator_id=revenue_data.creator_id,
+        sponsorship_id=revenue_data.sponsorship_id,
         source=revenue_data.source,
         amount=revenue_data.amount,
         revenue_date=revenue_data.revenue_date,
@@ -25,8 +57,13 @@ def create_revenue(
     )
 
     db.add(revenue)
-    db.commit()
-    db.refresh(revenue)
+
+    try:
+        db.commit()
+        db.refresh(revenue)
+    except Exception:
+        db.rollback()
+        raise
 
     return revenue
 
@@ -67,11 +104,22 @@ def update_revenue(
         exclude_unset=True,
     )
 
+    if "sponsorship_id" in update_data:
+        validate_sponsorship(
+            db,
+            revenue.creator_id,
+            update_data["sponsorship_id"],
+        )
+
     for field, value in update_data.items():
         setattr(revenue, field, value)
 
-    db.commit()
-    db.refresh(revenue)
+    try:
+        db.commit()
+        db.refresh(revenue)
+    except Exception:
+        db.rollback()
+        raise
 
     return revenue
 
@@ -80,8 +128,12 @@ def delete_revenue(
     db: Session,
     revenue: Revenue,
 ):
-    db.delete(revenue)
-    db.commit()
+    try:
+        db.delete(revenue)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
 
 # -------------------------
