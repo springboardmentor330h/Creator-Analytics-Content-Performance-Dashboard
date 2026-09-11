@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
@@ -12,21 +12,32 @@ export default function Revenue() {
   const [trend, setTrend] = useState(null);
   const [sponsorships, setSponsorships] = useState([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    platform: "YouTube", source: "ad_revenue", description: "", amount: "",
-    currency: "USD", earned_date: new Date().toISOString().slice(0, 10),
+    platform: "YouTube",
+    source: "ad_revenue",
+    description: "",
+    amount: "",
+    currency: "USD",
+    earned_date: new Date().toISOString().slice(0, 10),
   });
   const [sponsorForm, setSponsorForm] = useState({
-    brand_name: "", campaign_name: "", contract_value: "",
+    brand_name: "",
+    campaign_name: "",
+    contract_value: "",
     start_date: new Date().toISOString().slice(0, 10),
-    status: "active", payment_status: "pending",
+    status: "active",
+    payment_status: "pending",
   });
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    if (!creatorId) return;
     setError("");
+    setLoading(true);
     try {
+
       const [listRes, summaryRes, monthlyRes, trendRes, sponsorRes] = await Promise.all([
-        api.get(`/revenue/creator/${creatorId}`),
+        api.get(`/revenue`),
         api.get(`/revenue/creator/${creatorId}/summary`),
         api.get(`/revenue/creator/${creatorId}/monthly`),
         api.get(`/revenue/creator/${creatorId}/trend`),
@@ -39,23 +50,42 @@ export default function Revenue() {
       setSponsorships(sponsorRes.data);
     } catch (err) {
       if (err.response?.status === 403) {
-        setError("You don't have permission to view this creator's revenue. Check the Creator ID matches your account.");
+        setError("You don't have permission to view this creator's revenue.");
       } else if (err.response?.status === 401) {
-        setError("Session expired or not logged in. Please log in again.");
+        setError("Session expired. Please log in again.");
       } else {
-        setError("Could not load revenue data");
+        setError("Could not load revenue data.");
       }
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [creatorId]);
 
-  useEffect(() => { load(); }, [creatorId]);
+  useEffect(() => { load(); }, [load]);
 
   const handleRevenueSubmit = async (e) => {
     e.preventDefault();
+    if (!form.amount || Number(form.amount) <= 0) {
+      setError("Enter a valid amount");
+      return;
+    }
     try {
-      await api.post("/revenue", { ...form, creator_id: creatorId, amount: Number(form.amount) });
+      await api.post("/revenue", {
+        ...form,
+        creator_id: creatorId,
+        amount: Number(form.amount),
+      });
+
+
+      setForm({
+        platform: "YouTube",
+        source: "ad_revenue",
+        description: "",
+        amount: "",
+        currency: "USD",
+        earned_date: new Date().toISOString().slice(0, 10),
+      });
       await load();
-      setForm({ ...form, description: "", amount: "" });
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add revenue record");
     }
@@ -63,18 +93,32 @@ export default function Revenue() {
 
   const handleSponsorSubmit = async (e) => {
     e.preventDefault();
+    if (!sponsorForm.contract_value || Number(sponsorForm.contract_value) <= 0) {
+      setError("Enter a valid contract value");
+      return;
+    }
     try {
       await api.post("/sponsorships", {
         ...sponsorForm,
         creator_id: creatorId,
         contract_value: Number(sponsorForm.contract_value),
       });
+
+      setSponsorForm({
+        brand_name: "",
+        campaign_name: "",
+        contract_value: "",
+        start_date: new Date().toISOString().slice(0, 10),
+        status: "active",
+        payment_status: "pending",
+      });
       await load();
-      setSponsorForm({ ...sponsorForm, brand_name: "", campaign_name: "", contract_value: "" });
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add sponsorship");
     }
   };
+
+  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">

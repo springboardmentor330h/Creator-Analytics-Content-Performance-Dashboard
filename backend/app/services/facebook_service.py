@@ -1,11 +1,3 @@
-"""
-Facebook Pages API integration — MOCK DATA for now.
-REAL API REFERENCE (for later): Facebook Graph API, Page posts:
-GET https://graph.facebook.com/v19.0/{page-id}/posts
-    ?fields=id,message,likes.summary(true),comments.summary(true),shares,created_time
-    &access_token={page_access_token}
-"""
-
 from datetime import datetime, date
 from fastapi import HTTPException
 

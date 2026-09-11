@@ -63,9 +63,21 @@ def audience_growth_forecast(db: Session, creator_id: int, days_ahead: int = 30)
 
     first, last = records[0], records[-1]
     days_span = (last.date - first.date).days or 1
-    daily_rate = (last.followers - first.followers) / days_span
 
-    forecasted = int(last.followers + daily_rate * days_ahead)
+    if first.followers <= 0:
+        daily_rate = 0.0
+        forecasted = last.followers
+    else:
+        # Daily compound rate: (last/first)^(1/days) - 1
+        ratio = last.followers / first.followers
+        daily_rate = (ratio ** (1 / days_span)) - 1
+        
+        # Clamp to [-0.5, 0.2] per day to handle outliers
+        daily_rate = max(-0.5, min(daily_rate, 0.2))
+        forecasted = int(last.followers * ((1 + daily_rate) ** days_ahead))
+
+    forecasted = max(0, forecasted)  # ← hard floor, never negative
+
     return {
         "current_followers": last.followers,
         "daily_growth_rate": round(daily_rate, 2),

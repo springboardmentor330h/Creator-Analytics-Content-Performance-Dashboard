@@ -1,8 +1,3 @@
-"""
-Simulated social media platform data. No real API/OAuth calls yet —
-this stands in for real integrations until Sprint 5+.
-"""
-
 MOCK_PLATFORM_DATA = {
     "YouTube": [
         {"content_title": "Python Tutorial", "views": 15000, "likes": 1200, "comments": 150, "shares": 100, "saves": 80, "watch_time": 4200, "reach": 18000},
