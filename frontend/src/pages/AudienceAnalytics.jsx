@@ -2,14 +2,39 @@ import { useEffect, useState } from "react";
 import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import { useRole } from "../context/RoleContext";
+
+const AGE_GROUPS = ["13-17", "18-24", "25-34", "35-44", "45+"];
+const GENDERS = ["male", "female", "other"];
+const DEVICES = ["Mobile", "Desktop", "Tablet"];
+
+const COUNTRY_CITY_MAP = {
+  India: ["Mumbai", "Bangalore", "Delhi", "Pune", "Hyderabad"],
+  "United States": ["New York", "Los Angeles", "Chicago", "Austin", "San Francisco"],
+  "United Kingdom": ["London", "Manchester", "Birmingham", "Edinburgh"],
+  Brazil: ["Sao Paulo", "Rio de Janeiro", "Brasilia"],
+  Germany: ["Berlin", "Munich", "Hamburg", "Frankfurt"],
+  Canada: ["Toronto", "Vancouver", "Montreal", "Calgary"],
+};
+const COUNTRIES = Object.keys(COUNTRY_CITY_MAP);
 
 export default function AudienceAnalytics() {
+  const { role } = useRole();
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    age_group: "18-24", gender: "male", country: "India", city: "Bangalore",
-    device_type: "Mobile", active_hour: 19, followers: 0, impressions: 0, reach: 0,
+    age_group: AGE_GROUPS[1],
+    gender: GENDERS[0],
+    country: COUNTRIES[0],
+    city: COUNTRY_CITY_MAP[COUNTRIES[0]][0],
+    device_type: DEVICES[0],
+    active_hour: 19,
+    followers: 0,
+    impressions: 0,
+    reach: 0,
   });
+
+  const canAddAudience = role === "admin";
 
   const load = async () => {
     setError("");
@@ -21,9 +46,19 @@ export default function AudienceAnalytics() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    if (name === "country") {
+      const cities = COUNTRY_CITY_MAP[value] || [];
+      setForm({ ...form, country: value, city: cities[0] || "" });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,12 +66,14 @@ export default function AudienceAnalytics() {
       await api.post("/audience", {
         ...form,
         creator_id: 1,
-        active_hour: Number(form.active_hour), followers: Number(form.followers),
-        impressions: Number(form.impressions), reach: Number(form.reach),
+        active_hour: Number(form.active_hour),
+        followers: Number(form.followers),
+        impressions: Number(form.impressions),
+        reach: Number(form.reach),
       });
       await load();
     } catch (err) {
-      setError(err.response?.data?.detail?.[0]?.msg || "Failed to add audience record");
+      setError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || "Failed to add audience record");
     }
   };
 
@@ -49,17 +86,47 @@ export default function AudienceAnalytics() {
           <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Audience Analytics</h1>
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
 
-          <form onSubmit={handleSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-9">
-            <input name="age_group" placeholder="Age Group" value={form.age_group} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="gender" placeholder="Gender" value={form.gender} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="country" placeholder="Country" value={form.country} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="city" placeholder="City" value={form.city} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="device_type" placeholder="Device" value={form.device_type} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="active_hour" type="number" min="0" max="23" value={form.active_hour} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="followers" type="number" placeholder="Followers" value={form.followers} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <button type="submit" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Add</button>
-          </form>
+          {canAddAudience && (
+            <form
+              onSubmit={handleSubmit}
+              className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-9"
+            >
+              <select name="age_group" value={form.age_group} onChange={handleChange} className="rounded border px-2 py-1 text-sm">
+                {AGE_GROUPS.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+
+              <select name="gender" value={form.gender} onChange={handleChange} className="rounded border px-2 py-1 text-sm">
+                {GENDERS.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+
+              <select name="country" value={form.country} onChange={handleChange} className="rounded border px-2 py-1 text-sm">
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+
+              <select name="city" value={form.city} onChange={handleChange} className="rounded border px-2 py-1 text-sm">
+                {(COUNTRY_CITY_MAP[form.country] || []).map((city) => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+
+              <select name="device_type" value={form.device_type} onChange={handleChange} className="rounded border px-2 py-1 text-sm">
+                {DEVICES.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+
+              <input name="active_hour" type="number" min="0" max="23" value={form.active_hour} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="followers" type="number" placeholder="Followers" value={form.followers} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <button type="submit" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Add</button>
+            </form>
+          )}
 
           {report && (
             <>

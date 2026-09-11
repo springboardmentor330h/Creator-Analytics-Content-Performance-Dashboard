@@ -7,6 +7,7 @@ from app.models.growth import Growth
 from app.schemas.audience import AudienceCreate, AudienceUpdate, AudienceOut
 from app.schemas.growth import GrowthCreate, GrowthOut
 from app.services import audience_service
+from app.core.deps import get_current_user
 
 router = APIRouter()
 
@@ -14,7 +15,10 @@ router = APIRouter()
 # ---- Audience CRUD ----
 
 @router.post("/audience", response_model=AudienceOut, status_code=201)
-def create_audience(payload: AudienceCreate, db: Session = Depends(get_db)):
+def create_audience(payload: AudienceCreate, db: Session = Depends(get_db),
+                     current_user=Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can add audience data")
     record = Audience(**payload.model_dump())
     db.add(record)
     db.commit()
