@@ -1,17 +1,29 @@
+"""
+Audience Analytics Service
+
+Calculates demographic insights, total audience reach, follower totals across connected social platforms,
+and age/gender/device breakdowns for creator profiles.
+"""
+
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from backend.app.models.audience import Audience
 from backend.app.models.growth import Growth
-
-
 from backend.app.models.content import Content
+
 
 class AudienceService:
 
     @staticmethod
     def total_followers(db: Session, creator_id: Optional[int] = None) -> int:
+        """
+        Calculates total followers by summing the latest follower count across all connected platforms.
+        Falls back to the sum of Audience records if no growth entries exist.
+        """
         distinct_platforms = ["YouTube", "Instagram", "Facebook", "LinkedIn", "X"]
         total = 0
+
+        # Sum latest recorded followers for each social platform
         for p in distinct_platforms:
             g_q = db.query(Growth).filter(Growth.platform.ilike(p))
             if creator_id is not None:
@@ -19,8 +31,11 @@ class AudienceService:
             latest_g = g_q.order_by(Growth.date.desc()).first()
             if latest_g and latest_g.followers:
                 total += latest_g.followers
+
         if total > 0:
             return total
+
+        # Fallback query on audience table if growth records are missing
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
@@ -29,12 +44,17 @@ class AudienceService:
 
     @staticmethod
     def total_reach(db: Session, creator_id: Optional[int] = None) -> int:
+        """
+        Computes total organic reach across all published content items for a creator.
+        """
         c_query = db.query(Content)
         if creator_id is not None:
             c_query = c_query.filter(Content.creator_id == creator_id)
         contents = c_query.all()
         if contents:
             return sum(c.reach or c.views or 0 for c in contents)
+
+        # Fallback on audience table reach metric
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
@@ -43,12 +63,17 @@ class AudienceService:
 
     @staticmethod
     def total_impressions(db: Session, creator_id: Optional[int] = None) -> int:
+        """
+        Calculates total video and content impressions based on views and reach metrics.
+        """
         c_query = db.query(Content)
         if creator_id is not None:
             c_query = c_query.filter(Content.creator_id == creator_id)
         contents = c_query.all()
         if contents:
             return sum((c.views or 0) * 2 + (c.reach or 0) for c in contents)
+
+        # Fallback query on audience records
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
@@ -57,12 +82,16 @@ class AudienceService:
 
     @staticmethod
     def gender_distribution(db: Session, creator_id: Optional[int] = None) -> Dict[str, float]:
+        """
+        Generates percentage breakdown of male, female, and other gender segments in audience.
+        """
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = [r for r in query.all() if r.gender]
         if not records:
             return {}
+
         gender_totals: Dict[str, float] = {}
         total = 0.0
         for r in records:
@@ -70,18 +99,23 @@ class AudienceService:
             val = float(r.followers or 1)
             gender_totals[key] = gender_totals.get(key, 0.0) + val
             total += val
+
         if total == 0:
             return {}
         return {g: round((val / total) * 100, 2) for g, val in gender_totals.items()}
 
     @staticmethod
     def age_distribution(db: Session, creator_id: Optional[int] = None) -> Dict[str, float]:
+        """
+        Computes percentage breakdown across age groups (e.g. 18-24, 25-34).
+        """
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = [r for r in query.all() if r.age_group]
         if not records:
             return {}
+
         age_totals: Dict[str, float] = {}
         total = 0.0
         for r in records:
@@ -89,48 +123,63 @@ class AudienceService:
             val = float(r.followers or 1)
             age_totals[key] = age_totals.get(key, 0.0) + val
             total += val
+
         if total == 0:
             return {}
         return {a: round((val / total) * 100, 2) for a, val in age_totals.items()}
 
     @staticmethod
     def top_countries(db: Session, creator_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Returns list of top countries ordered by total follower representation.
+        """
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = [r for r in query.all() if r.country]
         if not records:
             return []
+
         country_map: Dict[str, int] = {}
         for r in records:
             c = r.country
             country_map[c] = country_map.get(c, 0) + (r.followers or 1)
+
         sorted_countries = sorted(country_map.items(), key=lambda x: x[1], reverse=True)
         return [{"country": c, "followers": count} for c, count in sorted_countries]
 
     @staticmethod
     def top_cities(db: Session, creator_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Returns list of top cities sorted by follower concentration.
+        """
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = [r for r in query.all() if r.city]
         if not records:
             return []
+
         city_map: Dict[str, int] = {}
         for r in records:
             c = r.city
             city_map[c] = city_map.get(c, 0) + (r.followers or 1)
+
         sorted_cities = sorted(city_map.items(), key=lambda x: x[1], reverse=True)
         return [{"city": c, "followers": count} for c, count in sorted_cities]
 
     @staticmethod
     def device_distribution(db: Session, creator_id: Optional[int] = None) -> Dict[str, float]:
+        """
+        Calculates device type percentage shares (Mobile, Desktop, Tablet).
+        """
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = [r for r in query.all() if r.device_type]
         if not records:
             return {}
+
         dev_map: Dict[str, float] = {}
         total = 0.0
         for r in records:
@@ -138,12 +187,16 @@ class AudienceService:
             val = float(r.followers or 1)
             dev_map[d] = dev_map.get(d, 0.0) + val
             total += val
+
         if total == 0:
             return {}
         return {d: round((val / total) * 100, 2) for d, val in dev_map.items()}
 
     @staticmethod
     def get_audience_report(db: Session, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Aggregates complete audience demographic summary including top location and device indicators.
+        """
         followers = AudienceService.total_followers(db, creator_id)
         reach = AudienceService.total_reach(db, creator_id)
         impressions = AudienceService.total_impressions(db, creator_id)
@@ -171,6 +224,9 @@ class AudienceService:
 
     @staticmethod
     def growth_trend_generation(db: Session, creator_id: Optional[int] = None, platform: Optional[str] = None, limit: int = 30) -> List[Dict[str, Any]]:
+        """
+        Generates daily growth points and percentage increases over time.
+        """
         query = db.query(Growth)
         if creator_id is not None:
             query = query.filter(Growth.creator_id == creator_id)
@@ -200,6 +256,9 @@ class AudienceService:
 
     @staticmethod
     def get_audience_trends(db: Session, creator_id: Optional[int] = None, platform: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Fetches historical growth trajectory dataset for line chart visualizations.
+        """
         query = db.query(Growth)
         if creator_id is not None:
             query = query.filter(Growth.creator_id == creator_id)

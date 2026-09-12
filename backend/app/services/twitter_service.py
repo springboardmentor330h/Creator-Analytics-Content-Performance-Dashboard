@@ -30,9 +30,8 @@ def clean_str(text: str) -> str:
 
 class TwitterService:
     """
-    Dedicated service for Real-Time Twitter/X Integration.
-    Uses Twitter's official public syndication pipeline to fetch live tweets, retweet counts, favorite counts,
-    and profile followers in real-time without requiring paid X API tokens.
+    Service for Twitter/X integration.
+    Handles fetching tweets, follower metrics, and synchronizing posts to database via API or web endpoints.
     """
 
     @staticmethod
@@ -41,7 +40,7 @@ class TwitterService:
             return "elonmusk"
         clean = handle_input.strip()
 
-        # Handle status links e.g. https://x.com/username/status/123456
+        # Parse tweet status links e.g. https://x.com/username/status/123456
         match_status = re.search(r'(?:twitter\.com|x\.com)/@?([A-Za-z0-9_]{1,15})/status', clean, re.IGNORECASE)
         if match_status:
             return match_status.group(1)
@@ -63,8 +62,7 @@ class TwitterService:
     @staticmethod
     def fetch_realtime_tweets(handle_input: Optional[str] = None, max_results: int = 10) -> Dict[str, Any]:
         """
-        Fetches 100% real-time live tweets and profile metrics for any Twitter/X handle.
-        Uses official Twitter API v2 Bearer token if configured in settings/.env, with live syndication scraper fallback.
+        Fetches recent tweets and follower stats for a given Twitter handle.
         """
         import httpx
         from backend.app.core.config import settings
@@ -79,11 +77,10 @@ class TwitterService:
             "tweets": []
         }
 
-        # 1. Try Official Twitter API v2 if Bearer Token is configured
+        # 1. Try Official Twitter API v2 if token is provided
         if bearer_token and len(bearer_token) > 10:
             try:
                 auth_headers = {"Authorization": f"Bearer {bearer_token}"}
-                # Step A: Get User ID & Metrics
                 u_url = f"https://api.twitter.com/2/users/by/username/{clean_handle}?user.fields=public_metrics,name,description"
                 u_resp = httpx.get(u_url, headers=auth_headers, timeout=5.0)
                 if u_resp.status_code == 200:
@@ -95,7 +92,6 @@ class TwitterService:
                         if "followers_count" in p_metrics:
                             res_data["followers"] = cap_int(p_metrics["followers_count"])
 
-                        # Step B: Get User's Tweets via API v2
                         if u_id:
                             t_url = f"https://api.twitter.com/2/users/{u_id}/tweets?tweet.fields=created_at,public_metrics&max_results={min(max_results, 100)}"
                             t_resp = httpx.get(t_url, headers=auth_headers, timeout=5.0)
@@ -111,12 +107,12 @@ class TwitterService:
                                         "created_at": tw.get("created_at")
                                     })
                                 if res_data["tweets"]:
-                                    logger.info(f"Official Twitter API v2 successfully fetched {len(res_data['tweets'])} tweets for @{clean_handle}")
+                                    logger.info(f"Twitter API v2 fetched {len(res_data['tweets'])} tweets for @{clean_handle}")
                                     return res_data
             except Exception as e:
-                logger.warning(f"Twitter API v2 notice for @{clean_handle}: {e}. Switching to live syndication stream.")
+                logger.warning(f"Twitter API v2 notice for @{clean_handle}: {e}")
 
-        # 2. Live Syndication Stream Fallback
+        # 2. Public Syndication Stream Fallback
         url = f"https://syndication.twitter.com/srv/timeline-profile/screen-name/{clean_handle}"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -159,9 +155,9 @@ class TwitterService:
                         res_data["followers"] = cap_int(user_info.get("followers_count", 290000))
 
         except Exception as e:
-            logger.warning(f"Twitter syndication fetch notice for {clean_handle}: {e}")
+            logger.warning(f"Twitter fetch note for {clean_handle}: {e}")
 
-        # 3. Dynamic Tailored Real-Time Fallback Posts if no tweets returned
+        # 3. Fallback tweets if no tweets returned
         if not res_data["tweets"]:
             h_str = f"@{clean_handle}"
             p_name = res_data["name"] or clean_handle.replace("_", " ").title()
@@ -211,7 +207,7 @@ class TwitterService:
     @staticmethod
     def transform_to_creatoriq_format(raw_tweet: Dict[str, Any], creator_id: int = 1) -> Dict[str, Any]:
         """
-        Transforms live tweet payload into CreatorIQ Common Format.
+        Maps raw tweet attributes into Content database fields.
         """
         tweet_id = str(raw_tweet.get("id", "x_unknown"))
         text = str(raw_tweet.get("text", "Untitled Tweet"))
@@ -220,7 +216,6 @@ class TwitterService:
         likes = cap_int(raw_tweet.get("likes", 0))
         retweets = cap_int(raw_tweet.get("retweets", 0))
 
-        # Estimate impressions/views & comments based on virality multipliers
         views = cap_int(max(likes * 18.5, retweets * 45.0, 1500))
         comments = cap_int(likes * 0.08)
         shares = retweets
@@ -232,7 +227,6 @@ class TwitterService:
         pub_date = date.today()
         if pub_raw:
             try:
-                # E.g. "Wed Oct 18 14:20:00 +0000 2026"
                 pub_date = datetime.strptime(" ".join(pub_raw.split()[:4] + [pub_raw.split()[-1]]), "%a %b %d %H:%M:%S %Y").date()
             except Exception:
                 pub_date = date.today()
@@ -255,7 +249,7 @@ class TwitterService:
     @staticmethod
     def sync_twitter_data(db: Session, creator_id: int = 1, handle: Optional[str] = None, max_results: int = 10) -> Dict[str, Any]:
         """
-        Synchronizes 100% real-time live tweets and follower metrics into PostgreSQL contents & growth tables.
+        Fetches tweets and saves or updates records in PostgreSQL.
         """
         clean_handle = TwitterService.resolve_handle(handle)
         real_data = TwitterService.fetch_realtime_tweets(handle_input=clean_handle, max_results=max_results)

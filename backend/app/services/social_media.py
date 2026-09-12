@@ -1,3 +1,8 @@
+"""
+Social Media Service module.
+Handles handle/URL resolution and triggers platform-specific real-time sync handlers.
+"""
+
 from datetime import date
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session

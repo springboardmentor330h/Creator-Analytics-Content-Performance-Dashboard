@@ -1,3 +1,8 @@
+"""
+Audience & Growth Router module.
+Provides API endpoints for audience demographics, device usage, locations, and growth trend breakdowns.
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional

@@ -1,3 +1,8 @@
+"""
+Revenue Service module.
+Calculates earnings breakdowns, monthly revenues, stream distributions, and manages revenue CRUD entries for creators.
+"""
+
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import date, datetime, timedelta
@@ -13,6 +18,9 @@ from backend.app.schemas.revenue import (
 
 
 class RevenueService:
+    """
+    Business logic for creator earnings aggregation and revenue source tracking.
+    """
 
     @staticmethod
     def create_revenue(db: Session, creator_id: int, revenue_in: RevenueCreate) -> Revenue:

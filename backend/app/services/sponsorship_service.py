@@ -1,3 +1,8 @@
+"""
+Sponsorship Service module.
+Manages brand deal contracts, sponsorship lifecycle statuses, and auto-syncs with paid revenue entries.
+"""
+
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import date
@@ -8,6 +13,9 @@ from backend.app.schemas.sponsorship import SponsorshipCreate, SponsorshipUpdate
 
 
 class SponsorshipService:
+    """
+    CRUD and status management logic for creator brand sponsorships.
+    """
 
     @staticmethod
     def create_sponsorship(

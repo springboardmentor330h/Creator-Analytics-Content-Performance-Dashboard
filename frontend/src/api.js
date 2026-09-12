@@ -1,3 +1,8 @@
+/**
+ * API Client Module for CreatorIQ Frontend.
+ * Handles authentication tokens, cookie storage, REST requests, and binary blob downloads.
+ */
+
 import { getCookie, setCookie, deleteCookie } from './utils/cookie';
 
 const API_BASE_URL = typeof window !== 'undefined' && window.location.origin.includes(':5173')

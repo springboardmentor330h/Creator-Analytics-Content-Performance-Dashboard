@@ -1,8 +1,16 @@
+"""
+Service for generating downloadable PDF reports and CSV/Excel exports for creator analytics.
+Uses ReportLab to build styled PDF pages with pie charts, bar charts, and metric tables.
+"""
+
 import io
 from typing import Dict, Any, List, Optional
 
 
 class ExportService:
+    """
+    Handles PDF generation and data exports for creator performance reports.
+    """
 
     @staticmethod
     def _create_revenue_pie_chart(revenue_by_source: List[Dict[str, Any]]) -> Optional[Any]:

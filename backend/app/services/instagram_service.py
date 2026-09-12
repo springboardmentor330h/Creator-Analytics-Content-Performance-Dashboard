@@ -36,9 +36,8 @@ def cap_int(val: int) -> int:
 
 class InstagramService:
     """
-    Dedicated service for Real-Time Instagram Integration.
-    Fetches real-time profile metadata, follower counts, and live post captions directly from Instagram's live network
-    or Graph API, transforms metrics into Common CreatorIQ Data Format, and synchronizes records into PostgreSQL.
+    Service for Instagram profile and content integration.
+    Fetches user profile information, follower counts, and post media stats via Graph API or public page scraper.
     """
 
     @staticmethod
@@ -47,9 +46,8 @@ class InstagramService:
 
     @staticmethod
     def resolve_instagram_handle(handle_input: Optional[str]) -> str:
-
         """
-        Parses Instagram profile URLs (e.g. https://instagram.com/creator_official) or handle inputs into clean handle format.
+        Parses Instagram profile URLs or raw handle strings into formatted handle (e.g. '@username').
         """
         if not handle_input:
             return "@creatoriq_official"
@@ -66,14 +64,14 @@ class InstagramService:
     @staticmethod
     def fetch_public_profile(instagram_handle: Optional[str]) -> Dict[str, Any]:
         """
-        Scrapes 100% live Instagram profile metadata (name, handle, follower count, posts count, real post captions) directly from Instagram.
+        Fetches profile metadata (display name, handle, followers count, post count).
         """
         return InstagramService.fetch_realtime_profile(instagram_handle)
 
     @staticmethod
     def fetch_realtime_profile(instagram_handle: Optional[str]) -> Dict[str, Any]:
         """
-        Scrapes 100% live Instagram profile metadata (name, handle, follower count, posts count, real post captions) directly from Instagram.
+        Fetches public profile metadata and captions directly from Instagram profile pages.
         """
         import httpx
 
@@ -101,7 +99,7 @@ class InstagramService:
             if resp.status_code == 200:
                 html_text = resp.text
                 
-                # Parse Real Profile Name
+                # Parse Profile Name
                 og_title = re.search(r'<meta[^>]*property=["\']og:title["\'][^>]*content=["\']([^"\']+)["\']', html_text) or re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:title["\']', html_text)
                 og_desc = re.search(r'<meta[^>]*property=["\']og:description["\'][^>]*content=["\']([^"\']+)["\']', html_text) or re.search(r'<meta[^>]*content=["\']([^"\']+)["\'][^>]*property=["\']og:description["\']', html_text)
 
@@ -132,7 +130,7 @@ class InstagramService:
                         elif p_raw.isdigit():
                             profile_data["posts_count"] = cap_int(float(p_raw))
 
-                # Extract Real Live Post Captions from Instagram payload
+                # Extract Post Captions from Instagram payload
                 caption_matches = re.findall(r'"text":\s*"([^"]{10,180})"', html_text)
                 cleaned_captions = []
                 for cap in caption_matches:
@@ -143,14 +141,14 @@ class InstagramService:
                 profile_data["real_captions"] = cleaned_captions[:10]
 
         except Exception as e:
-            logger.warning(f"Live Instagram profile scrape notice for {clean_handle}: {e}")
+            logger.warning(f"Instagram profile fetch note for {clean_handle}: {e}")
 
         return profile_data
 
     @staticmethod
     def fetch_instagram_media(instagram_handle: Optional[str] = None, max_results: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch Instagram media posts/reels in real-time. Uses live profile metadata and live extracted captions.
+        Retrieves Instagram posts or reels using Graph API or profile page extraction.
         """
         access_token = getattr(settings, 'INSTAGRAM_ACCESS_TOKEN', None)
         clean_handle = InstagramService.resolve_instagram_handle(instagram_handle)
@@ -178,10 +176,10 @@ class InstagramService:
                             "media_type": item.get("media_type", "IMAGE")
                         })
             except Exception as e:
-                logger.warning(f"Instagram Graph API call notice: {e}. Switching to real-time live scraper.")
+                logger.warning(f"Instagram Graph API notice: {e}. Using profile page parser.")
 
         if not media_items:
-            # Scrape 100% REAL LIVE Instagram profile metadata and post captions
+            # Fallback to public profile parsing
             profile_meta = InstagramService.fetch_public_profile(clean_handle)
             p_name = profile_meta["name"]
             h_str = profile_meta["handle"]
@@ -203,7 +201,7 @@ class InstagramService:
                         "media_type": "VIDEO" if idx % 2 == 0 else "IMAGE"
                     })
             else:
-                # Realtime live-generated templates tailored to profile name and handle
+                # Default post templates if no captions extracted
                 media_items = [
                     {
                         "id": f"ig_live_{clean_str}_101",
@@ -252,7 +250,7 @@ class InstagramService:
     @staticmethod
     def transform_to_creatoriq_format(raw_item: Dict[str, Any], creator_id: int = 1) -> Dict[str, Any]:
         """
-        Transforms Instagram media object into standardized CreatorIQ Common Format.
+        Maps raw Instagram item dictionary into standard Content model fields.
         """
         media_id = str(raw_item.get("id", "ig_unknown"))
         caption = clean_text_str(str(raw_item.get("caption", "Untitled Instagram Post")))
@@ -293,8 +291,7 @@ class InstagramService:
     @staticmethod
     def sync_instagram_media(db: Session, creator_id: int = 1, instagram_handle: Optional[str] = None, max_results: int = 10) -> Dict[str, Any]:
         """
-        Fetches 100% real-time Instagram profile metadata and media posts, transforms into CreatorIQ format,
-        and synchronizes records into PostgreSQL database with duplicate prevention.
+        Fetches Instagram data, transforms fields, and saves or updates records in database.
         """
         clean_handle = InstagramService.resolve_instagram_handle(instagram_handle)
         profile_meta = InstagramService.fetch_public_profile(clean_handle)

@@ -1,3 +1,8 @@
+"""
+Analytics Router module.
+Provides API endpoints for dashboard summaries, engagement/follower charts, platform comparisons, top content, reach breakdowns, and sentiment analytics.
+"""
+
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session

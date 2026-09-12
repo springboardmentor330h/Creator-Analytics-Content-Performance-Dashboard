@@ -1,3 +1,8 @@
+"""
+Report Service module.
+Generates comprehensive report structures (executive summaries, content performance, audience analytics, growth trends, platform comparisons).
+"""
+
 import json
 from datetime import datetime, timedelta, date
 from collections import defaultdict
@@ -16,6 +21,9 @@ from backend.app.models.sponsorship import Sponsorship
 
 
 class ReportService:
+    """
+    Handles report data aggregation across analytics, revenue, audience, and sponsorships.
+    """
 
     REPORT_TYPES = [
         {

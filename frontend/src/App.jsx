@@ -1,3 +1,8 @@
+/**
+ * Main Application Component for CreatorIQ.
+ * Manages global app state, routing views, theme management, modal dialogs, and real-time backend synchronization.
+ */
+
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';

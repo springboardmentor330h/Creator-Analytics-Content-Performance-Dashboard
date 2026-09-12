@@ -1,3 +1,10 @@
+"""
+YouTube Integration Service
+
+Resolves channel handles/IDs, fetches video statistics using YouTube Data API v3 or RSS feeds,
+and maps response metrics into Content model records in PostgreSQL.
+"""
+
 import os
 import json
 import logging
@@ -10,18 +17,19 @@ from backend.app.models.content import Content
 
 logger = logging.getLogger(__name__)
 
+
 class YouTubeService:
     @staticmethod
     def resolve_channel_id(channel_input: str, api_key: str) -> Optional[str]:
         """
-        Resolves a user-provided Channel ID, Handle (@name), Username, or URL into a unique 24-character YouTube Channel ID.
+        Resolves a channel handle (@username), custom URL, or ID into a standard 24-character YouTube Channel ID.
         """
         if not channel_input or not api_key:
             return None
 
         clean_input = channel_input.strip()
 
-        # Parse YouTube URL formats if user passed a link
+        # Parse YouTube URL formats if user provided a URL
         if "youtube.com/" in clean_input or "youtu.be/" in clean_input:
             if "/channel/" in clean_input:
                 clean_input = clean_input.split("/channel/")[1].split("/")[0].split("?")[0]
@@ -36,7 +44,7 @@ class YouTubeService:
 
         import httpx
 
-        # 2. Handle lookup (e.g. @CreatorIQ or CreatorIQ)
+        # 2. Handle lookup (e.g. @channelname)
         handle_str = clean_input if clean_input.startswith("@") else f"@{clean_input}"
         try:
             ch_url = "https://www.googleapis.com/youtube/v3/channels"
@@ -58,7 +66,7 @@ class YouTubeService:
         except Exception as e:
             logger.warning(f"Failed username lookup for {clean_input}: {e}")
 
-        # 4. Search API for channel matching name
+        # 4. Search API for channel matching query string
         try:
             s_url = "https://www.googleapis.com/youtube/v3/search"
             resp = httpx.get(s_url, params={"key": api_key, "part": "snippet", "type": "channel", "q": clean_input, "maxResults": 1}, timeout=5.0)
@@ -74,8 +82,7 @@ class YouTubeService:
     @staticmethod
     def fetch_rss_videos(channel_id_or_handle: Optional[str] = None, max_results: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch real live YouTube videos from YouTube's official public XML/RSS feed.
-        Guarantees 100% real live video titles and dates directly from YouTube servers.
+        Fetches latest videos from YouTube's public XML/RSS feed.
         """
         import httpx
         import xml.etree.ElementTree as ET
@@ -134,7 +141,7 @@ class YouTubeService:
     @staticmethod
     def fetch_youtube_videos(channel_id: Optional[str] = None, max_results: int = 10) -> List[Dict[str, Any]]:
         """
-        Fetch YouTube videos strictly associated with a resolved unique Channel ID via YouTube Data API v3 or Live Public RSS.
+        Fetches YouTube videos via YouTube Data API v3 with RSS feed fallback.
         """
         api_key = settings.YOUTUBE_API_KEY
         videos = []
@@ -187,7 +194,7 @@ class YouTubeService:
                 logger.warning(f"YouTube Live API call failed: {e}. Falling back to Live RSS.")
 
         if not videos:
-            # Fetch real live YouTube videos via official RSS feed
+            # Fallback to RSS feed
             videos = YouTubeService.fetch_rss_videos(channel_id, max_results)
 
         return videos
@@ -195,8 +202,7 @@ class YouTubeService:
     @staticmethod
     def transform_to_creatoriq_format(raw_item: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Transforms YouTube API response item into standard CreatorIQ Common Format:
-        platform, external_content_id, content_title, views, likes, comments, shares, reach, published_date.
+        Maps raw YouTube API response object into standard Content model fields.
         """
         video_id = str(raw_item.get("id", "yt_unknown"))
         title = str(raw_item.get("title", "Untitled YouTube Video"))

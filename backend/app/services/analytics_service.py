@@ -1,14 +1,24 @@
+"""
+Analytics & Cross-Platform Service
+
+Handles cross-platform metric calculations, engagement rate calculations,
+reach distribution breakdowns, and executive summary stats.
+"""
+
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any, Optional
 from backend.app.models.content import Content
 from backend.app.models.growth import Growth
 from backend.app.models.audience import Audience
 
+
 class AnalyticsService:
 
     @staticmethod
     def normalize_platform(platform: Optional[str]) -> Optional[str]:
-        """Normalize platform filter string to standard CreatorIQ names."""
+        """
+        Normalizes platform input string into standardized name (e.g., 'twitter' -> 'X').
+        """
         if not platform or platform.strip().lower() in ["all", "all platforms", ""]:
             return None
         p_clean = platform.strip().lower()
@@ -26,6 +36,9 @@ class AnalyticsService:
 
     @staticmethod
     def calculate_engagement_rate(likes: int, comments: int, shares: int, saves: int, reach: int) -> float:
+        """
+        Calculates engagement rate percentage: ((likes + comments + shares + saves) / reach) * 100
+        """
         total_engagement = (likes or 0) + (comments or 0) + (shares or 0) + (saves or 0)
         if reach and reach > 0:
             return round((total_engagement / reach) * 100.0, 2)
@@ -33,6 +46,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_content_engagement(db: Session, content_id: int, creator_id: Optional[int] = None) -> Optional[Dict[str, Any]]:
+        """
+        Retrieves engagement metrics for a specific content item by ID.
+        """
         query = db.query(Content).filter(Content.id == content_id)
         if creator_id is not None:
             query = query.filter(Content.creator_id == creator_id)
@@ -59,6 +75,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_top_performing_content(db: Session, limit: int = 5, platform: Optional[str] = None, creator_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Returns top-performing posts ordered by highest calculated engagement rate.
+        """
         norm_p = AnalyticsService.normalize_platform(platform)
         query = db.query(Content)
         if creator_id is not None:
@@ -86,6 +105,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_platform_performance(db: Session, platform: Optional[str] = None, creator_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Aggregates views, likes, comments, and average engagement rate grouped by platform.
+        """
         norm_p = AnalyticsService.normalize_platform(platform)
         query = db.query(Content)
         if creator_id is not None:
@@ -130,9 +152,12 @@ class AnalyticsService:
 
     @staticmethod
     def get_dashboard_summary(db: Session, platform: Optional[str] = None, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Compiles executive overview stats (views, likes, comments, reach, followers, engagement rate).
+        """
         norm_p = AnalyticsService.normalize_platform(platform)
 
-        # Auto-seed initial realtime data for new/empty user accounts
+        # Initial data sync trigger for new user accounts if database is empty
         if creator_id is not None:
             user_count = db.query(Content).filter(Content.creator_id == creator_id).count()
             if user_count == 0:
@@ -220,6 +245,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_engagement_chart_data(db: Session, platform: Optional[str] = None, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Formats engagement rate points over time for line chart rendering.
+        """
         norm_p = AnalyticsService.normalize_platform(platform)
         query = db.query(Growth)
         if creator_id is not None:
@@ -257,6 +285,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_follower_growth_chart_data(db: Session, platform: Optional[str] = None, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Formats follower total trajectory over time for line chart rendering.
+        """
         norm_p = AnalyticsService.normalize_platform(platform)
         query = db.query(Growth)
         if creator_id is not None:
@@ -278,6 +309,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_platform_comparison(db: Session, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Generates cross-platform benchmark metrics (views, reach, likes, comments, engagement rate).
+        """
         query = db.query(Content)
         if creator_id is not None:
             query = query.filter(Content.creator_id == creator_id)
@@ -335,6 +369,9 @@ class AnalyticsService:
 
     @staticmethod
     def get_reach_breakdown(db: Session, creator_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Calculates total combined reach and percentage distribution per social platform.
+        """
         query = db.query(Content)
         if creator_id is not None:
             query = query.filter(Content.creator_id == creator_id)

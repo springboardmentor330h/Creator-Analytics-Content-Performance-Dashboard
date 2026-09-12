@@ -1,3 +1,8 @@
+"""
+Notification Service module.
+Manages user notification records, unread counters, state updates, and auto-generated analytics alerts based on channel performance.
+"""
+
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -12,6 +17,9 @@ from backend.app.services.analytics_service import AnalyticsService
 
 
 class NotificationService:
+    """
+    CRUD and alert generation logic for system notifications.
+    """
 
     @staticmethod
     def get_notifications(
