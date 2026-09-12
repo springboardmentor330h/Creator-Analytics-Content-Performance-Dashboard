@@ -38,7 +38,21 @@ export default function GrowthView({ growthTrends, contents, selectedPlatform, o
   const totalPages = Math.ceil(sortedTrends.length / pageSize) || 1;
   const paginatedTrends = sortedTrends.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const totalFollowers = filteredTrends.length > 0 ? filteredTrends[0].followers : 0;
+  const totalFollowers = React.useMemo(() => {
+    if (!filteredTrends || filteredTrends.length === 0) return 0;
+    if (selectedPlatform && selectedPlatform !== 'All') {
+      return filteredTrends[0]?.followers || 0;
+    }
+    const latestByPlatform = {};
+    filteredTrends.forEach(g => {
+      const p = g.platform || 'All';
+      if (!latestByPlatform[p]) {
+        latestByPlatform[p] = g.followers || 0;
+      }
+    });
+    return Object.values(latestByPlatform).reduce((sum, fol) => sum + fol, 0);
+  }, [filteredTrends, selectedPlatform]);
+
   const avgReach = filteredTrends.length > 0 ? Math.round(filteredTrends.reduce((acc, g) => acc + (g.reach || 0), 0) / filteredTrends.length) : 0;
 
   // Realtime dynamic calculation of Hashtags & Topics from actual database content

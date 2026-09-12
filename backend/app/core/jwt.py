@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from jose import jwt
-import os
+from backend.app.core.config import settings
 
-SECRET_KEY = os.getenv("SECRET_KEY", "creatoriq_secret_key_change_in_production_2026")
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 # 30 Days Token Expiration (60 mins * 24 hours * 30 days)
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30

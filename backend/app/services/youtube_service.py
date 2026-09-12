@@ -248,8 +248,9 @@ class YouTubeService:
             ext_id = transformed["external_content_id"]
             title = transformed["content_title"]
 
-            # Duplicate Check: Match by platform + external_content_id OR platform + content_title
+            # Duplicate Check: Match by creator_id + platform + external_content_id OR creator_id + platform + content_title
             existing = db.query(Content).filter(
+                Content.creator_id == creator_id,
                 Content.platform == "YouTube",
                 (Content.external_content_id == ext_id) | (Content.content_title == title)
             ).first()

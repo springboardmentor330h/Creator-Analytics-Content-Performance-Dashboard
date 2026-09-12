@@ -43,18 +43,18 @@ export default function AudienceView({ records, report, onAdd, onUpdate, onDelet
       <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
         <StatCard
           label="Total Audience Followers"
-          value={report?.total_followers ? report.total_followers.toLocaleString() : '125,000'}
-          trend="+3.4% active"
+          value={report?.total_followers ? formatNumber(report.total_followers) : 'N/A'}
+          trend="Total Connected Audience"
         />
         <StatCard
           label="Total Organic Reach"
-          value={report?.total_reach ? report.total_reach.toLocaleString() : '450,000'}
-          trend="+5.1% global"
+          value={report?.total_reach ? formatNumber(report.total_reach) : 'N/A'}
+          trend="Omnichannel Impressions"
         />
         <StatCard
           label="Total Impressions"
-          value={report?.total_impressions ? report.total_impressions.toLocaleString() : '720,000'}
-          trend="+2.8% views"
+          value={report?.total_impressions ? formatNumber(report.total_impressions) : 'N/A'}
+          trend="Audience Views Trajectory"
         />
       </div>
 
@@ -66,7 +66,7 @@ export default function AudienceView({ records, report, onAdd, onUpdate, onDelet
           </div>
           <div>
             <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Top Country</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_country || 'United States'}</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_country || 'India'}</div>
           </div>
         </div>
 
@@ -76,7 +76,7 @@ export default function AudienceView({ records, report, onAdd, onUpdate, onDelet
           </div>
           <div>
             <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Top City</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_city || 'Bangalore'}</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_city || 'Hyderabad'}</div>
           </div>
         </div>
 
@@ -86,7 +86,7 @@ export default function AudienceView({ records, report, onAdd, onUpdate, onDelet
           </div>
           <div>
             <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Top Device</div>
-            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_device || 'Desktop'}</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{report?.top_device || 'Mobile'}</div>
           </div>
         </div>
       </div>

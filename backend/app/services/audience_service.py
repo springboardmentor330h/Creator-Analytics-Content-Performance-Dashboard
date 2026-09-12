@@ -4,38 +4,51 @@ from backend.app.models.audience import Audience
 from backend.app.models.growth import Growth
 
 
+from backend.app.models.content import Content
+
 class AudienceService:
 
     @staticmethod
     def total_followers(db: Session, creator_id: Optional[int] = None) -> int:
+        distinct_platforms = ["YouTube", "Instagram", "Facebook", "LinkedIn", "X"]
+        total = 0
+        for p in distinct_platforms:
+            g_q = db.query(Growth).filter(Growth.platform.ilike(p))
+            if creator_id is not None:
+                g_q = g_q.filter(Growth.creator_id == creator_id)
+            latest_g = g_q.order_by(Growth.date.desc()).first()
+            if latest_g and latest_g.followers:
+                total += latest_g.followers
+        if total > 0:
+            return total
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = query.all()
-        if records:
-            return sum(r.followers or 0 for r in records)
-        growth_query = db.query(Growth)
-        if creator_id is not None:
-            growth_query = growth_query.filter(Growth.creator_id == creator_id)
-        latest_growth = growth_query.order_by(Growth.date.desc()).first()
-        return latest_growth.followers if latest_growth else 0
+        return sum(r.followers or 0 for r in records)
 
     @staticmethod
     def total_reach(db: Session, creator_id: Optional[int] = None) -> int:
+        c_query = db.query(Content)
+        if creator_id is not None:
+            c_query = c_query.filter(Content.creator_id == creator_id)
+        contents = c_query.all()
+        if contents:
+            return sum(c.reach or c.views or 0 for c in contents)
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)
         records = query.all()
-        if records:
-            return sum(r.reach or 0 for r in records)
-        growth_query = db.query(Growth)
-        if creator_id is not None:
-            growth_query = growth_query.filter(Growth.creator_id == creator_id)
-        growth_records = growth_query.all()
-        return sum(g.reach or 0 for g in growth_records) if growth_records else 0
+        return sum(r.reach or 0 for r in records)
 
     @staticmethod
     def total_impressions(db: Session, creator_id: Optional[int] = None) -> int:
+        c_query = db.query(Content)
+        if creator_id is not None:
+            c_query = c_query.filter(Content.creator_id == creator_id)
+        contents = c_query.all()
+        if contents:
+            return sum((c.views or 0) * 2 + (c.reach or 0) for c in contents)
         query = db.query(Audience)
         if creator_id is not None:
             query = query.filter(Audience.creator_id == creator_id)

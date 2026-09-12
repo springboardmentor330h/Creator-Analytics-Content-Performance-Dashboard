@@ -177,6 +177,7 @@ class FacebookService:
             pub_date = raw.get("date", date.today())
 
             existing = db.query(Content).filter(
+                Content.creator_id == creator_id,
                 Content.platform == "Facebook",
                 (Content.external_content_id == ext_id) | (Content.content_title == title)
             ).first()

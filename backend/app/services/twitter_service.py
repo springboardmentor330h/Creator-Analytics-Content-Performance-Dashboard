@@ -268,6 +268,7 @@ class TwitterService:
             title = transformed["content_title"]
 
             existing = db.query(Content).filter(
+                Content.creator_id == creator_id,
                 Content.platform == "X",
                 (Content.external_content_id == ext_id) | (Content.content_title == title)
             ).first()

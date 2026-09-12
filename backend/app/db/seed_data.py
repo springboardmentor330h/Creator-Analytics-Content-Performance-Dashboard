@@ -204,15 +204,18 @@ def seed_database(db: Session, force_reset: bool = False):
 
     # 4. Seed Demographic Audience Records
     if db.query(Audience).count() == 0:
-        aud = Audience(
-            creator_id=creator_id,
-            age_group="25-34",
-            gender="Male",
-            country="United States",
-            device="Mobile",
-            followers=500000
-        )
-        db.add(aud)
+        audiences = [
+            Audience(creator_id=creator_id, age_group="18-24", gender="Male", country="India", city="Hyderabad", device_type="Mobile", active_hour=19, followers=185000, impressions=420000, reach=350000),
+            Audience(creator_id=creator_id, age_group="25-34", gender="Male", country="India", city="Mumbai", device_type="Mobile", active_hour=20, followers=155000, impressions=350000, reach=290000),
+            Audience(creator_id=creator_id, age_group="18-24", gender="Female", country="India", city="New Delhi", device_type="Mobile", active_hour=18, followers=128000, impressions=290000, reach=240000),
+            Audience(creator_id=creator_id, age_group="25-34", gender="Female", country="India", city="Bengaluru", device_type="Mobile", active_hour=21, followers=108000, impressions=240000, reach=195000),
+            Audience(creator_id=creator_id, age_group="35-44", gender="Male", country="India", city="Chennai", device_type="Mobile", active_hour=18, followers=85000, impressions=180000, reach=150000),
+            Audience(creator_id=creator_id, age_group="25-34", gender="Male", country="United States", city="San Francisco", device_type="Desktop", active_hour=21, followers=81000, impressions=190000, reach=160000),
+            Audience(creator_id=creator_id, age_group="18-24", gender="Female", country="United Kingdom", city="London", device_type="Mobile", active_hour=17, followers=34000, impressions=78000, reach=65000),
+            Audience(creator_id=creator_id, age_group="25-34", gender="Male", country="United Arab Emirates", city="Dubai", device_type="Mobile", active_hour=20, followers=29000, impressions=65000, reach=55000),
+            Audience(creator_id=creator_id, age_group="45+", gender="Female", country="Canada", city="Toronto", device_type="Tablet", active_hour=16, followers=19000, impressions=45000, reach=38000)
+        ]
+        db.add_all(audiences)
 
     db.commit()
     logger.info(f"Successfully seeded PostgreSQL DB: {seeded_content_count} new Content items, {seeded_growth_count} Growth data points.")
