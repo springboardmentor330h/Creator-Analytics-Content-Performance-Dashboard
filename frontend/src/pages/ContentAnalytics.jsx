@@ -11,6 +11,7 @@ export default function ContentAnalytics() {
   const [topContent, setTopContent] = useState([]);
   const [platformPerf, setPlatformPerf] = useState([]);
   const [platformFilter, setPlatformFilter] = useState("All");
+  const [expandedId, setExpandedId] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -163,22 +164,51 @@ export default function ContentAnalytics() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredContent.map((c) => (
-              <div key={c.id} className="rounded-xl bg-white p-4 shadow">
-                <p className="font-medium">{c.content_title}</p>
-                <p className="text-sm text-gray-500">{c.platform}</p>
-                <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-gray-600 sm:text-sm">
-                  <span>👁 {c.views != null ? c.views.toLocaleString() : "N/A"}</span>
-                  <span>👍 {c.likes.toLocaleString()}</span>
-                  <span>💬 {c.comments.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-            {filteredContent.length === 0 && (
-              <p className="text-sm text-gray-500">No content for this platform yet.</p>
-            )}
+          <div className="overflow-x-auto rounded-xl bg-white shadow">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-left text-gray-500">
+                  <th className="p-3">Content Name</th>
+                  <th className="p-3">Views</th>
+                  <th className="p-3">Likes</th>
+                  <th className="p-3">Comments</th>
+                  <th className="p-3">Platform</th>
+                  <th className="p-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredContent.map((c) => (
+                  <>
+                    <tr key={c.id} className="border-b hover:bg-gray-50">
+                      <td className="p-3">{c.content_title}</td>
+                      <td className="p-3">{c.views != null ? c.views.toLocaleString() : "N/A"}</td>
+                      <td className="p-3">{c.likes.toLocaleString()}</td>
+                      <td className="p-3">{c.comments.toLocaleString()}</td>
+                      <td className="p-3">{c.platform}</td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
+                          className="text-xs text-indigo-600"
+                        >
+                          {expandedId === c.id ? "Hide" : "More"}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedId === c.id && (
+                      <tr className="border-b bg-gray-50 text-xs text-gray-600">
+                        <td colSpan={6} className="p-3">
+                          Shares: {c.shares ?? "N/A"} · Reach: {c.reach != null ? c.reach.toLocaleString() : "N/A"} ·
+                          Watch Time: {c.watch_time} · Saves: {c.saves} · Published: {c.published_date}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
+            {filteredContent.length === 0 && <p className="p-4 text-center text-sm text-gray-500">No content for this platform yet.</p>}
           </div>
+
         </main>
       </div>
     </div>

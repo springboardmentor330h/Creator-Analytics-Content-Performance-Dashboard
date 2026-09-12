@@ -6,7 +6,8 @@ from app.models.content import Content
 from app.models.user import User, RoleEnum
 from app.schemas.content import ContentCreate, ContentUpdate, ContentOut, YouTubeSyncRequest
 from app.services import youtube_service
-
+from app.services.access_service import get_allowed_creator_ids
+from app.core.deps import get_current_user
 router = APIRouter(prefix="/content", tags=["content"])
 
 
@@ -70,8 +71,12 @@ def create_content(payload: ContentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[ContentOut])
-def get_all_content(platform: str | None = Query(None), db: Session = Depends(get_db)):
+def get_all_content(platform: str | None = Query(None), db: Session = Depends(get_db),
+                     current_user=Depends(get_current_user)):
+    allowed = get_allowed_creator_ids(db, current_user)
     query = db.query(Content)
+    if allowed is not None:
+        query = query.filter(Content.creator_id.in_(allowed))
     if platform and platform != "All":
         query = query.filter(Content.platform == platform)
     return query.all()

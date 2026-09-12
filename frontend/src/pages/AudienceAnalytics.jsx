@@ -138,16 +138,26 @@ export default function AudienceAnalytics() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="mb-2 font-medium">Gender Distribution</p>
-                  {Object.entries(report.gender_distribution || {}).map(([k, v]) => (
-                    <p key={k} className="text-sm">{k}: {v}%</p>
-                  ))}
+                  <p className="mb-3 font-medium">Gender Distribution</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(report.gender_distribution || {}).map(([k, v]) => (
+                      <div key={k} className="rounded-lg bg-indigo-50 p-3 text-center">
+                        <p className="text-xs capitalize text-gray-500">{k}</p>
+                        <p className="text-lg font-bold text-indigo-700">{v}%</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="rounded-xl bg-white p-4 shadow">
-                  <p className="mb-2 font-medium">Age Distribution</p>
-                  {Object.entries(report.age_distribution || {}).map(([k, v]) => (
-                    <p key={k} className="text-sm">{k}: {v}%</p>
-                  ))}
+                  <p className="mb-3 font-medium">Age Distribution</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.entries(report.age_distribution || {}).map(([k, v]) => (
+                      <div key={k} className="rounded-lg bg-emerald-50 p-3 text-center">
+                        <p className="text-xs text-gray-500">{k}</p>
+                        <p className="text-lg font-bold text-emerald-700">{v}%</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

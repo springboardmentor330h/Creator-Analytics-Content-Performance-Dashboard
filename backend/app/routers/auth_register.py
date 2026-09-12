@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.database import get_db
 from app.models.user import User, RoleEnum
@@ -19,6 +20,10 @@ def serialize_user(user: User) -> dict:
     }
 
 
+def get_next_creator_id(db: Session) -> int:
+    max_id = db.query(func.max(User.creator_id)).scalar()
+    return (max_id or 0) + 1
+
 @router.post("/users")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == user.email).first()
@@ -31,6 +36,9 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         hashed_password=hash_password(user.password),
         role=user.role,
     )
+    if user.role == RoleEnum.creator:
+        new_user.creator_id = get_next_creator_id(db)
+
     db.add(new_user)
     db.commit()
     db.refresh(new_user)

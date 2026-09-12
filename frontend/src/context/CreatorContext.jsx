@@ -1,19 +1,26 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import api from "../api/axios";
+import { useRole } from "./RoleContext";
 
 const CreatorContext = createContext();
 
 export function CreatorProvider({ children }) {
-  const [creatorId, setCreatorId] = useState(
-    Number(localStorage.getItem("creatorId")) || 1
-  );
+  const { role } = useRole();
+  const [managedCreators, setManagedCreators] = useState([]);
+  const [creatorId, setCreatorId] = useState(null);
 
-  const updateCreatorId = (id) => {
-    localStorage.setItem("creatorId", id);
-    setCreatorId(Number(id));
-  };
+  useEffect(() => {
+    if (!role) return;
+    api.get("/access/my-creators")
+      .then((res) => {
+        setManagedCreators(res.data);
+        if (res.data.length > 0) setCreatorId(res.data[0].creator_id);
+      })
+      .catch(() => setManagedCreators([]));
+  }, [role]);
 
   return (
-    <CreatorContext.Provider value={{ creatorId, updateCreatorId }}>
+    <CreatorContext.Provider value={{ creatorId, setCreatorId, managedCreators }}>
       {children}
     </CreatorContext.Provider>
   );

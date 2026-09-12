@@ -15,6 +15,7 @@ export default function Sidebar() {
     { label: "Revenue", path: "/revenue" },
     { label: "Notifications", path: "/notifications" },
     { label: "Reports", path: "/reports" },
+    { label: "Profile", path: "/profile" },
   ];
 
   return (

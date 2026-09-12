@@ -12,6 +12,7 @@ import SocialMedia from "./pages/SocialMedia";
 import Revenue from "./pages/Revenue";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
+import Profile from "./pages/Profile";
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/revenue" element={<RoleGuard><Revenue /></RoleGuard>} />
             <Route path="/notifications" element={<RoleGuard><Notifications /></RoleGuard>} />
             <Route path="/reports" element={<RoleGuard><Reports /></RoleGuard>} />
+            <Route path="/profile" element={<RoleGuard><Profile /></RoleGuard>} />
             <Route path="*" element={<Login />} />
           </Routes>
         </BrowserRouter>

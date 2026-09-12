@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.config import settings
 from app.models.user import User
+from app.services.access_service import get_allowed_creator_ids
 
 bearer_scheme = HTTPBearer()
 
@@ -51,3 +52,11 @@ def require_role(*roles):
             raise HTTPException(status_code=403, detail="Insufficient permissions")
         return current_user.role
     return role_checker
+
+
+def verify_creator_access(creator_id: int, db: Session = Depends(get_db),
+                           current_user: User = Depends(get_current_user)) -> int:
+    allowed = get_allowed_creator_ids(db, current_user)
+    if allowed is not None and creator_id not in allowed:
+        raise HTTPException(status_code=403, detail="You do not have access to this creator's data")
+    return creator_id

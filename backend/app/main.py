@@ -22,7 +22,9 @@ from app.models import social_connection as social_connection_model
 from app.routers.sponsorship import router as sponsorship_router
 from app.models import sponsorship as sponsorship_model
 from app.models import notification as notification_model
-
+from app.routers.access import router as access_router
+from app.routers.contracts import router as contracts_router
+from app.models import contract as contract_model
 
 Base.metadata.create_all(bind=engine)
 
@@ -50,7 +52,8 @@ app.include_router(notifications_router)
 app.include_router(reports_router)
 app.include_router(social_router)
 app.include_router(sponsorship_router)
-
+app.include_router(access_router)
+app.include_router(contracts_router)
 
 @app.get("/")
 def root():
