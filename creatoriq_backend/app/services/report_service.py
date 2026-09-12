@@ -164,7 +164,12 @@ def _build_insights_and_recommendations(
             # support list of dicts with source/amount or total
             def amount_of(row):
                 if isinstance(row, dict):
-                    return float(row.get("amount") or row.get("total") or 0)
+                    return float(
+                        row.get("total_amount")
+                        or row.get("amount")
+                        or row.get("total")
+                        or 0
+                    )
                 return 0.0
 
             top = max(revenue_by_source, key=amount_of)

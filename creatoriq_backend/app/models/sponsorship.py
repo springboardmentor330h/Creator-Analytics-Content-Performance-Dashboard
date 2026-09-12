@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Float, Integer, String
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String
 
 from app.db.database import Base
 
@@ -14,6 +14,7 @@ class Sponsorship(Base):
 
     creator_id = Column(
         Integer,
+        ForeignKey("users.id"),
         nullable=False,
         index=True
     )
@@ -57,4 +58,12 @@ class Sponsorship(Base):
         String(30),
         nullable=False,
         default="unpaid"
+    )
+
+    # Links to the Revenue row auto-created when this sponsorship's
+    # payment_status is set to "paid" (see routers/sponsorship.py).
+    # Nullable: not every sponsorship has been paid yet.
+    revenue_id = Column(
+        Integer,
+        nullable=True,
     )

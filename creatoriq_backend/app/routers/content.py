@@ -91,6 +91,49 @@ def create_content(
         )
 
     # --------------------------------------------------------
+    # DUPLICATE CHECK
+    #
+    # If an external_content_id is supplied, it must be unique per
+    # creator+platform (same rule the sync/upsert endpoints use).
+    # Otherwise, reject an exact duplicate of platform+title+date for
+    # this creator, since submitting the same content twice (e.g. a
+    # double-click or a retried request) should not silently create
+    # two rows.
+    # --------------------------------------------------------
+
+    if content_data.external_content_id:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.creator_id == creator_id,
+                Content.platform == content_data.platform,
+                Content.external_content_id == content_data.external_content_id,
+            )
+            .first()
+        )
+    else:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.creator_id == creator_id,
+                Content.platform == content_data.platform,
+                Content.content_title == content_data.content_title,
+                Content.published_date == content_data.published_date,
+            )
+            .first()
+        )
+
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This content already exists for this creator "
+                "(same platform, title, and published date). "
+                f"Use PUT /content/{existing.id} to update it instead."
+            ),
+        )
+
+    # --------------------------------------------------------
     # CREATE CONTENT
     # --------------------------------------------------------
 

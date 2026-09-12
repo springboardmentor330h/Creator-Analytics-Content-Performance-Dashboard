@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Float, Integer, String
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String
 
 from app.db.database import Base
 
@@ -14,6 +14,7 @@ class Revenue(Base):
 
     creator_id = Column(
         Integer,
+        ForeignKey("users.id"),
         nullable=False,
         index=True
     )

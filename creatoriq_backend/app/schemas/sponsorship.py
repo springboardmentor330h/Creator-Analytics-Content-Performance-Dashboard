@@ -56,6 +56,7 @@ class SponsorshipResponse(BaseModel):
     end_date: Optional[date] = None
     status: str
     payment_status: str
+    revenue_id: Optional[int] = None
 
     class Config:
         from_attributes = True

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import date
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -88,11 +89,19 @@ def platform_performance(
 def analytics_summary(
     db: Session = Depends(get_db),
     creator_id: int | None = Depends(get_creator_scope),
+    start_date: date | None = Query(
+        None, description="Only include content published on/after this date (YYYY-MM-DD)"
+    ),
+    end_date: date | None = Query(
+        None, description="Only include content published on/before this date (YYYY-MM-DD)"
+    ),
 ):
 
     return get_kpi_summary(
         db,
         creator_id=creator_id,
+        start_date=start_date,
+        end_date=end_date,
     )
 
 

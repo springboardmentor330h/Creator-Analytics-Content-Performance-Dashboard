@@ -7,11 +7,21 @@
   --ciq-primary-soft: #e0f2fe;
 }
 
+html {
+  color-scheme: light dark;
+}
+
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f1f5f9;
+  background-color: #f1f5f9;
   color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+}
+
+html.dark body {
+  background-color: #020617;
+  color: #f1f5f9;
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -19,9 +29,12 @@ body {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
 @layer components {
   .ciq-card {
-    @apply bg-white border border-slate-200/80 rounded-2xl shadow-sm;
+    @apply bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm;
   }
   .ciq-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition;
@@ -30,12 +43,12 @@ body {
     @apply ciq-btn bg-sky-600 text-white hover:bg-sky-500 shadow-sm shadow-sky-600/20;
   }
   .ciq-btn-ghost {
-    @apply ciq-btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50;
+    @apply ciq-btn bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800;
   }
   .ciq-input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 transition;
+    @apply w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 px-3 py-2.5 text-sm outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-100 dark:focus:ring-sky-900/40 transition;
   }
   .ciq-label {
-    @apply text-xs font-medium text-slate-500;
+    @apply text-xs font-medium text-slate-500 dark:text-slate-400;
   }
 }

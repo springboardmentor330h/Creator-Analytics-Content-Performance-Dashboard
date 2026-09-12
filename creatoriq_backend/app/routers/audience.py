@@ -56,11 +56,12 @@ def get_creator_scope(
     current_user: User,
 ) -> int | None:
     """
-    Administrator -> None -> all creators
+    Administrator / Agency / Marketing Team -> None -> all creators
+    (read-only oversight roles; they don't own audience data themselves)
     Creator -> current user id
     """
 
-    if is_admin(current_user):
+    if is_admin(current_user) or current_user.role in ("Agency", "Marketing Team"):
         return None
 
     return current_user.id

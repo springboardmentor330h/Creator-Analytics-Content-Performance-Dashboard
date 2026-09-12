@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
 import {
   LayoutDashboard, Film, Users, TrendingUp, DollarSign, Handshake,
   Bell, FileText, Settings, LogOut, Menu, X, Share2, BarChart3, Search,
+  Sun, Moon,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { notificationAPI } from '../../services/api'
@@ -39,6 +41,7 @@ const PAGE_HINTS = [
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)
@@ -104,56 +107,56 @@ export default function Layout() {
   ).slice(0, 6)
 
   return (
-    <div className="min-h-screen flex bg-[#f1f5f9]">
+    <div className="min-h-screen flex bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       {open && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden dark:bg-black/60" onClick={() => setOpen(false)} />
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 z-50 h-screen w-[260px] bg-white border-r border-slate-200/80 flex flex-col transition-transform duration-200 ${
+        className={`fixed lg:sticky top-0 z-50 h-screen w-[260px] max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 flex flex-col transition-transform duration-200 ${
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="h-16 px-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+        <div className="h-16 px-5 border-b border-slate-100 flex items-center justify-between shrink-0 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-sky-500/30">
               CIQ
             </div>
             <div>
-              <p className="font-semibold text-slate-900 leading-tight">CreatorIQ</p>
-              <p className="text-[10px] text-slate-400 font-medium tracking-wide">ANALYTICS</p>
+              <p className="font-semibold text-slate-900 leading-tight dark:text-slate-100">CreatorIQ</p>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wide dark:text-slate-500">ANALYTICS</p>
             </div>
           </div>
-          <button type="button" className="lg:hidden text-slate-400" onClick={() => setOpen(false)}>
+          <button type="button" className="lg:hidden text-slate-400 dark:text-slate-500" onClick={() => setOpen(false)}>
             <X size={18} />
           </button>
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Overview</p>
+          <p className="px-3 pt-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Overview</p>
           {nav.slice(0, 6).map(({ to, label, icon: Icon }) => (
             <NavItem key={to} to={to} label={label} Icon={Icon} onClick={() => setOpen(false)} badge={label === 'Notifications' ? unread : 0} />
           ))}
-          <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Business</p>
+          <p className="px-3 pt-4 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Business</p>
           {nav.slice(6).map(({ to, label, icon: Icon }) => (
             <NavItem key={to} to={to} label={label} Icon={Icon} onClick={() => setOpen(false)} badge={label === 'Notifications' ? unread : 0} />
           ))}
         </nav>
 
-        <div className="p-4 border-t border-slate-100 shrink-0">
+        <div className="p-4 border-t border-slate-100 shrink-0 dark:border-slate-800">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-slate-700 to-slate-900 text-white text-xs font-semibold flex items-center justify-center">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium truncate text-slate-900">{user?.full_name || user?.email || 'Creator'}</p>
-              <p className="text-[11px] text-slate-400 capitalize">{user?.role || 'creator'}</p>
+              <p className="text-sm font-medium truncate text-slate-900 dark:text-slate-100">{user?.full_name || user?.email || 'Creator'}</p>
+              <p className="text-[11px] text-slate-400 capitalize dark:text-slate-500">{user?.role || 'creator'}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => { logout(); navigate('/login') }}
-            className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl py-2 transition"
+            className="w-full flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl py-2 transition dark:text-slate-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/40"
           >
             <LogOut size={15} /> Sign out
           </button>
@@ -161,8 +164,8 @@ export default function Layout() {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-16 border-b border-slate-200/80 px-4 lg:px-6 flex items-center gap-3 sticky top-0 bg-white/80 backdrop-blur-md z-20">
-          <button type="button" className="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100" onClick={() => setOpen(true)}>
+        <header className="h-16 border-b border-slate-200/80 px-4 lg:px-6 flex items-center gap-3 sticky top-0 bg-white/80 backdrop-blur-md z-20 dark:bg-slate-900 dark:border-slate-800">
+          <button type="button" className="lg:hidden p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800" onClick={() => setOpen(true)}>
             <Menu size={20} />
           </button>
 
@@ -170,9 +173,9 @@ export default function Layout() {
           <div className="relative flex-1 max-w-md" ref={searchRef}>
             <form
               onSubmit={runSearch}
-              className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-sky-300 focus-within:ring-2 focus-within:ring-sky-100"
+              className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-sky-300 focus-within:ring-2 focus-within:ring-sky-100 dark:bg-slate-950 dark:border-slate-800"
             >
-              <Search size={16} className="text-slate-400 shrink-0" />
+              <Search size={16} className="text-slate-400 shrink-0 dark:text-slate-500" />
               <input
                 type="search"
                 value={query}
@@ -182,16 +185,16 @@ export default function Layout() {
                 }}
                 onFocus={() => setSearchOpen(true)}
                 placeholder="Search pages or content…"
-                className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 min-w-0"
+                className="flex-1 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400 min-w-0 dark:text-slate-200"
               />
             </form>
             {searchOpen && (
-              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 overflow-hidden dark:bg-slate-900 dark:border-slate-800">
                 {suggestions.map((p) => (
                   <button
                     key={p.to + p.label}
                     type="button"
-                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 text-slate-700"
+                    className="w-full text-left px-3 py-2.5 text-sm hover:bg-slate-50 text-slate-700 dark:text-slate-300 dark:hover:bg-slate-950"
                     onClick={() => {
                       navigate(p.to)
                       setQuery('')
@@ -204,7 +207,7 @@ export default function Layout() {
                 {query.trim() && (
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-2.5 text-sm text-sky-600 hover:bg-sky-50 border-t border-slate-100"
+                    className="w-full text-left px-3 py-2.5 text-sm text-sky-600 hover:bg-sky-50 border-t border-slate-100 dark:border-slate-800 dark:text-sky-400 dark:hover:bg-sky-950/40"
                     onClick={() => {
                       navigate(`/content?q=${encodeURIComponent(query.trim())}`)
                       setSearchOpen(false)
@@ -217,28 +220,39 @@ export default function Layout() {
             )}
           </div>
 
-          {/* Bell — pinned right */}
-          <div className="ml-auto relative shrink-0" ref={bellRef}>
+          {/* Theme toggle + Bell — pinned right together */}
+          <div className="ml-auto flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="shrink-0 p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition dark:text-slate-400 dark:hover:bg-slate-800"
+              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+            >
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+
+            <div className="relative shrink-0" ref={bellRef}>
             <button
               type="button"
               onClick={() => {
                 setBellOpen((v) => !v)
                 loadUnread()
               }}
-              className="relative p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition"
+              className="relative p-2.5 rounded-xl text-slate-600 hover:bg-slate-100 transition dark:text-slate-400 dark:hover:bg-slate-800"
               aria-label="Notifications"
             >
               <Bell size={20} />
               {unread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
+                <span className="absolute -top-0.5 -right-0.5 min-w-[1.25rem] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900">
                   {unread > 99 ? '99+' : unread}
                 </span>
               )}
             </button>
             {bellOpen && (
-              <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-auto bg-white border border-slate-200 rounded-2xl shadow-xl z-50">
-                <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                  <p className="text-sm font-semibold text-slate-900">Notifications</p>
+              <div className="absolute right-0 mt-2 w-80 max-h-96 overflow-auto bg-white border border-slate-200 rounded-2xl shadow-xl z-50 dark:bg-slate-900 dark:border-slate-800">
+                <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center dark:border-slate-800">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">Notifications</p>
                   {unread > 0 && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500 text-white">
                       {unread} new
@@ -246,7 +260,7 @@ export default function Layout() {
                   )}
                 </div>
                 {items.length === 0 && (
-                  <p className="px-4 py-8 text-sm text-slate-400 text-center">No notifications</p>
+                  <p className="px-4 py-8 text-sm text-slate-400 text-center dark:text-slate-500">No notifications</p>
                 )}
                 {items.map((n) => (
                   <button
@@ -256,14 +270,14 @@ export default function Layout() {
                       setBellOpen(false)
                       navigate('/notifications')
                     }}
-                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 ${
-                      !n.is_read ? 'bg-sky-50/60' : ''
+                    className={`w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 dark:hover:bg-slate-950 dark:border-slate-800/80 ${
+                      !n.is_read ? 'bg-sky-50/60 dark:bg-sky-950/30' : ''
                     }`}
                   >
-                    <p className={`text-sm truncate ${!n.is_read ? 'font-semibold' : 'text-slate-700'}`}>
+                    <p className={`text-sm truncate ${!n.is_read ? 'font-semibold text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
                       {n.title}
                     </p>
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">{n.message}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2 mt-0.5 dark:text-slate-400">{n.message}</p>
                   </button>
                 ))}
                 <button
@@ -272,12 +286,13 @@ export default function Layout() {
                     setBellOpen(false)
                     navigate('/notifications')
                   }}
-                  className="w-full text-center text-xs font-medium text-sky-600 py-3 hover:bg-slate-50"
+                  className="w-full text-center text-xs font-medium text-sky-600 py-3 hover:bg-slate-50 dark:text-sky-400 dark:hover:bg-slate-950"
                 >
                   View all
                 </button>
               </div>
             )}
+            </div>
           </div>
         </header>
 
@@ -300,19 +315,19 @@ function NavItem({ to, label, Icon, onClick, badge = 0 }) {
       className={({ isActive }) =>
         `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition ${
           isActive
-            ? 'bg-sky-50 text-sky-700 font-semibold shadow-sm shadow-sky-100'
-            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            ? 'bg-sky-50 text-sky-700 font-semibold shadow-sm shadow-sky-100 dark:bg-sky-950/50 dark:text-sky-300 dark:shadow-none'
+            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'
         }`
       }
     >
       <span className="relative">
         <Icon size={18} strokeWidth={1.75} />
-        {badge > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />}
+        {badge > 0 && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />}
       </span>
-      <span className="flex-1 flex items-center gap-2">
-        {label}
+      <span className="flex-1 flex items-center gap-2 min-w-0">
+        <span className="truncate">{label}</span>
         {badge > 0 && (
-          <span className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+          <span className="ml-auto inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold shrink-0">
             {badge > 99 ? '99+' : badge}
           </span>
         )}

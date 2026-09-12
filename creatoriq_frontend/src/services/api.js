@@ -49,6 +49,12 @@ export async function changePasswordRequest(currentPassword, newPassword) {
   return res.data
 }
 
+/** Update own profile (full_name / email) via PUT /users/{id} */
+export async function updateProfileRequest(userId, payload) {
+  const res = await api.put(`/users/${userId}`, payload)
+  return res.data
+}
+
 export const analyticsAPI = {
   summary: () => api.get('/analytics/summary'),
   topContent: () => api.get('/analytics/top-content'),

@@ -53,7 +53,7 @@ export default function Login() {
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 bg-gradient-to-br from-sky-600 via-sky-700 to-indigo-800 text-white">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center font-bold">
+          <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center font-bold dark:bg-slate-900">
             CIQ
           </div>
           <span className="font-semibold text-lg">CreatorIQ</span>
@@ -72,17 +72,17 @@ export default function Login() {
         <p className="text-xs text-sky-200/80">YouTube · Instagram · TikTok · Facebook · LinkedIn · X</p>
       </div>
 
-      <div className="flex items-center justify-center p-6 bg-slate-50">
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/50 space-y-5">
+      <div className="flex items-center justify-center p-6 bg-slate-50 dark:bg-slate-950">
+        <div className="w-full max-w-md bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/50 space-y-5 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none">
           {!forgotOpen ? (
             <form onSubmit={onSubmit} className="space-y-5">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Welcome back</h1>
-                <p className="text-sm text-slate-500 mt-1">Sign in to your CreatorIQ workspace</p>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Welcome back</h1>
+                <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">Sign in to your CreatorIQ workspace</p>
               </div>
 
               {error && (
-                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5">
+                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5 dark:text-rose-400 dark:bg-rose-950/40 dark:border-rose-900">
                   {error}
                 </div>
               )}
@@ -109,7 +109,7 @@ export default function Login() {
                       setForgotEmail(email)
                       setForgotMsg('')
                     }}
-                    className="text-xs font-medium text-sky-600 hover:underline"
+                    className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
                   >
                     Forgot password?
                   </button>
@@ -126,7 +126,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-500 hover:text-slate-800"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                   >
                     {showPassword ? 'Hide' : 'Show'}
                   </button>
@@ -137,9 +137,9 @@ export default function Login() {
                 {loading ? 'Signing in…' : 'Sign in'}
               </button>
 
-              <p className="text-center text-sm text-slate-500">
+              <p className="text-center text-sm text-slate-500 dark:text-slate-400">
                 No account?{' '}
-                <Link className="text-sky-600 font-medium hover:underline" to="/register">
+                <Link className="text-sky-600 font-medium hover:underline dark:text-sky-400" to="/register">
                   Create one
                 </Link>
               </p>
@@ -147,14 +147,14 @@ export default function Login() {
           ) : (
             <form onSubmit={onForgot} className="space-y-5">
               <div>
-                <h1 className="text-xl font-bold text-slate-900">Forgot password</h1>
-                <p className="text-sm text-slate-500 mt-1">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Forgot password</h1>
+                <p className="text-sm text-slate-500 mt-1 dark:text-slate-400">
                   Enter your email. Reset is handled by an Administrator, or use Settings after you sign in.
                 </p>
               </div>
 
               {forgotMsg && (
-                <div className="text-sm text-slate-700 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2.5">
+                <div className="text-sm text-slate-700 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2.5 dark:text-slate-300 dark:bg-sky-950/40 dark:border-sky-900">
                   {forgotMsg}
                 </div>
               )}
@@ -177,7 +177,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setForgotOpen(false)}
-                className="w-full text-sm text-slate-500 hover:text-slate-800"
+                className="w-full text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
               >
                 ← Back to sign in
               </button>

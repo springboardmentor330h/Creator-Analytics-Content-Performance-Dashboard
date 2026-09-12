@@ -212,19 +212,25 @@ def connect_social_platform(
 
 @router.get("/platforms")
 def connected_social_platforms(
-    current_user: User = Depends(
-        get_current_user
-    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Return connected platforms for
-    the authenticated creator.
-    """
-
-    return get_connected_platforms(
-        creator_id=current_user.id
+    rows = (
+        db.query(Content.platform)
+        .filter(Content.creator_id == current_user.id)
+        .distinct()
+        .all()
     )
-
+    accounts = [
+        {"platform": p, "account_name": " "}
+        for (p,) in rows
+        if p
+    ]
+    return {
+        "creator_id": current_user.id,
+        "platforms": [a["platform"] for a in accounts],
+        "accounts": accounts,
+    }
 
 # ============================================================
 # YOUTUBE SYNCHRONIZATION

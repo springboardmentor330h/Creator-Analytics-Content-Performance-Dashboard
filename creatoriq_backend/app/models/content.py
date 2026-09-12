@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import Column, Date, Integer, String, UniqueConstraint
+from sqlalchemy import Column, Date, ForeignKey, Integer, String, UniqueConstraint
 from app.db.database import Base
 
 
@@ -11,7 +11,7 @@ class Content(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    creator_id = Column(Integer, nullable=False, index=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     platform = Column(String(50), nullable=False, index=True)
 

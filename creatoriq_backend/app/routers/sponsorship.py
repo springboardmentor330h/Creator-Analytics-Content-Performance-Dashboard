@@ -11,6 +11,7 @@ from app.core.auth import get_current_user
 from app.db.database import get_db
 
 from app.models.sponsorship import Sponsorship
+from app.models.revenue import Revenue
 from app.models.user import User
 
 from app.schemas.sponsorship import (
@@ -33,13 +34,16 @@ router = APIRouter(
 def is_admin(
     current_user: User,
 ) -> bool:
-    return current_user.role == "Administrator"
+    return (current_user.role or "").strip().lower() in (
+        "administrator",
+        "admin",
+    )
 
 
 def is_creator(
     current_user: User,
 ) -> bool:
-    return current_user.role == "Creator"
+    return (current_user.role or "").strip().lower() == "creator"
 
 
 # ============================================================
@@ -151,7 +155,7 @@ def get_all_sponsorships(
             == current_user.id
         )
 
-    return (
+    rows = (
         query
         .order_by(
             Sponsorship.start_date.desc(),
@@ -159,6 +163,25 @@ def get_all_sponsorships(
         )
         .all()
     )
+    # Return plain dicts so missing optional columns / enum quirks
+    # never crash response_model validation with a 500.
+    out = []
+    for s in rows:
+        out.append(
+            {
+                "id": s.id,
+                "creator_id": s.creator_id,
+                "brand_name": s.brand_name,
+                "campaign_name": s.campaign_name,
+                "contract_value": float(s.contract_value or 0),
+                "start_date": s.start_date,
+                "end_date": s.end_date,
+                "status": s.status or "pending",
+                "payment_status": s.payment_status or "unpaid",
+                "revenue_id": getattr(s, "revenue_id", None),
+            }
+        )
+    return out
 
 
 # ============================================================
@@ -323,6 +346,34 @@ def update_sponsorship(
             field,
             value,
         )
+
+    # --------------------------------------------------------
+    # AUTO-CREATE A REVENUE RECORD WHEN A SPONSORSHIP IS MARKED PAID
+    #
+    # This is what actually links Sponsorship <-> Revenue: if the
+    # payment_status just became "paid" and this sponsorship isn't
+    # already linked to a revenue row, create one for the contract
+    # value and remember its id on the sponsorship.
+    # --------------------------------------------------------
+
+    if (
+        sponsorship.payment_status == "paid"
+        and not sponsorship.revenue_id
+    ):
+        new_revenue = Revenue(
+            creator_id=sponsorship.creator_id,
+            source="sponsorship",
+            amount=sponsorship.contract_value,
+            currency="USD",
+            description=(
+                f"Sponsorship payment - {sponsorship.brand_name} "
+                f"({sponsorship.campaign_name})"
+            ),
+            date=sponsorship.end_date or sponsorship.start_date,
+        )
+        db.add(new_revenue)
+        db.flush()
+        sponsorship.revenue_id = new_revenue.id
 
     db.commit()
 

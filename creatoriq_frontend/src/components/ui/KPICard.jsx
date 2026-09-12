@@ -15,11 +15,11 @@ export default function KPICard({
   }
 
   const accents = {
-    sky: { ring: 'from-sky-500/15 to-transparent', icon: 'bg-sky-50 text-sky-600' },
-    emerald: { ring: 'from-emerald-500/15 to-transparent', icon: 'bg-emerald-50 text-emerald-600' },
-    violet: { ring: 'from-violet-500/15 to-transparent', icon: 'bg-violet-50 text-violet-600' },
-    amber: { ring: 'from-amber-500/15 to-transparent', icon: 'bg-amber-50 text-amber-600' },
-    rose: { ring: 'from-rose-500/15 to-transparent', icon: 'bg-rose-50 text-rose-600' },
+    sky: { ring: 'from-sky-500/15 to-transparent', icon: 'bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400' },
+    emerald: { ring: 'from-emerald-500/15 to-transparent', icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400' },
+    violet: { ring: 'from-violet-500/15 to-transparent', icon: 'bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-400' },
+    amber: { ring: 'from-amber-500/15 to-transparent', icon: 'bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400' },
+    rose: { ring: 'from-rose-500/15 to-transparent', icon: 'bg-rose-50 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400' },
   }
   const a = accents[accent] || accents.sky
 
@@ -28,8 +28,8 @@ export default function KPICard({
       <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${a.ring}`} />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500 mb-1">{title}</p>
-          <p className="text-2xl font-semibold tracking-tight text-slate-900 tabular-nums">
+          <p className="text-xs font-medium text-slate-500 mb-1 dark:text-slate-400">{title}</p>
+          <p className="text-2xl font-semibold tracking-tight text-slate-900 tabular-nums dark:text-slate-100">
             {format(value)}
           </p>
           {(subtitle || trend != null) && (
@@ -37,13 +37,13 @@ export default function KPICard({
               {trend != null && (
                 <span
                   className={`inline-flex items-center rounded-full px-1.5 py-0.5 font-medium ${
-                    trend >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                    trend >= 0 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' : 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-400'
                   }`}
                 >
                   {trend >= 0 ? '↑' : '↓'} {Math.abs(trend)}%
                 </span>
               )}
-              {subtitle && <span className="text-slate-500 truncate">{subtitle}</span>}
+              {subtitle && <span className="text-slate-500 truncate dark:text-slate-400">{subtitle}</span>}
             </div>
           )}
         </div>

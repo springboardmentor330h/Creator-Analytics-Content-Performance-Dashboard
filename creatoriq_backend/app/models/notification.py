@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 
 from app.db.database import Base
 
@@ -15,7 +15,7 @@ class Notification(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    creator_id = Column(Integer, nullable=False, index=True)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     title = Column(String(255), nullable=False)
 

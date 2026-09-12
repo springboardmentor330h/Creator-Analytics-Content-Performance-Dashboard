@@ -225,6 +225,8 @@ def get_platform_performance(
 def get_kpi_summary(
     db: Session,
     creator_id: int | None = None,
+    start_date=None,
+    end_date=None,
 ):
 
     content_query = db.query(Content)
@@ -232,6 +234,16 @@ def get_kpi_summary(
     if creator_id is not None:
         content_query = content_query.filter(
             Content.creator_id == creator_id
+        )
+
+    if start_date is not None:
+        content_query = content_query.filter(
+            Content.published_date >= start_date
+        )
+
+    if end_date is not None:
+        content_query = content_query.filter(
+            Content.published_date <= end_date
         )
 
     contents = content_query.all()

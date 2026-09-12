@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String
 
 from app.db.database import Base
 
@@ -14,6 +14,7 @@ class Audience(Base):
 
     creator_id = Column(
         Integer,
+        ForeignKey("users.id"),
         nullable=False,
         index=True
     )

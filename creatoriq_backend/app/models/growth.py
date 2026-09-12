@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Float, Integer
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer
 
 from app.db.database import Base
 
@@ -14,6 +14,7 @@ class Growth(Base):
 
     creator_id = Column(
         Integer,
+        ForeignKey("users.id"),
         nullable=False,
         index=True
     )

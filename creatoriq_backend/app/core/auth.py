@@ -116,19 +116,21 @@ def get_creator_scope(
     Determine which creator's data the user can access.
 
     Creator:
-        Returns their own user ID.
+        Returns their own user ID (sees only their own data).
 
-    Administrator:
-        Returns None, meaning all creators.
-
-    Other roles:
-        Access denied.
+    Administrator, Agency, Marketing Team:
+        Returns None, meaning "all creators" -- these roles are treated as
+        read-only oversight/reporting roles rather than data owners, since
+        they don't have their own content/revenue/audience records of their
+        own. Write operations (creating revenue, sponsorships, etc.) are
+        separately restricted to Creator accounts via require_creator, so
+        this scope only affects what these roles can VIEW.
     """
 
     if current_user.role == "Creator":
         return current_user.id
 
-    if current_user.role == "Administrator":
+    if current_user.role in ("Administrator", "Agency", "Marketing Team"):
         return None
 
     raise HTTPException(

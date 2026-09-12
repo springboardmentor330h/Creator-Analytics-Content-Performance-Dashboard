@@ -5,6 +5,7 @@ from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
+from app.core.auth import get_current_user, require_admin
 
 
 # ============================================================
@@ -14,23 +15,40 @@ from app.core.security import get_password_hash
 router = APIRouter()
 
 
+def _is_admin(user: User) -> bool:
+    return (user.role or "").lower() == "administrator"
+
+
+def _require_self_or_admin(current_user: User, target_user_id: int):
+    """
+    Allow the request only if the caller is looking at their own
+    account, or the caller is an Administrator.
+    """
+    if current_user.id == target_user_id or _is_admin(current_user):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail="You do not have permission to access this user's data",
+    )
+
+
 # ============================================================
-# CREATE USER
+# CREATE USER  (admin only -- public signup goes through /auth/register)
 # ============================================================
 
 @router.post("/users")
 def create_user(
     user: UserCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Create a new user.
+    Create a new user. Restricted to Administrators.
+    Regular signup should use POST /auth/register instead.
 
-    The password is hashed before it is stored
-    in the database.
+    The password is hashed before it is stored in the database.
     """
 
-    # Check whether email already exists
     existing_user = db.query(User).filter(
         User.email == user.email
     ).first()
@@ -41,12 +59,8 @@ def create_user(
             detail="Email already exists"
         )
 
-    # Hash password
-    hashed_password = get_password_hash(
-        user.password
-    )
+    hashed_password = get_password_hash(user.password)
 
-    # Create user
     new_user = User(
         full_name=user.full_name,
         email=user.email,
@@ -54,7 +68,6 @@ def create_user(
         role=user.role
     )
 
-    # Save to database
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
@@ -68,27 +81,20 @@ def create_user(
 
 
 # ============================================================
-# CREATE MULTIPLE USERS
+# CREATE MULTIPLE USERS  (admin only)
 # ============================================================
 
 @router.post("/users/bulk")
 def create_multiple_users(
     users: list[UserCreate],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Create multiple users at once.
-
-    Passwords are hashed before storing them
-    in the database.
+    Create multiple users at once. Restricted to Administrators.
     """
 
-    # --------------------------------------------------------
-    # CHECK FOR DUPLICATE EMAILS IN DATABASE
-    # --------------------------------------------------------
-
     for user in users:
-
         existing_user = db.query(User).filter(
             User.email == user.email
         ).first()
@@ -99,14 +105,7 @@ def create_multiple_users(
                 detail=f"Email already exists: {user.email}"
             )
 
-    # --------------------------------------------------------
-    # CHECK FOR DUPLICATE EMAILS IN REQUEST
-    # --------------------------------------------------------
-
-    emails = [
-        user.email
-        for user in users
-    ]
+    emails = [user.email for user in users]
 
     if len(emails) != len(set(emails)):
         raise HTTPException(
@@ -114,17 +113,10 @@ def create_multiple_users(
             detail="Duplicate email found in request"
         )
 
-    # --------------------------------------------------------
-    # CREATE USERS
-    # --------------------------------------------------------
-
     new_users = []
 
     for user in users:
-
-        hashed_password = get_password_hash(
-            user.password
-        )
+        hashed_password = get_password_hash(user.password)
 
         new_user = User(
             full_name=user.full_name,
@@ -134,21 +126,14 @@ def create_multiple_users(
         )
 
         db.add(new_user)
-
         new_users.append(new_user)
-
-    # --------------------------------------------------------
-    # SAVE ALL USERS
-    # --------------------------------------------------------
 
     db.commit()
 
     result = []
 
     for user in new_users:
-
         db.refresh(user)
-
         result.append({
             "id": user.id,
             "full_name": user.full_name,
@@ -164,65 +149,62 @@ def create_multiple_users(
 
 
 # ============================================================
-# GET ALL USERS
+# GET ALL USERS  (admin only -- full directory listing)
 # ============================================================
 
 @router.get("/users")
 def get_users(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Get all users.
-
+    Get all users. Restricted to Administrators.
     Passwords are not included in the response.
     """
 
     users = db.query(User).all()
 
-    result = []
-
-    for user in users:
-
-        result.append({
+    return [
+        {
             "id": user.id,
             "full_name": user.full_name,
             "email": user.email,
             "role": user.role
-        })
-
-    return result
+        }
+        for user in users
+    ]
 
 
 # ============================================================
-# SEARCH USERS BY ROLE
+# SEARCH USERS BY ROLE  (admin only)
 # ============================================================
 
 @router.get("/users/search")
 def search_users_by_role(
     role: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Search users by role.
+    Search users by role. Restricted to Administrators.
 
     Example:
-    /users/search?role=creator
+    /users/search?role=Creator
     """
 
     users = db.query(User).filter(
         User.role == role
     ).all()
 
-    result = []
-
-    for user in users:
-
-        result.append({
+    result = [
+        {
             "id": user.id,
             "full_name": user.full_name,
             "email": user.email,
             "role": user.role
-        })
+        }
+        for user in users
+    ]
 
     return {
         "total_count": len(result),
@@ -231,17 +213,21 @@ def search_users_by_role(
 
 
 # ============================================================
-# GET USER BY ID
+# GET USER BY ID  (self or admin only)
 # ============================================================
 
 @router.get("/users/{user_id}")
 def get_user(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Get a single user using their ID.
+    A user may only fetch their own record unless they are an Administrator.
     """
+
+    _require_self_or_admin(current_user, user_id)
 
     user = db.query(User).filter(
         User.id == user_id
@@ -262,23 +248,26 @@ def get_user(
 
 
 # ============================================================
-# UPDATE USER
+# UPDATE USER  (self or admin only)
 # ============================================================
 
 @router.put("/users/{user_id}")
 def update_user(
     user_id: int,
     updated_user: UserUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     """
     Update an existing user.
+    A user may only update their own record unless they are an Administrator.
+    Only Administrators may change a user's role.
 
-    If the password is changed, it is hashed
-    before storing it in the database.
+    If the password is changed, it is hashed before storing it in the database.
     """
 
-    # Find user
+    _require_self_or_admin(current_user, user_id)
+
     user = db.query(User).filter(
         User.id == user_id
     ).first()
@@ -289,59 +278,34 @@ def update_user(
             detail="User not found"
         )
 
-    # --------------------------------------------------------
-    # CHECK EMAIL UNIQUENESS
-    # --------------------------------------------------------
+    if updated_user.role is not None and not _is_admin(current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Only Administrators can change a user's role",
+        )
 
     if updated_user.email is not None:
-
         existing_user = db.query(User).filter(
             User.email == updated_user.email
         ).first()
 
-        if (
-            existing_user
-            and existing_user.id != user_id
-        ):
+        if existing_user and existing_user.id != user_id:
             raise HTTPException(
                 status_code=400,
                 detail="Email already exists"
             )
 
-    # --------------------------------------------------------
-    # UPDATE FULL NAME
-    # --------------------------------------------------------
-
     if updated_user.full_name is not None:
         user.full_name = updated_user.full_name
-
-    # --------------------------------------------------------
-    # UPDATE EMAIL
-    # --------------------------------------------------------
 
     if updated_user.email is not None:
         user.email = updated_user.email
 
-    # --------------------------------------------------------
-    # UPDATE PASSWORD
-    # --------------------------------------------------------
-
     if updated_user.password is not None:
-
-        user.hashed_password = get_password_hash(
-            updated_user.password
-        )
-
-    # --------------------------------------------------------
-    # UPDATE ROLE
-    # --------------------------------------------------------
+        user.hashed_password = get_password_hash(updated_user.password)
 
     if updated_user.role is not None:
         user.role = updated_user.role
-
-    # --------------------------------------------------------
-    # SAVE CHANGES
-    # --------------------------------------------------------
 
     db.commit()
     db.refresh(user)
@@ -358,16 +322,17 @@ def update_user(
 
 
 # ============================================================
-# DELETE USER
+# DELETE USER  (admin only)
 # ============================================================
 
 @router.delete("/users/{user_id}")
 def delete_user(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     """
-    Delete a user using their ID.
+    Delete a user using their ID. Restricted to Administrators.
     """
 
     user = db.query(User).filter(

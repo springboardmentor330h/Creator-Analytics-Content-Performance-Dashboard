@@ -52,18 +52,18 @@ export default function Revenue() {
         <KPICard title="Sources" value={bySource.length} />
       </div>
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 dark:bg-slate-900 dark:border-slate-800">
           <h2 className="text-sm mb-3">Monthly revenue</h2>
           <AreaTrend data={monthly} color="#10b981" />
         </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 dark:bg-slate-900 dark:border-slate-800">
           <h2 className="text-sm mb-3">By source</h2>
           <Donut data={bySource} />
         </div>
       </div>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto dark:bg-slate-900 dark:border-slate-800">
         <table className="w-full text-sm">
-          <thead className="text-slate-500 border-b border-slate-200">
+          <thead className="text-slate-500 border-b border-slate-200 dark:border-slate-800 dark:text-slate-400">
             <tr>
               <th className="text-left px-4 py-3">Source</th>
               <th className="text-left px-4 py-3">Date</th>
@@ -72,13 +72,13 @@ export default function Revenue() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-slate-200/50">
+              <tr key={r.id} className="border-b border-slate-200/50 dark:border-slate-800/50">
                 <td className="px-4 py-2 capitalize">{r.source}</td>
                 <td className="px-4 py-2">{r.date}</td>
                 <td className="px-4 py-2 text-right text-emerald-400">${Number(r.amount || 0).toLocaleString()}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500">No revenue records</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={3} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">No revenue records</td></tr>}
           </tbody>
         </table>
       </div>
