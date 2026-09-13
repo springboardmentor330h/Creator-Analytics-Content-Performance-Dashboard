@@ -49,7 +49,11 @@ def content_engagement(db: Session, content_id: UUID):
     }
 
 
-def top_content(db: Session, limit: int = 5, platform: str | None = None):
+def top_content(
+    db: Session,
+    limit: int = 5,
+    platform: str | None = None,
+):
     query = db.query(Content)
 
     if platform:
@@ -84,12 +88,24 @@ def platform_performance(db: Session):
         result.append(
             {
                 "platform": platform,
-                "total_views": sum((x.views or 0) for x in rows),
-                "total_likes": sum((x.likes or 0) for x in rows),
-                "total_comments": sum((x.comments or 0) for x in rows),
-                "total_reach": sum((x.reach or 0) for x in rows),
+                "total_views": sum(
+                    (x.views or 0) for x in rows
+                ),
+                "total_likes": sum(
+                    (x.likes or 0) for x in rows
+                ),
+                "total_comments": sum(
+                    (x.comments or 0) for x in rows
+                ),
+                "total_shares": sum(
+                    (x.shares or 0) for x in rows
+                ),
+                "total_reach": sum(
+                    (x.reach or 0) for x in rows
+                ),
                 "average_engagement_rate": round(
-                    sum(engagement_rate(x) for x in rows) / len(rows),
+                    sum(engagement_rate(x) for x in rows)
+                    / len(rows),
                     2,
                 ),
             }
@@ -98,7 +114,10 @@ def platform_performance(db: Session):
     return result
 
 
-def summary(db: Session, platform: str | None = None):
+def summary(
+    db: Session,
+    platform: str | None = None,
+):
     query = db.query(Content)
 
     if platform:
@@ -106,7 +125,11 @@ def summary(db: Session, platform: str | None = None):
 
     rows = query.all()
 
-    rates = [engagement_rate(content) for content in rows]
+    rates = [
+        engagement_rate(content)
+        for content in rows
+    ]
+
     platforms = platform_performance(db)
 
     if platform and rows:
@@ -119,41 +142,78 @@ def summary(db: Session, platform: str | None = None):
     else:
         best_platform = None
 
-    top = top_content(db, 1, platform)
+    top = top_content(
+        db,
+        1,
+        platform,
+    )
 
     return {
         "total_content": len(rows),
-        "total_views": sum((content.views or 0) for content in rows),
-        "total_reach": sum((content.reach or 0) for content in rows),
+        "total_views": sum(
+            (content.views or 0)
+            for content in rows
+        ),
+        "total_reach": sum(
+            (content.reach or 0)
+            for content in rows
+        ),
         "average_engagement_rate": (
             round(sum(rates) / len(rates), 2)
             if rates
             else 0.0
         ),
         "best_performing_platform": best_platform,
-        "top_content": top[0]["content_title"] if top else None,
+        "top_content": (
+            top[0]["content_title"]
+            if top
+            else None
+        ),
     }
 
 
-def kpi_summary(db: Session, platform: str | None = None):
+def kpi_summary(
+    db: Session,
+    platform: str | None = None,
+):
     query = db.query(Content)
 
     if platform:
         query = query.filter(Content.platform == platform)
 
     rows = query.all()
+
     audience_rows = db.query(Audience).all()
 
-    rates = [engagement_rate(content) for content in rows]
+    rates = [
+        engagement_rate(content)
+        for content in rows
+    ]
 
     return {
-        "total_views": sum((content.views or 0) for content in rows),
-        "total_likes": sum((content.likes or 0) for content in rows),
-        "total_comments": sum((content.comments or 0) for content in rows),
-        "total_shares": sum((content.shares or 0) for content in rows),
-        "total_reach": sum((content.reach or 0) for content in rows),
+        "total_views": sum(
+            (content.views or 0)
+            for content in rows
+        ),
+        "total_likes": sum(
+            (content.likes or 0)
+            for content in rows
+        ),
+        "total_comments": sum(
+            (content.comments or 0)
+            for content in rows
+        ),
+        "total_shares": sum(
+            (content.shares or 0)
+            for content in rows
+        ),
+        "total_reach": sum(
+            (content.reach or 0)
+            for content in rows
+        ),
         "total_followers": sum(
-            (audience.followers or 0) for audience in audience_rows
+            (audience.followers or 0)
+            for audience in audience_rows
         ),
         "average_engagement_rate": (
             round(sum(rates) / len(rates), 2)
@@ -163,11 +223,16 @@ def kpi_summary(db: Session, platform: str | None = None):
     }
 
 
-def engagement_chart(db: Session, platform: str | None = None):
+def engagement_chart(
+    db: Session,
+    platform: str | None = None,
+):
     query = db.query(Content)
 
     if platform:
-        query = query.filter(Content.platform == platform)
+        query = query.filter(
+            Content.platform == platform
+        )
 
     rows = [
         content
@@ -175,11 +240,13 @@ def engagement_chart(db: Session, platform: str | None = None):
         if content.published_date
     ]
 
-    rows.sort(key=lambda content: content.published_date)
+    rows.sort(
+        key=lambda content: content.published_date
+    )
 
     return {
         "labels": [
-            content.published_date.isoformat()
+            content.published_date.date().isoformat()
             for content in rows
         ],
         "values": [
@@ -213,7 +280,9 @@ def platform_comparison(db: Session):
         item["platform"]: {
             "views": item["total_views"],
             "reach": item["total_reach"],
-            "engagement_rate": item["average_engagement_rate"],
+            "engagement_rate": item[
+                "average_engagement_rate"
+            ],
             "likes": item["total_likes"],
             "comments": item["total_comments"],
         }
