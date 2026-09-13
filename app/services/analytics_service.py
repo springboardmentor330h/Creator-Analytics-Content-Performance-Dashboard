@@ -1,65 +1,221 @@
 from collections import defaultdict
+from uuid import UUID
+
 from sqlalchemy.orm import Session
+
+from app.models.audience import Audience
 from app.models.content import Content
 from app.models.growth import Growth
-from app.models.audience import Audience
 
-def engagement_rate(c: Content) -> float:
-    return round(((c.likes + c.comments + c.shares + c.saves) / c.reach * 100), 2) if c.reach else 0.0
 
-def content_engagement(db: Session, content_id: int):
-    c = db.query(Content).filter(Content.id == content_id).first()
-    if not c:
+def engagement_rate(content: Content) -> float:
+    total_engagement = (
+        (content.likes or 0)
+        + (content.comments or 0)
+        + (content.shares or 0)
+        + (content.saves or 0)
+    )
+
+    reach = content.reach or 0
+
+    if reach == 0:
+        return 0.0
+
+    return round((total_engagement / reach) * 100, 2)
+
+
+def content_engagement(db: Session, content_id: UUID):
+    content = (
+        db.query(Content)
+        .filter(Content.id == content_id)
+        .first()
+    )
+
+    if not content:
         return None
-    return {"content_id": c.id, "platform": c.platform, "views": c.views, "reach": c.reach,
-            "total_engagement": c.likes+c.comments+c.shares+c.saves, "engagement_rate": engagement_rate(c)}
 
-def top_content(db: Session, limit=5, platform=None):
-    rows = db.query(Content).filter(Content.platform == platform).all() if platform else db.query(Content).all()
+    return {
+        "content_id": str(content.id),
+        "platform": content.platform,
+        "views": content.views or 0,
+        "reach": content.reach or 0,
+        "total_engagement": (
+            (content.likes or 0)
+            + (content.comments or 0)
+            + (content.shares or 0)
+            + (content.saves or 0)
+        ),
+        "engagement_rate": engagement_rate(content),
+    }
+
+
+def top_content(db: Session, limit: int = 5, platform: str | None = None):
+    query = db.query(Content)
+
+    if platform:
+        query = query.filter(Content.platform == platform)
+
+    rows = query.all()
     rows.sort(key=engagement_rate, reverse=True)
-    return [{"content_id": c.id, "content_title": c.content_title, "platform": c.platform,
-             "views": c.views, "reach": c.reach, "watch_time": c.watch_time,
-             "engagement_rate": engagement_rate(c)} for c in rows[:limit]]
+
+    return [
+        {
+            "content_id": str(content.id),
+            "content_title": content.content_title,
+            "platform": content.platform,
+            "views": content.views or 0,
+            "reach": content.reach or 0,
+            "watch_time": content.watch_time or 0,
+            "engagement_rate": engagement_rate(content),
+        }
+        for content in rows[:limit]
+    ]
+
 
 def platform_performance(db: Session):
-    groups=defaultdict(list)
-    for c in db.query(Content).all(): groups[c.platform].append(c)
-    result=[]
+    groups = defaultdict(list)
+
+    for content in db.query(Content).all():
+        groups[content.platform].append(content)
+
+    result = []
+
     for platform, rows in sorted(groups.items()):
-        result.append({"platform":platform,"total_views":sum(x.views for x in rows),
-                       "total_likes":sum(x.likes for x in rows),"total_comments":sum(x.comments for x in rows),
-                       "total_reach":sum(x.reach for x in rows),
-                       "average_engagement_rate":round(sum(engagement_rate(x) for x in rows)/len(rows),2)})
+        result.append(
+            {
+                "platform": platform,
+                "total_views": sum((x.views or 0) for x in rows),
+                "total_likes": sum((x.likes or 0) for x in rows),
+                "total_comments": sum((x.comments or 0) for x in rows),
+                "total_reach": sum((x.reach or 0) for x in rows),
+                "average_engagement_rate": round(
+                    sum(engagement_rate(x) for x in rows) / len(rows),
+                    2,
+                ),
+            }
+        )
+
     return result
 
-def summary(db: Session, platform=None):
-    rows=db.query(Content).filter(Content.platform == platform).all() if platform else db.query(Content).all()
-    rates=[engagement_rate(c) for c in rows]
-    platforms=platform_performance(db)
-    best=platform if platform and rows else (max(platforms,key=lambda x:x["average_engagement_rate"])["platform"] if platforms else None)
-    top=top_content(db,1,platform)
-    return {"total_content":len(rows),"total_views":sum(c.views for c in rows),"total_reach":sum(c.reach for c in rows),
-            "average_engagement_rate":round(sum(rates)/len(rates),2) if rates else 0.0,
-            "best_performing_platform":best,"top_content":top[0]["content_title"] if top else None}
 
-def kpi_summary(db: Session, platform=None):
-    rows=db.query(Content).filter(Content.platform == platform).all() if platform else db.query(Content).all(); aud=db.query(Audience).all()
-    rates=[engagement_rate(c) for c in rows]
-    return {"total_views":sum(c.views for c in rows),"total_likes":sum(c.likes for c in rows),
-            "total_comments":sum(c.comments for c in rows),"total_shares":sum(c.shares for c in rows),
-            "total_reach":sum(c.reach for c in rows),"total_followers":sum(a.followers for a in aud),
-            "average_engagement_rate":round(sum(rates)/len(rates),2) if rates else 0.0}
+def summary(db: Session, platform: str | None = None):
+    query = db.query(Content)
 
-def engagement_chart(db: Session, platform=None):
-    base = db.query(Content).filter(Content.platform == platform).all() if platform else db.query(Content).all()
-    rows=sorted([c for c in base if c.published_date], key=lambda c:c.published_date)
-    return {"labels":[c.published_date.isoformat() for c in rows],"values":[engagement_rate(c) for c in rows]}
+    if platform:
+        query = query.filter(Content.platform == platform)
+
+    rows = query.all()
+
+    rates = [engagement_rate(content) for content in rows]
+    platforms = platform_performance(db)
+
+    if platform and rows:
+        best_platform = platform
+    elif platforms:
+        best_platform = max(
+            platforms,
+            key=lambda x: x["average_engagement_rate"],
+        )["platform"]
+    else:
+        best_platform = None
+
+    top = top_content(db, 1, platform)
+
+    return {
+        "total_content": len(rows),
+        "total_views": sum((content.views or 0) for content in rows),
+        "total_reach": sum((content.reach or 0) for content in rows),
+        "average_engagement_rate": (
+            round(sum(rates) / len(rates), 2)
+            if rates
+            else 0.0
+        ),
+        "best_performing_platform": best_platform,
+        "top_content": top[0]["content_title"] if top else None,
+    }
+
+
+def kpi_summary(db: Session, platform: str | None = None):
+    query = db.query(Content)
+
+    if platform:
+        query = query.filter(Content.platform == platform)
+
+    rows = query.all()
+    audience_rows = db.query(Audience).all()
+
+    rates = [engagement_rate(content) for content in rows]
+
+    return {
+        "total_views": sum((content.views or 0) for content in rows),
+        "total_likes": sum((content.likes or 0) for content in rows),
+        "total_comments": sum((content.comments or 0) for content in rows),
+        "total_shares": sum((content.shares or 0) for content in rows),
+        "total_reach": sum((content.reach or 0) for content in rows),
+        "total_followers": sum(
+            (audience.followers or 0) for audience in audience_rows
+        ),
+        "average_engagement_rate": (
+            round(sum(rates) / len(rates), 2)
+            if rates
+            else 0.0
+        ),
+    }
+
+
+def engagement_chart(db: Session, platform: str | None = None):
+    query = db.query(Content)
+
+    if platform:
+        query = query.filter(Content.platform == platform)
+
+    rows = [
+        content
+        for content in query.all()
+        if content.published_date
+    ]
+
+    rows.sort(key=lambda content: content.published_date)
+
+    return {
+        "labels": [
+            content.published_date.isoformat()
+            for content in rows
+        ],
+        "values": [
+            engagement_rate(content)
+            for content in rows
+        ],
+    }
+
 
 def follower_chart(db: Session):
-    rows=db.query(Growth).order_by(Growth.date).all()
-    return {"labels":[g.date.isoformat() for g in rows],"values":[g.followers for g in rows]}
+    rows = (
+        db.query(Growth)
+        .order_by(Growth.date)
+        .all()
+    )
+
+    return {
+        "labels": [
+            growth.date.isoformat()
+            for growth in rows
+        ],
+        "values": [
+            growth.followers
+            for growth in rows
+        ],
+    }
+
 
 def platform_comparison(db: Session):
-    return {x["platform"]: {"views":x["total_views"],"reach":x["total_reach"],
-            "engagement_rate":x["average_engagement_rate"],"likes":x["total_likes"],"comments":x["total_comments"]}
-            for x in platform_performance(db)}
+    return {
+        item["platform"]: {
+            "views": item["total_views"],
+            "reach": item["total_reach"],
+            "engagement_rate": item["average_engagement_rate"],
+            "likes": item["total_likes"],
+            "comments": item["total_comments"],
+        }
+        for item in platform_performance(db)
+    }
