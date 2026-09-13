@@ -23,6 +23,7 @@ const DEFAULT_WIDGETS = [
 ];
 
 export default function DashboardView({
+  user,
   summary,
   audienceReport,
   audienceTrends,
@@ -36,6 +37,52 @@ export default function DashboardView({
   onNavigateTab,
   loading = false
 }) {
+  const userRole = (user?.role || 'creator').toLowerCase();
+  
+  const roleMeta = {
+    creator: {
+      title: 'Content Creator Workspace',
+      description: 'Tracking personal social media channels, follower growth, engagement rates & monetization streams.',
+      badgeBg: '#e0e7ff',
+      badgeColor: '#3730a3',
+      iconColor: '#4f46e5'
+    },
+    agency: {
+      title: 'Influencer Agency Workspace',
+      description: 'Managing multi-creator client portfolios, campaign deliverables, brand deal pipelines & agency metrics.',
+      badgeBg: '#f3e8ff',
+      badgeColor: '#6b21a8',
+      iconColor: '#9333ea'
+    },
+    marketing: {
+      title: 'Marketing & Campaign Workspace',
+      description: 'Analyzing cross-platform campaign reach, audience sentiment trends, engagement ROI & sponsorship reports.',
+      badgeBg: '#fef3c7',
+      badgeColor: '#92400e',
+      iconColor: '#d97706'
+    },
+    administrator: {
+      title: 'Administrator System Workspace',
+      description: 'Full system oversight, user role assignments, database maintenance & platform API health monitoring.',
+      badgeBg: '#dcfce7',
+      badgeColor: '#166534',
+      iconColor: '#16a34a'
+    },
+    admin: {
+      title: 'Administrator System Workspace',
+      description: 'Full system oversight, user role assignments, database maintenance & platform API health monitoring.',
+      badgeBg: '#dcfce7',
+      badgeColor: '#166534',
+      iconColor: '#16a34a'
+    }
+  }[userRole] || {
+    title: 'Content Creator Workspace',
+    description: 'Tracking social media channels, audience analytics & monetization.',
+    badgeBg: '#e0e7ff',
+    badgeColor: '#3730a3',
+    iconColor: '#4f46e5'
+  };
+
   const [widgets, setWidgets] = useState(() => {
     try {
       const saved = localStorage.getItem('creator_iq_dashboard_layout');
@@ -99,6 +146,44 @@ export default function DashboardView({
       case 'overview_header':
         return (
           <div key="overview_header" className="section-card">
+            {/* Role Workspace Banner */}
+            <div style={{
+              backgroundColor: roleMeta.badgeBg,
+              border: `1px solid ${roleMeta.badgeColor}33`,
+              borderRadius: '12px',
+              padding: '12px 18px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <ShieldCheck size={24} color={roleMeta.iconColor} />
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: roleMeta.badgeColor, letterSpacing: '-0.2px' }}>
+                    {roleMeta.title}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#334155', marginTop: '2px', fontWeight: 500 }}>
+                    {roleMeta.description}
+                  </div>
+                </div>
+              </div>
+              <div style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                backgroundColor: '#ffffff',
+                color: roleMeta.badgeColor,
+                border: `1px solid ${roleMeta.badgeColor}44`,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}>
+                ROLE: {userRole.toUpperCase()}
+              </div>
+            </div>
+
             <div className="section-header">
               <div>
                 <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

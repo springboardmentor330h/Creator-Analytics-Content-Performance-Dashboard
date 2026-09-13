@@ -477,5 +477,22 @@ export const api = {
     return await request(`/reports/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // User & Role Management APIs
+  getCurrentUserProfile: async () => {
+    return await request('/users/me');
+  },
+
+  getAllUsers: async () => {
+    return await request('/users');
+  },
+
+  updateUserRole: async (userId, role) => {
+    return await request(`/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role })
+    });
   }
 };
+

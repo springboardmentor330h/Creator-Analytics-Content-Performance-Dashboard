@@ -5,15 +5,21 @@ import { api } from '../api';
 export default function SettingsView({ user, onUpdateUser, onOpenSocialModal, theme = 'light', onToggleTheme, accentColor = 'indigo', onSelectAccent }) {
   const [fullName, setFullName] = useState(user?.full_name || user?.name || user?.email?.split('@')[0] || 'Creator');
   const [email, setEmail] = useState(user?.email || 'creator@creatoriq.com');
+  const [userRole, setUserRole] = useState(user?.role || 'creator');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [connectedPlatforms, setConnectedPlatforms] = useState([]);
   const [healthStatus, setHealthStatus] = useState('Checking...');
   const [savingProfile, setSavingProfile] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
+  
+  // User Management State for Administrator & Agency roles
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
   useEffect(() => {
     fetchSystemStatus();
+    fetchUsersList();
   }, []);
 
   const fetchSystemStatus = async () => {
@@ -30,16 +36,46 @@ export default function SettingsView({ user, onUpdateUser, onOpenSocialModal, th
     }
   };
 
+  const fetchUsersList = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await api.getAllUsers();
+      if (Array.isArray(res)) {
+        setUsersList(res);
+      }
+    } catch (e) {
+      console.log('Error fetching users list:', e);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
   const handleProfileSave = (e) => {
     e.preventDefault();
     setSavingProfile(true);
     setTimeout(() => {
-      const updated = { ...user, full_name: fullName, email };
+      const updated = { ...user, full_name: fullName, email, role: userRole };
       localStorage.setItem('creatoriq_user', JSON.stringify(updated));
       if (onUpdateUser) onUpdateUser(updated);
       setSavingProfile(false);
-      alert('Profile details updated successfully!');
+      alert(`Profile & Role ('${userRole.toUpperCase()}') updated successfully!`);
     }, 500);
+  };
+
+  const handleRoleUpdateForUser = async (targetUserId, newRole) => {
+    try {
+      await api.updateUserRole(targetUserId, newRole);
+      setUsersList(prev => prev.map(u => u.id === targetUserId ? { ...u, role: newRole } : u));
+      if (user && user.id === targetUserId && onUpdateUser) {
+        const updated = { ...user, role: newRole };
+        localStorage.setItem('creatoriq_user', JSON.stringify(updated));
+        onUpdateUser(updated);
+        setUserRole(newRole);
+      }
+      alert(`User role updated to '${newRole.toUpperCase()}' successfully!`);
+    } catch (e) {
+      alert(`Failed to update user role: ${e.message}`);
+    }
   };
 
   const handlePasswordUpdate = (e) => {
@@ -127,13 +163,38 @@ export default function SettingsView({ user, onUpdateUser, onOpenSocialModal, th
               />
             </div>
 
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                Account Role (RBAC):
+              </label>
+              <select
+                value={userRole}
+                onChange={(e) => setUserRole(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  backgroundColor: '#ffffff',
+                  color: '#0f172a'
+                }}
+              >
+                <option value="creator">Content Creator (Personal Analytics)</option>
+                <option value="agency">Influencer Agency (Multi-Creator Networks)</option>
+                <option value="marketing">Marketing Team (Campaign Reach & ROI)</option>
+                <option value="administrator">Administrator (System & Role Management)</option>
+              </select>
+            </div>
+
             <button
               type="submit"
               disabled={savingProfile}
               className="btn-add"
               style={{ width: '100%', backgroundColor: '#2563eb', fontWeight: 700 }}
             >
-              {savingProfile ? 'Saving Changes...' : 'Save Profile Changes'}
+              {savingProfile ? 'Saving Changes...' : 'Save Profile & Role Changes'}
             </button>
           </form>
 
@@ -333,6 +394,94 @@ export default function SettingsView({ user, onUpdateUser, onOpenSocialModal, th
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* Role-Based Access Control & User Management Section (Module 1 Requirement) */}
+      <div className="section-card">
+        <div className="section-header">
+          <div>
+            <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Shield size={20} color="#7c3aed" />
+              <span>User & Role Access Control Management (RBAC)</span>
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+              Module 1 Roles: Creator, Agency, Marketing Team, Administrator
+            </p>
+          </div>
+          <button
+            onClick={fetchUsersList}
+            className="btn-secondary"
+            style={{ fontSize: '12px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <RefreshCw size={14} className={loadingUsers ? 'spin' : ''} />
+            <span>Refresh Directory</span>
+          </button>
+        </div>
+
+        <div style={{ overflowX: 'auto', marginTop: '14px' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Full Name</th>
+                <th>Email Address</th>
+                <th>Current Role</th>
+                <th>Role Reassignment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usersList.length > 0 ? (
+                usersList.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ fontWeight: 700 }}>#{u.id}</td>
+                    <td style={{ fontWeight: 700, color: '#0f172a' }}>{u.full_name || u.name}</td>
+                    <td style={{ color: '#475569' }}>{u.email}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '4px 10px',
+                        borderRadius: '9999px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        backgroundColor: u.role === 'agency' ? '#f3e8ff' : u.role === 'marketing' ? '#fef3c7' : (u.role === 'administrator' || u.role === 'admin') ? '#dcfce7' : '#e0e7ff',
+                        color: u.role === 'agency' ? '#6b21a8' : u.role === 'marketing' ? '#92400e' : (u.role === 'administrator' || u.role === 'admin') ? '#166534' : '#3730a3'
+                      }}>
+                        {u.role ? u.role.toUpperCase() : 'CREATOR'}
+                      </span>
+                    </td>
+                    <td>
+                      <select
+                        value={u.role || 'creator'}
+                        onChange={(e) => handleRoleUpdateForUser(u.id, e.target.value)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: '8px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          backgroundColor: '#ffffff',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="creator">Creator</option>
+                        <option value="agency">Agency</option>
+                        <option value="marketing">Marketing Team</option>
+                        <option value="administrator">Administrator</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#64748b', padding: '20px' }}>
+                    {loadingUsers ? 'Loading registered users list...' : 'No users found in database directory.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -482,6 +482,7 @@ export default function App() {
       case 'dashboard':
         return (
           <DashboardView
+            user={user}
             summary={summary}
             audienceReport={audienceReport}
             audienceTrends={audienceTrends}
@@ -560,6 +561,7 @@ export default function App() {
       default:
         return (
           <DashboardView
+            user={user}
             summary={summary}
             audienceReport={audienceReport}
             audienceTrends={audienceTrends}

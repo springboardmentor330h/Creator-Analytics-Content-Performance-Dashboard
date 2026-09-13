@@ -355,9 +355,9 @@ export default function Header({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '8px',
           backgroundColor: '#ffffff',
-          padding: '4px 8px 4px 4px',
+          padding: '4px 10px 4px 4px',
           borderRadius: '9999px',
           border: '1px solid #e2e8f0',
           boxShadow: '0 1px 3px rgba(15, 23, 42, 0.05)'
@@ -376,9 +376,20 @@ export default function Header({
           }}>
             {initial}
           </div>
-          <span className="desktop-only" style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a' }}>
-            {userName}
-          </span>
+          <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+            <span style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a', lineHeight: 1.2 }}>
+              {userName}
+            </span>
+            <span style={{
+              fontSize: '10px',
+              fontWeight: 800,
+              textTransform: 'uppercase',
+              letterSpacing: '0.4px',
+              color: user?.role === 'agency' ? '#6b21a8' : user?.role === 'marketing' ? '#92400e' : (user?.role === 'administrator' || user?.role === 'admin') ? '#166534' : '#3730a3'
+            }}>
+              {user?.role ? user.role.toUpperCase() : 'CREATOR'}
+            </span>
+          </div>
           <button
             onClick={onLogout}
             style={{
@@ -390,7 +401,8 @@ export default function Header({
               alignItems: 'center',
               padding: '4px',
               borderRadius: '50%',
-              transition: 'color 0.15s ease'
+              transition: 'color 0.15s ease',
+              marginLeft: '4px'
             }}
             title="Sign Out"
             onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
