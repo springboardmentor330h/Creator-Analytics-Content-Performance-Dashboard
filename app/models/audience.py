@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID
 import uuid
+
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.database import Base
 
@@ -17,7 +18,6 @@ class Audience(Base):
 
     creator_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("users.id"),
         nullable=False,
         index=True
     )
@@ -28,6 +28,7 @@ class Audience(Base):
     city = Column(String(100), nullable=False)
     device_type = Column(String(50), nullable=False)
     active_hour = Column(Integer, nullable=False)
+
     followers = Column(Integer, nullable=False, default=0)
     impressions = Column(Integer, nullable=False, default=0)
     reach = Column(Integer, nullable=False, default=0)
