@@ -1,8 +1,15 @@
-__pycache__/
-*.pyc
 venv/
 .env
+__pycache__/
+*.pyc
+*.pyo
+*.log
+node_modules/
+dist/
+dist-ssr/
 .vscode/
 .idea/
 .DS_Store
 test.db
+frontend_backup/
+frontend_backup_src/
