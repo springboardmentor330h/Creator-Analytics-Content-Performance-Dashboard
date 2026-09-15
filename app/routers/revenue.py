@@ -12,7 +12,6 @@ from app.schemas.revenue import (
     RevenueBySource,
     RevenueCreate,
     RevenueResponse,
-    RevenueTrend,
     RevenueUpdate,
 )
 
@@ -105,106 +104,17 @@ def get_revenue(
     return (
         db.query(Revenue)
         .filter(Revenue.creator_id == creator_id)
-        .order_by(Revenue.received_date.desc(), Revenue.id.desc())
+        .order_by(
+            Revenue.received_date.desc(),
+            Revenue.id.desc(),
+        )
         .all()
     )
 
 
-@router.get(
-    "/{revenue_id}",
-    response_model=RevenueResponse,
-)
-def get_revenue_by_id(
-    revenue_id: int,
-    creator_id: int = Query(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    revenue = (
-        db.query(Revenue)
-        .filter(
-            Revenue.id == revenue_id,
-            Revenue.creator_id == creator_id,
-        )
-        .first()
-    )
-
-    if not revenue:
-        raise HTTPException(
-            status_code=404,
-            detail="Revenue not found for this creator",
-        )
-
-    return revenue
-
-
-@router.put(
-    "/{revenue_id}",
-    response_model=RevenueResponse,
-)
-def update_revenue(
-    revenue_id: int,
-    data: RevenueUpdate,
-    creator_id: int = Query(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    revenue = (
-        db.query(Revenue)
-        .filter(
-            Revenue.id == revenue_id,
-            Revenue.creator_id == creator_id,
-        )
-        .first()
-    )
-
-    if not revenue:
-        raise HTTPException(
-            status_code=404,
-            detail="Revenue not found for this creator",
-        )
-
-    updates = data.model_dump(exclude_unset=True)
-
-    for key, value in updates.items():
-        setattr(revenue, key, value)
-
-    db.commit()
-    db.refresh(revenue)
-
-    return revenue
-
-
-@router.delete("/{revenue_id}")
-def delete_revenue(
-    revenue_id: int,
-    creator_id: int = Query(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    revenue = (
-        db.query(Revenue)
-        .filter(
-            Revenue.id == revenue_id,
-            Revenue.creator_id == creator_id,
-        )
-        .first()
-    )
-
-    if not revenue:
-        raise HTTPException(
-            status_code=404,
-            detail="Revenue not found for this creator",
-        )
-
-    db.delete(revenue)
-    db.commit()
-
-    return {
-        "message": "Revenue deleted successfully",
-        "revenue_id": revenue_id,
-    }
-
-
 # ============================================================
 # SPONSORSHIP CRUD
+# IMPORTANT: These routes MUST come before /{revenue_id}
 # ============================================================
 
 @router.post(
@@ -236,7 +146,10 @@ def get_sponsorships(
     return (
         db.query(Sponsorship)
         .filter(Sponsorship.creator_id == creator_id)
-        .order_by(Sponsorship.start_date.desc(), Sponsorship.id.desc())
+        .order_by(
+            Sponsorship.start_date.desc(),
+            Sponsorship.id.desc(),
+        )
         .all()
     )
 
@@ -331,4 +244,102 @@ def delete_sponsorship(
     return {
         "message": "Sponsorship deleted successfully",
         "sponsorship_id": sponsorship_id,
+    }
+
+
+# ============================================================
+# REVENUE BY ID
+# IMPORTANT: Keep this AFTER /sponsorships routes
+# ============================================================
+
+@router.get(
+    "/{revenue_id}",
+    response_model=RevenueResponse,
+)
+def get_revenue_by_id(
+    revenue_id: int,
+    creator_id: int = Query(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    revenue = (
+        db.query(Revenue)
+        .filter(
+            Revenue.id == revenue_id,
+            Revenue.creator_id == creator_id,
+        )
+        .first()
+    )
+
+    if not revenue:
+        raise HTTPException(
+            status_code=404,
+            detail="Revenue not found for this creator",
+        )
+
+    return revenue
+
+
+@router.put(
+    "/{revenue_id}",
+    response_model=RevenueResponse,
+)
+def update_revenue(
+    revenue_id: int,
+    data: RevenueUpdate,
+    creator_id: int = Query(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    revenue = (
+        db.query(Revenue)
+        .filter(
+            Revenue.id == revenue_id,
+            Revenue.creator_id == creator_id,
+        )
+        .first()
+    )
+
+    if not revenue:
+        raise HTTPException(
+            status_code=404,
+            detail="Revenue not found for this creator",
+        )
+
+    updates = data.model_dump(exclude_unset=True)
+
+    for key, value in updates.items():
+        setattr(revenue, key, value)
+
+    db.commit()
+    db.refresh(revenue)
+
+    return revenue
+
+
+@router.delete("/{revenue_id}")
+def delete_revenue(
+    revenue_id: int,
+    creator_id: int = Query(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    revenue = (
+        db.query(Revenue)
+        .filter(
+            Revenue.id == revenue_id,
+            Revenue.creator_id == creator_id,
+        )
+        .first()
+    )
+
+    if not revenue:
+        raise HTTPException(
+            status_code=404,
+            detail="Revenue not found for this creator",
+        )
+
+    db.delete(revenue)
+    db.commit()
+
+    return {
+        "message": "Revenue deleted successfully",
+        "revenue_id": revenue_id,
     }
