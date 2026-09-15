@@ -13,7 +13,6 @@ import Sponsorships from "./pages/Sponsorships";
 import Notifications from "./pages/Notifications";
 import Reports from "./pages/Reports";
 import Profile from "./pages/Profile";
-import ApiDocs from "./pages/ApiDocs";
 
 function AppLayout() {
   return (
@@ -35,7 +34,6 @@ function AppLayout() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/profile" element={<Profile />} />
-            <Route path="/api-docs" element={<ApiDocs />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </div>

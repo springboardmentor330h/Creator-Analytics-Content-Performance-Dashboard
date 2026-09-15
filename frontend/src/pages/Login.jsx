@@ -21,8 +21,8 @@ function Login() {
       setLoading(true);
       setError("");
       await loginUser(email, password);
-      // Navigate directly to Swagger API docs in frontend as requested
-      navigate("/api-docs");
+      // Navigate to dashboard
+      navigate("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setError(err?.response?.data?.detail || "Invalid login credentials. Please try again.");
@@ -105,7 +105,7 @@ function Login() {
               </>
             ) : (
               <>
-                <span>Sign In & Open Swagger API</span>
+                <span>Sign In to Dashboard</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

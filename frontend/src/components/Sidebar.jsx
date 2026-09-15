@@ -10,7 +10,6 @@ import {
   FileText,
   User,
   Sparkles,
-  Code2,
   ChevronRight,
   ShieldCheck,
 } from "lucide-react";
@@ -32,7 +31,6 @@ function Sidebar() {
   const systemMenu = [
     { name: "Alerts & Feeds", path: "/notifications", icon: Bell },
     { name: "Creator Profile", path: "/profile", icon: User },
-    { name: "API Documentation", path: "/api-docs", icon: Code2, isApi: true },
   ];
 
   return (

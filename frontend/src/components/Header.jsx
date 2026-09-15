@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, User, LogOut, CheckCircle2, Code2, Sparkles } from "lucide-react";
+import { Bell, User, LogOut, CheckCircle2, Sparkles } from "lucide-react";
 import { getNotifications, logoutUser } from "../services/api";
 
 function Header() {
@@ -51,15 +51,6 @@ function Header() {
           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
           <span>6 Channels Connected</span>
         </div>
-
-        {/* Swagger API Button */}
-        <Link
-          to="/api-docs"
-          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50/80 border border-indigo-200/80 hover:bg-indigo-100 hover:border-indigo-300 transition-all shadow-2xs"
-        >
-          <Code2 className="w-3.5 h-3.5" />
-          <span>Swagger API</span>
-        </Link>
 
         {/* Notifications Button */}
         <Link
