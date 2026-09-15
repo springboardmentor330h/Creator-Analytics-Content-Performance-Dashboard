@@ -1,11 +1,15 @@
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
+
 class SocialConnect(BaseModel):
-    creator_id: int = Field(1, ge=1)
-    platform: str
-    account_name: str
+    creator_id: UUID
+    platform: str = Field(..., min_length=1)
+    account_name: str = Field(..., min_length=1)
+
 
 class YoutubeSyncRequest(BaseModel):
-    creator_id: int = Field(1, ge=1)
-    channel_id: str | None = None
-    max_results: int = Field(10, ge=1, le=50)
+    creator_id: UUID
+    channel_id: str = Field(..., min_length=1)
+    max_results: int = Field(default=10, ge=1, le=50)
