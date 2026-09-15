@@ -20,4 +20,4 @@ class Content(Base):
     watch_time = Column(Integer, default=0, nullable=False)
     reach = Column(Integer, default=0, nullable=False)
 
-    published_date = Column(Date, nullable=False)
+    published_date = Column(Date, nullable=False) 

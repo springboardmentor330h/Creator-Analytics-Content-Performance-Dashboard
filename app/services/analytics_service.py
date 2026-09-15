@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException
 
 from app.models.content import Content
+from app.models.growth import Growth
 
 
 # =========================================================
@@ -9,11 +10,18 @@ from app.models.content import Content
 # Content Engagement
 # =========================================================
 
-def get_content_engagement(db: Session, content_id: int):
+def get_content_engagement(
+    db: Session,
+    content_id: int,
+    creator_id: int
+):
 
     content = (
         db.query(Content)
-        .filter(Content.id == content_id)
+        .filter(
+            Content.id == content_id,
+            Content.creator_id == creator_id
+        )
         .first()
     )
 
@@ -51,9 +59,16 @@ def get_content_engagement(db: Session, content_id: int):
 # Top 5 Performing Content
 # =========================================================
 
-def get_top_performing_content(db: Session):
+def get_top_performing_content(
+    db: Session,
+    creator_id: int
+):
 
-    contents = db.query(Content).all()
+    contents = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .all()
+    )
 
     results = []
 
@@ -97,9 +112,16 @@ def get_top_performing_content(db: Session):
 # Platform Performance Comparison
 # =========================================================
 
-def get_platform_performance(db: Session):
+def get_platform_performance(
+    db: Session,
+    creator_id: int
+):
 
-    contents = db.query(Content).all()
+    contents = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .all()
+    )
 
     platform_data = {}
 
@@ -185,9 +207,23 @@ def get_platform_performance(db: Session):
 # Dashboard Summary
 # =========================================================
 
-def get_dashboard_summary(db: Session):
+def get_dashboard_summary(
+    db: Session,
+    creator_id: int,
+    platform: str = None
+):
 
-    contents = db.query(Content).all()
+    query = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+    )
+
+    if platform:
+        query = query.filter(
+            Content.platform == platform
+        )
+
+    contents = query.all()
 
     if not contents:
 
@@ -242,17 +278,17 @@ def get_dashboard_summary(db: Session):
             )
         })
 
-        platform = content.platform
+        platform_name = content.platform
 
-        if platform not in platform_data:
+        if platform_name not in platform_data:
 
-            platform_data[platform] = {
+            platform_data[platform_name] = {
                 "engagement_rates": []
             }
 
-        platform_data[platform][
-            "engagement_rates"
-        ].append(
+        platform_data[
+            platform_name
+        ]["engagement_rates"].append(
             engagement_rate
         )
 
@@ -266,7 +302,7 @@ def get_dashboard_summary(db: Session):
     best_platform = None
     best_platform_rate = -1
 
-    for platform, data in platform_data.items():
+    for platform_name, data in platform_data.items():
 
         platform_average = (
             sum(data["engagement_rates"])
@@ -278,7 +314,7 @@ def get_dashboard_summary(db: Session):
         if platform_average > best_platform_rate:
 
             best_platform_rate = platform_average
-            best_platform = platform
+            best_platform = platform_name
 
     content_results.sort(
         key=lambda x: x["total_engagement"],
@@ -310,9 +346,16 @@ def get_dashboard_summary(db: Session):
 # KPI Summary
 # =========================================================
 
-def get_kpi_summary(db: Session):
+def get_kpi_summary(
+    db: Session,
+    creator_id: int
+):
 
-    contents = db.query(Content).all()
+    contents = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .all()
+    )
 
     if not contents:
 
@@ -393,16 +436,29 @@ def get_kpi_summary(db: Session):
 # Engagement Chart
 # =========================================================
 
-def get_engagement_chart(db: Session):
+def get_engagement_chart(
+    db: Session,
+    creator_id: int,
+    platform: str = None
+):
+
+    query = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+    )
+
+    if platform:
+        query = query.filter(
+            Content.platform == platform
+        )
 
     contents = (
-        db.query(Content)
+        query
         .order_by(Content.published_date)
         .all()
     )
 
-    labels = []
-    values = []
+    date_data = {}
 
     for content in contents:
 
@@ -419,9 +475,43 @@ def get_engagement_chart(db: Session):
             else 0
         )
 
-        labels.append(
-            str(content.published_date)
+        date = str(content.published_date)
+
+        if date not in date_data:
+
+            date_data[date] = {
+                "total_engagement": 0,
+                "total_reach": 0
+            }
+
+        date_data[date]["total_engagement"] += (
+            total_engagement
         )
+
+        date_data[date]["total_reach"] += (
+            content.reach
+        )
+
+    labels = []
+    values = []
+
+    for date in sorted(date_data.keys()):
+
+        total_engagement = date_data[date][
+            "total_engagement"
+        ]
+
+        total_reach = date_data[date][
+            "total_reach"
+        ]
+
+        engagement_rate = (
+            (total_engagement / total_reach) * 100
+            if total_reach > 0
+            else 0
+        )
+
+        labels.append(date)
 
         values.append(
             round(engagement_rate, 2)
@@ -438,14 +528,34 @@ def get_engagement_chart(db: Session):
 # Follower Growth Chart
 # =========================================================
 
-def get_follower_growth_chart(db: Session):
+def get_follower_growth_chart(
+    db: Session,
+    creator_id: int
+):
 
-    # Follower data will be connected with Growth model
-    # after confirming the Sprint 3 Growth model structure.
+    growth_data = (
+        db.query(Growth)
+        .filter(Growth.creator_id == creator_id)
+        .order_by(Growth.date)
+        .all()
+    )
+
+    labels = []
+    values = []
+
+    for growth in growth_data:
+
+        labels.append(
+            str(growth.date)
+        )
+
+        values.append(
+            growth.followers
+        )
 
     return {
-        "labels": [],
-        "values": []
+        "labels": labels,
+        "values": values
     }
 
 
@@ -454,9 +564,16 @@ def get_follower_growth_chart(db: Session):
 # Platform Comparison
 # =========================================================
 
-def get_platform_comparison(db: Session):
+def get_platform_comparison(
+    db: Session,
+    creator_id: int
+):
 
-    contents = db.query(Content).all()
+    contents = (
+        db.query(Content)
+        .filter(Content.creator_id == creator_id)
+        .all()
+    )
 
     platform_data = {}
 

@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from datetime import date, timedelta
 
 from app.models.audience import Audience
 from app.models.growth import Growth
@@ -39,8 +38,15 @@ def create_audience(
 # GET ALL AUDIENCE RECORDS
 # =========================================================
 
-def get_all_audience(db: Session):
-    return db.query(Audience).all()
+def get_all_audience(
+    db: Session,
+    creator_id: int
+):
+    return (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
 
 # =========================================================
@@ -49,11 +55,15 @@ def get_all_audience(db: Session):
 
 def get_audience_by_id(
     db: Session,
-    audience_id: int
+    audience_id: int,
+    creator_id: int
 ):
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -73,11 +83,15 @@ def get_audience_by_id(
 def update_audience(
     db: Session,
     audience_id: int,
-    audience_data: AudienceUpdate
+    audience_data: AudienceUpdate,
+    creator_id: int
 ):
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -90,6 +104,8 @@ def update_audience(
     update_data = audience_data.model_dump(
         exclude_unset=True
     )
+
+    update_data.pop("creator_id", None)
 
     for field, value in update_data.items():
         setattr(audience, field, value)
@@ -106,11 +122,15 @@ def update_audience(
 
 def delete_audience(
     db: Session,
-    audience_id: int
+    audience_id: int,
+    creator_id: int
 ):
     audience = (
         db.query(Audience)
-        .filter(Audience.id == audience_id)
+        .filter(
+            Audience.id == audience_id,
+            Audience.creator_id == creator_id
+        )
         .first()
     )
 
@@ -132,9 +152,13 @@ def delete_audience(
 # TOTAL FOLLOWERS
 # =========================================================
 
-def get_total_followers(db: Session):
+def get_total_followers(
+    db: Session,
+    creator_id: int
+):
     return (
         db.query(Audience.followers)
+        .filter(Audience.creator_id == creator_id)
         .all()
     )
 
@@ -143,9 +167,13 @@ def get_total_followers(db: Session):
 # TOTAL REACH
 # =========================================================
 
-def get_total_reach(db: Session):
+def get_total_reach(
+    db: Session,
+    creator_id: int
+):
     return (
         db.query(Audience.reach)
+        .filter(Audience.creator_id == creator_id)
         .all()
     )
 
@@ -154,9 +182,13 @@ def get_total_reach(db: Session):
 # TOTAL IMPRESSIONS
 # =========================================================
 
-def get_total_impressions(db: Session):
+def get_total_impressions(
+    db: Session,
+    creator_id: int
+):
     return (
         db.query(Audience.impressions)
+        .filter(Audience.creator_id == creator_id)
         .all()
     )
 
@@ -165,8 +197,15 @@ def get_total_impressions(db: Session):
 # GENDER DISTRIBUTION
 # =========================================================
 
-def get_gender_distribution(db: Session):
-    audience_records = db.query(Audience).all()
+def get_gender_distribution(
+    db: Session,
+    creator_id: int
+):
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     total = len(audience_records)
 
@@ -195,8 +234,15 @@ def get_gender_distribution(db: Session):
 # AGE DISTRIBUTION
 # =========================================================
 
-def get_age_distribution(db: Session):
-    audience_records = db.query(Audience).all()
+def get_age_distribution(
+    db: Session,
+    creator_id: int
+):
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     total = len(audience_records)
 
@@ -227,9 +273,14 @@ def get_age_distribution(db: Session):
 
 def get_top_countries(
     db: Session,
+    creator_id: int,
     limit: int = 5
 ):
-    audience_records = db.query(Audience).all()
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     countries = {}
 
@@ -261,9 +312,14 @@ def get_top_countries(
 
 def get_top_cities(
     db: Session,
+    creator_id: int,
     limit: int = 5
 ):
-    audience_records = db.query(Audience).all()
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     cities = {}
 
@@ -293,8 +349,15 @@ def get_top_cities(
 # DEVICE DISTRIBUTION
 # =========================================================
 
-def get_device_distribution(db: Session):
-    audience_records = db.query(Audience).all()
+def get_device_distribution(
+    db: Session,
+    creator_id: int
+):
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     total = len(audience_records)
 
@@ -323,9 +386,15 @@ def get_device_distribution(db: Session):
 # AUDIENCE ANALYTICS REPORT
 # =========================================================
 
-def get_audience_analytics(db: Session):
-
-    audience_records = db.query(Audience).all()
+def get_audience_analytics(
+    db: Session,
+    creator_id: int
+):
+    audience_records = (
+        db.query(Audience)
+        .filter(Audience.creator_id == creator_id)
+        .all()
+    )
 
     total_followers = sum(
         record.followers
@@ -342,15 +411,25 @@ def get_audience_analytics(db: Session):
         for record in audience_records
     )
 
-    gender_distribution = get_gender_distribution(db)
+    gender_distribution = get_gender_distribution(
+        db, creator_id
+    )
 
-    age_distribution = get_age_distribution(db)
+    age_distribution = get_age_distribution(
+        db, creator_id
+    )
 
-    top_countries = get_top_countries(db)
+    top_countries = get_top_countries(
+        db, creator_id
+    )
 
-    top_cities = get_top_cities(db)
+    top_cities = get_top_cities(
+        db, creator_id
+    )
 
-    device_distribution = get_device_distribution(db)
+    device_distribution = get_device_distribution(
+        db, creator_id
+    )
 
     top_country = (
         top_countries[0]["country"]
@@ -391,10 +470,13 @@ def get_audience_analytics(db: Session):
 # GROWTH TREND
 # =========================================================
 
-def get_growth_trend(db: Session):
-
+def get_growth_trend(
+    db: Session,
+    creator_id: int
+):
     records = (
         db.query(Growth)
+        .filter(Growth.creator_id == creator_id)
         .order_by(Growth.date.asc())
         .all()
     )
@@ -439,10 +521,13 @@ def get_growth_trend(db: Session):
 # AUDIENCE TRENDS
 # =========================================================
 
-def get_audience_trends(db: Session):
-
+def get_audience_trends(
+    db: Session,
+    creator_id: int
+):
     records = (
         db.query(Growth)
+        .filter(Growth.creator_id == creator_id)
         .order_by(Growth.date.asc())
         .all()
     )

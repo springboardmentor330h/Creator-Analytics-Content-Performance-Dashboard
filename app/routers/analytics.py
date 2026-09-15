@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
+from app.models.user import User
+from app.routers.auth import get_current_user
 
 from app.services.analytics_service import (
     get_content_engagement,
@@ -22,110 +24,126 @@ router = APIRouter(
 
 
 # =========================================================
-# SPRINT 2 - TASK 1
+# Content Engagement
 # =========================================================
 
 @router.get("/content/{id}/engagement")
 def content_engagement(
     id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_content_engagement(
         db,
-        id
+        id,
+        current_user.id
     )
 
 
 # =========================================================
-# SPRINT 2 - TASK 2
+# Top Performing Content
 # =========================================================
 
 @router.get("/top-content")
 def top_performing_content(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_top_performing_content(
-        db
+        db,
+        current_user.id
     )
 
 
 # =========================================================
-# SPRINT 2 - TASK 3
+# Platform Performance
 # =========================================================
 
 @router.get("/platform-performance")
 def platform_performance(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_platform_performance(
-        db
+        db,
+        current_user.id
     )
 
 
 # =========================================================
-# SPRINT 2 - TASK 4
+# Dashboard Summary
 # =========================================================
 
 @router.get("/dashboard-summary")
 def dashboard_summary(
-    db: Session = Depends(get_db)
+    platform: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_dashboard_summary(
-        db
+        db,
+        current_user.id,
+        platform
     )
 
 
 # =========================================================
-# SPRINT 4 - TASK 1
-# KPI SUMMARY
+# KPI Summary
 # =========================================================
 
 @router.get("/summary")
 def kpi_summary(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_kpi_summary(
-        db
+        db,
+        current_user.id
     )
 
 
 # =========================================================
-# SPRINT 4 - TASK 2
-# ENGAGEMENT CHART
+# Engagement Chart
 # =========================================================
 
 @router.get("/chart/engagement")
 def engagement_chart(
-    db: Session = Depends(get_db)
+    platform: str = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_engagement_chart(
-        db
+        db,
+        current_user.id,
+        platform
     )
 
 
 # =========================================================
-# SPRINT 4 - TASK 3
-# FOLLOWER GROWTH CHART
+# Follower Growth Chart
 # =========================================================
 
 @router.get("/chart/followers")
 def follower_growth_chart(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_follower_growth_chart(
-        db
+        db,
+        current_user.id
     )
 
 
 # =========================================================
-# SPRINT 4 - TASK 4
-# PLATFORM COMPARISON
+# Platform Comparison
 # =========================================================
 
 @router.get("/platform-comparison")
 def platform_comparison(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     return get_platform_comparison(
-        db
+        db,
+        current_user.id
     )

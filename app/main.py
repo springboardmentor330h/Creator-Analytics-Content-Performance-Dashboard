@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.db.database import engine, Base
 
@@ -30,6 +31,7 @@ from app.routers.revenue import router as revenue_router
 from app.routers.notification import router as notification_router
 from app.routers.report import router as report_router
 
+
 # =========================================================
 # Create database tables
 # =========================================================
@@ -47,6 +49,22 @@ app = FastAPI(
 
 
 # =========================================================
+# CORS Configuration
+# =========================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# =========================================================
 # Include routers
 # =========================================================
 
@@ -59,6 +77,8 @@ app.include_router(social_router)
 app.include_router(revenue_router)
 app.include_router(notification_router)
 app.include_router(report_router)
+
+
 # =========================================================
 # Root endpoint
 # =========================================================

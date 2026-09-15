@@ -1,7 +1,3 @@
-# app/routers/social.py
-
-from datetime import date
-
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -24,7 +20,7 @@ router = APIRouter(
 
 
 # =========================================================
-# TASK 6 - PLATFORM CONNECTION
+# PLATFORM CONNECTION
 # =========================================================
 
 class SocialConnectRequest(BaseModel):
@@ -32,7 +28,7 @@ class SocialConnectRequest(BaseModel):
     account_name: str
 
 
-# Temporary runtime list for simulated connection workflow
+# Runtime list for connection status
 connected_platforms = []
 
 
@@ -40,7 +36,10 @@ connected_platforms = []
 def connect_platform(
     request: SocialConnectRequest
 ):
-    # Check whether platform is supported
+    """
+    Connect a supported social-media platform.
+    """
+
     available_platforms = get_available_platforms()
 
     if request.platform not in available_platforms:
@@ -49,18 +48,20 @@ def connect_platform(
             detail="Unsupported platform"
         )
 
-    # Check whether already connected
     for platform in connected_platforms:
+
         if platform["platform"] == request.platform:
+
             return {
                 "message": f"{request.platform} account already connected"
             }
 
-    # Simulated connection
-    connected_platforms.append({
-        "platform": request.platform,
-        "account_name": request.account_name
-    })
+    connected_platforms.append(
+        {
+            "platform": request.platform,
+            "account_name": request.account_name
+        }
+    )
 
     return {
         "message": f"{request.platform} account connected successfully"
@@ -68,7 +69,7 @@ def connect_platform(
 
 
 # =========================================================
-# TASK 7 - CONNECTED PLATFORMS
+# CONNECTED PLATFORMS
 # =========================================================
 
 @router.get("/platforms")
@@ -76,19 +77,17 @@ def get_connected_platforms(
     db: Session = Depends(get_db)
 ):
     """
-    Return connected platforms.
-
-    Platforms that have already been synchronized are
-    also considered connected based on PostgreSQL data.
+    Return platforms available in the system
+    and platforms already stored in PostgreSQL.
     """
 
     platforms = set()
 
-    # 1. Runtime simulated connections
+    # Runtime connections
     for platform in connected_platforms:
         platforms.add(platform["platform"])
 
-    # 2. Platforms already stored in PostgreSQL
+    # PostgreSQL platforms
     database_platforms = (
         db.query(Content.platform)
         .distinct()
@@ -96,6 +95,7 @@ def get_connected_platforms(
     )
 
     for platform in database_platforms:
+
         if platform[0]:
             platforms.add(platform[0])
 
@@ -105,7 +105,7 @@ def get_connected_platforms(
 
 
 # =========================================================
-# TASK 8 - EXISTING MOCK SYNCHRONIZATION
+# PLATFORM SYNCHRONIZATION
 # =========================================================
 
 class SocialSyncRequest(BaseModel):
@@ -118,6 +118,16 @@ def sync_platform(
     request: SocialSyncRequest,
     db: Session = Depends(get_db)
 ):
+    """
+    Synchronize platform data from PostgreSQL.
+
+    For manually added platforms such as Instagram,
+    data is already stored in PostgreSQL.
+
+    This endpoint validates and returns the existing
+    platform records without creating duplicate rows.
+    """
+
     # -----------------------------------------------------
     # 1. Validate platform
     # -----------------------------------------------------
@@ -125,77 +135,75 @@ def sync_platform(
     available_platforms = get_available_platforms()
 
     if request.platform not in available_platforms:
+
         raise HTTPException(
             status_code=400,
             detail="Unsupported platform"
         )
 
     # -----------------------------------------------------
-    # 2. Get mock platform data
+    # 2. Validate creator ID
     # -----------------------------------------------------
 
-    platform_data = get_platform_data(
-        request.platform
-    )
+    if request.creator_id <= 0:
 
-    if not platform_data:
         raise HTTPException(
-            status_code=404,
-            detail="No data available for this platform"
+            status_code=400,
+            detail="creator_id must be greater than 0"
         )
 
     # -----------------------------------------------------
-    # 3. Process and store data
+    # 3. Get platform data from PostgreSQL
+    # -----------------------------------------------------
+
+    platform_data = get_platform_data(
+        db,
+        request.platform,
+        request.creator_id
+    )
+
+    # -----------------------------------------------------
+    # 4. Check whether data exists
+    # -----------------------------------------------------
+
+    if not platform_data:
+
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"No data available for {request.platform} "
+                f"for creator {request.creator_id}"
+            )
+        )
+
+    # -----------------------------------------------------
+    # 5. Prepare response
     # -----------------------------------------------------
 
     synchronized_records = []
 
     for item in platform_data:
 
-        new_content = Content(
-            creator_id=request.creator_id,
-            platform=item["platform"],
-            external_content_id=None,
-            content_title=item["content_title"],
-            views=item["views"],
-            likes=item["likes"],
-            comments=item["comments"],
-            shares=item["shares"],
-            saves=0,
-            watch_time=0,
-            reach=item["reach"],
-            published_date=date.today()
-        )
-
-        db.add(new_content)
-
-        synchronized_records.append({
-            "platform": item["platform"],
-            "content_title": item["content_title"],
-            "views": item["views"],
-            "likes": item["likes"],
-            "comments": item["comments"],
-            "shares": item["shares"],
-            "reach": item["reach"]
-        })
-
-    # -----------------------------------------------------
-    # 4. Save synchronized data to PostgreSQL
-    # -----------------------------------------------------
-
-    try:
-        db.commit()
-
-    except Exception:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to synchronize data"
+        synchronized_records.append(
+            {
+                "platform": item["platform"],
+                "external_content_id": item[
+                    "external_content_id"
+                ],
+                "content_title": item["content_title"],
+                "views": item["views"],
+                "likes": item["likes"],
+                "comments": item["comments"],
+                "shares": item["shares"],
+                "saves": item["saves"],
+                "watch_time": item["watch_time"],
+                "reach": item["reach"],
+                "published_date": item["published_date"]
+            }
         )
 
     # -----------------------------------------------------
-    # 5. Mark platform as connected
+    # 6. Mark platform as connected
     # -----------------------------------------------------
 
     already_connected = any(
@@ -204,17 +212,22 @@ def sync_platform(
     )
 
     if not already_connected:
-        connected_platforms.append({
-            "platform": request.platform,
-            "account_name": "Synchronized Account"
-        })
+
+        connected_platforms.append(
+            {
+                "platform": request.platform,
+                "account_name": "PostgreSQL Data"
+            }
+        )
 
     # -----------------------------------------------------
-    # 6. Return synchronization result
+    # 7. Return result
     # -----------------------------------------------------
 
     return {
-        "message": f"{request.platform} data synchronized successfully",
+        "message": (
+            f"{request.platform} data synchronized successfully"
+        ),
         "platform": request.platform,
         "records_synchronized": len(
             synchronized_records
@@ -224,8 +237,7 @@ def sync_platform(
 
 
 # =========================================================
-# SPRINT 5 - TASK 5
-# YOUTUBE SYNCHRONIZATION API
+# YOUTUBE SYNCHRONIZATION
 # =========================================================
 
 class YouTubeSyncRequest(BaseModel):
@@ -239,31 +251,45 @@ def sync_youtube(
     db: Session = Depends(get_db)
 ):
     """
-    Fetch YouTube data, transform it into CreatorIQ format,
-    validate it, and create/update PostgreSQL records.
+    Fetch YouTube data from YouTube API,
+    transform it into CreatorIQ format,
+    and create/update PostgreSQL records.
     """
 
     # -----------------------------------------------------
-    # 1. Validate request
+    # 1. Validate creator ID
     # -----------------------------------------------------
 
     if request.creator_id <= 0:
+
         raise HTTPException(
             status_code=400,
             detail="creator_id must be greater than 0"
         )
 
+    # -----------------------------------------------------
+    # 2. Validate video IDs
+    # -----------------------------------------------------
+
     if not request.video_ids:
+
         raise HTTPException(
             status_code=400,
-            detail="At least one YouTube video ID is required"
+            detail=(
+                "At least one YouTube video ID is required"
+            )
         )
 
-    # Remove duplicate video IDs from the request itself
-    video_ids = list(dict.fromkeys(request.video_ids))
+    # -----------------------------------------------------
+    # 3. Remove duplicate video IDs
+    # -----------------------------------------------------
+
+    video_ids = list(
+        dict.fromkeys(request.video_ids)
+    )
 
     # -----------------------------------------------------
-    # 2. Fetch data from YouTube API
+    # 4. Fetch YouTube API data
     # -----------------------------------------------------
 
     try:
@@ -283,21 +309,25 @@ def sync_youtube(
 
         raise HTTPException(
             status_code=500,
-            detail="Unexpected error while fetching YouTube data"
+            detail=(
+                "Unexpected error while fetching "
+                "YouTube data"
+            )
         )
 
     # -----------------------------------------------------
-    # 3. Handle empty API response
+    # 5. Handle empty response
     # -----------------------------------------------------
 
     if not youtube_data:
+
         raise HTTPException(
             status_code=404,
             detail="No YouTube video data found"
         )
 
     # -----------------------------------------------------
-    # 4. Counters
+    # 6. Counters
     # -----------------------------------------------------
 
     records_synced = 0
@@ -305,14 +335,10 @@ def sync_youtube(
     updated_records = 0
 
     # -----------------------------------------------------
-    # 5. Process each YouTube record
+    # 7. Process each YouTube record
     # -----------------------------------------------------
 
     for item in youtube_data:
-
-        # -------------------------------------------------
-        # Validate required fields
-        # -------------------------------------------------
 
         external_id = item.get(
             "external_content_id"
@@ -326,6 +352,10 @@ def sync_youtube(
             "published_date"
         )
 
+        # -------------------------------------------------
+        # Validate required fields
+        # -------------------------------------------------
+
         if not external_id:
             continue
 
@@ -333,16 +363,17 @@ def sync_youtube(
             continue
 
         if not published_date:
+
             raise HTTPException(
                 status_code=422,
-                detail=f"Published date missing for video {external_id}"
+                detail=(
+                    "Published date missing for video "
+                    f"{external_id}"
+                )
             )
 
         # -------------------------------------------------
-        # Check duplicate
-        #
-        # Unique combination:
-        # creator_id + platform + external_content_id
+        # Check existing YouTube record
         # -------------------------------------------------
 
         existing_content = (
@@ -356,7 +387,7 @@ def sync_youtube(
         )
 
         # -------------------------------------------------
-        # 6. UPDATE existing record
+        # UPDATE existing record
         # -------------------------------------------------
 
         if existing_content:
@@ -364,31 +395,38 @@ def sync_youtube(
             existing_content.content_title = content_title
 
             existing_content.views = item.get(
-                "views", 0
+                "views",
+                0
             )
 
             existing_content.likes = item.get(
-                "likes", 0
+                "likes",
+                0
             )
 
             existing_content.comments = item.get(
-                "comments", 0
+                "comments",
+                0
             )
 
             existing_content.shares = item.get(
-                "shares", 0
+                "shares",
+                0
             )
 
             existing_content.reach = item.get(
-                "reach", 0
+                "reach",
+                0
             )
 
-            existing_content.published_date = published_date
+            existing_content.published_date = (
+                published_date
+            )
 
             updated_records += 1
 
         # -------------------------------------------------
-        # 7. CREATE new record
+        # CREATE new record
         # -------------------------------------------------
 
         else:
@@ -400,26 +438,32 @@ def sync_youtube(
                 content_title=content_title,
 
                 views=item.get(
-                    "views", 0
+                    "views",
+                    0
                 ),
 
                 likes=item.get(
-                    "likes", 0
+                    "likes",
+                    0
                 ),
 
                 comments=item.get(
-                    "comments", 0
+                    "comments",
+                    0
                 ),
 
                 shares=item.get(
-                    "shares", 0
+                    "shares",
+                    0
                 ),
 
                 saves=0,
+
                 watch_time=0,
 
                 reach=item.get(
-                    "reach", 0
+                    "reach",
+                    0
                 ),
 
                 published_date=published_date
@@ -432,7 +476,7 @@ def sync_youtube(
         records_synced += 1
 
     # -----------------------------------------------------
-    # 8. Save changes to PostgreSQL
+    # 8. Save changes
     # -----------------------------------------------------
 
     try:
@@ -445,7 +489,10 @@ def sync_youtube(
 
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to save YouTube data: {str(exc)}"
+            detail=(
+                "Failed to save YouTube data: "
+                f"{str(exc)}"
+            )
         )
 
     # -----------------------------------------------------
@@ -459,10 +506,12 @@ def sync_youtube(
 
     if not already_connected:
 
-        connected_platforms.append({
-            "platform": "YouTube",
-            "account_name": "YouTube API"
-        })
+        connected_platforms.append(
+            {
+                "platform": "YouTube",
+                "account_name": "YouTube API"
+            }
+        )
 
     # -----------------------------------------------------
     # 10. Return synchronization result
