@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine
-from app.routers import dashboard, users
+from app.routers import dashboard
+from app.routers.users import router as roles_router, users_router
+from app.routers.auth import router as auth_router
 from app.routers.audience import router as audience_router
 from app.routers.content import router as content_router
 from app.routers.social import router as social_router
@@ -29,7 +31,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(users.router)
+app.include_router(roles_router)
+app.include_router(users_router)
+app.include_router(auth_router)
 app.include_router(dashboard.router)
 app.include_router(user_practice_router)
 app.include_router(audience_router)

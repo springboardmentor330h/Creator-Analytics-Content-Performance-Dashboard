@@ -1,9 +1,30 @@
+import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import KPICard from "../components/KPICard";
+import DataTable from "../components/DataTable";
+import PageState from "../components/PageState";
 import { useAuth } from "../context/AuthContext";
+import { getSponsorships } from "../api/sponsorship";
 
-export default function ProfileSettings() {
-  const { user, logout } = useAuth();
+export default function Sponsorships() {
+  const { user } = useAuth();
+  const [sponsorships, setSponsorships] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!user?.creator_id) return;
+
+    getSponsorships(user.creator_id)
+      .then(setSponsorships)
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  const totalValue = sponsorships.reduce((sum, s) => sum + (s.contract_value || 0), 0);
+  const activeCount = sponsorships.filter((s) => s.status === "active").length;
+  const paidCount = sponsorships.filter((s) => s.payment_status === "paid").length;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -11,36 +32,32 @@ export default function ProfileSettings() {
       <div className="flex-1 overflow-y-auto">
         <Navbar />
         <main className="space-y-6 p-6">
-          <h1 className="text-2xl font-semibold">Profile & Settings</h1>
+          <h1 className="text-2xl font-semibold">Sponsorships</h1>
 
-          <div className="max-w-lg rounded-xl bg-white p-6 shadow">
-            <h2 className="mb-4 text-lg font-semibold">Account Details</h2>
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between border-b pb-2">
-                <dt className="text-gray-500">Full Name</dt>
-                <dd className="font-medium">{user?.full_name ?? "—"}</dd>
+          <PageState loading={loading} error={error}>
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <KPICard label="Total Deals" value={sponsorships.length} />
+                <KPICard label="Total Contract Value" value={totalValue} suffix=" USD" />
+                <KPICard label="Active Deals" value={activeCount} />
+                <KPICard label="Paid Deals" value={paidCount} />
               </div>
-              <div className="flex justify-between border-b pb-2">
-                <dt className="text-gray-500">Role</dt>
-                <dd className="font-medium capitalize">{user?.role ?? "—"}</dd>
-              </div>
-              <div className="flex justify-between border-b pb-2">
-                <dt className="text-gray-500">Account Status</dt>
-                <dd className="font-medium">{user?.is_active ? "Active" : "Inactive"}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">User ID</dt>
-                <dd className="font-mono text-xs text-gray-400">{user?.id ?? "—"}</dd>
-              </div>
-            </dl>
-          </div>
 
-          <button
-            onClick={logout}
-            className="rounded bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
-          >
-            Log Out
-          </button>
+              <DataTable
+                title="Sponsorship Deals"
+                columns={[
+                  { key: "brand_name", label: "Brand" },
+                  { key: "campaign_name", label: "Campaign" },
+                  { key: "contract_value", label: "Value (USD)" },
+                  { key: "start_date", label: "Start Date" },
+                  { key: "end_date", label: "End Date" },
+                  { key: "status", label: "Status" },
+                  { key: "payment_status", label: "Payment" },
+                ]}
+                rows={sponsorships}
+              />
+            </>
+          </PageState>
         </main>
       </div>
     </div>

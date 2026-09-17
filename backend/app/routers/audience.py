@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -73,21 +73,22 @@ def delete_audience(audience_id: int, db: Session = Depends(get_db)):
 # ---------- Analytics ----------
 
 @router.get("/analytics/audience")
-def audience_analytics_report(db: Session = Depends(get_db)):
+def audience_analytics_report(creator_id: Optional[int] = None, db: Session = Depends(get_db)):
     """
     Returns total followers/reach/impressions, gender and age distribution,
     and top country/city/device — all computed in audience_service.
+    Pass creator_id to scope results to one creator; omit for all creators.
     """
-    return audience_service.get_audience_report(db)
+    return audience_service.get_audience_report(db, creator_id=creator_id)
 
 
 @router.get("/analytics/growth")
-def growth_analytics_report(db: Session = Depends(get_db)):
+def growth_analytics_report(creator_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Returns up to 30 days of growth history with daily growth and growth %."""
-    return audience_service.get_growth_report(db)
+    return audience_service.get_growth_report(db, creator_id=creator_id)
 
 
 @router.get("/analytics/audience-trends")
-def audience_trends(db: Session = Depends(get_db)):
+def audience_trends(creator_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Returns chart-ready date/followers/reach series."""
-    return audience_service.get_audience_trends(db)
+    return audience_service.get_audience_trends(db, creator_id=creator_id)

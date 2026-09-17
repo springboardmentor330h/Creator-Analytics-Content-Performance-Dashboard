@@ -23,11 +23,11 @@ def generate_creator_report(db: Session, creator_id: int) -> Dict[str, Any]:
     return {
         "creator_id": creator_id,
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "content_performance": analytics_service.get_dashboard_summary(db),
-        "top_content": analytics_service.get_top_content(db, limit=5),
-        "platform_comparison": analytics_service.get_platform_comparison(db),
-        "audience_analytics": audience_service.get_audience_report(db),
-        "growth_trends": audience_service.get_growth_report(db),
-        "revenue_analytics": revenue_service.get_revenue_summary(db, creator_id),
-        "revenue_trend": revenue_service.get_revenue_trend(db, creator_id),
+        "content_performance": analytics_service.get_dashboard_summary(db, creator_id=creator_id),
+        "top_content": analytics_service.get_top_content(db, limit=5, creator_id=creator_id),
+        "platform_comparison": analytics_service.get_platform_comparison(db, creator_id=creator_id),
+        "audience_analytics": audience_service.get_audience_report(db, creator_id=creator_id),
+        "growth_trends": audience_service.get_growth_report(db, creator_id=creator_id),
+        "revenue_analytics": revenue_service.get_revenue_summary(db, creator_id=creator_id),
+        "revenue_trend": revenue_service.get_revenue_trend(db, creator_id=creator_id),
     }

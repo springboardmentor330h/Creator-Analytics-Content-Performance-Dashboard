@@ -21,6 +21,10 @@ export default function ProfileSettings() {
                 <dd className="font-medium">{user?.full_name ?? "—"}</dd>
               </div>
               <div className="flex justify-between border-b pb-2">
+                <dt className="text-gray-500">Creator ID</dt>
+                <dd className="font-medium">{user?.creator_id ?? "—"}</dd>
+              </div>
+              <div className="flex justify-between border-b pb-2">
                 <dt className="text-gray-500">Role</dt>
                 <dd className="font-medium capitalize">{user?.role ?? "—"}</dd>
               </div>

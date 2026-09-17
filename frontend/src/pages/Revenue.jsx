@@ -5,29 +5,27 @@ import KPICard from "../components/KPICard";
 import ChartCard from "../components/ChartCard";
 import DataTable from "../components/DataTable";
 import PageState from "../components/PageState";
+import { useAuth } from "../context/AuthContext";
 import { getRevenueSummary, getRevenueTrend } from "../api/revenue";
 
-// NOTE: Revenue/Sponsorship/Notifications/Reports backend endpoints expect
-// an integer creator_id, matching the seeded test data (creator_id 1-20)
-// from earlier sprints. The logged-in user's id is a UUID, which doesn't
-// match that scheme yet, so we use a fixed test creator_id here for now.
-const TEST_CREATOR_ID = 1;
-
 export default function Revenue() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    Promise.all([getRevenueSummary(TEST_CREATOR_ID), getRevenueTrend(TEST_CREATOR_ID)])
+    if (!user?.creator_id) return;
+
+    Promise.all([getRevenueSummary(user.creator_id), getRevenueTrend(user.creator_id)])
       .then(([summaryRes, trendRes]) => {
         setSummary(summaryRes);
         setTrend(trendRes);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const sourceRows = summary?.revenue_by_source
     ? Object.entries(summary.revenue_by_source).map(([source, amount]) => ({ source, amount }))

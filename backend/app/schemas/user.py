@@ -4,6 +4,7 @@ from app.models.user import RoleEnum
 
 class UserOut(BaseModel):
     id: uuid.UUID
+    creator_id: int
     full_name: str
     role: RoleEnum
     is_active: bool

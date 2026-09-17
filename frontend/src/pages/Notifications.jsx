@@ -3,30 +3,30 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import KPICard from "../components/KPICard";
 import PageState from "../components/PageState";
+import { useAuth } from "../context/AuthContext";
 import { getNotifications, markNotificationRead, checkAlerts } from "../api/notifications";
 
-// See note in Revenue.jsx — fixed test creator_id for now.
-const TEST_CREATOR_ID = 1;
-
 export default function Notifications() {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [checking, setChecking] = useState(false);
 
   const loadNotifications = () => {
+    if (!user?.creator_id) return;
     setLoading(true);
-    getNotifications(TEST_CREATOR_ID)
+    getNotifications(user.creator_id)
       .then(setNotifications)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadNotifications, []);
+  useEffect(loadNotifications, [user]);
 
   const handleMarkRead = async (id) => {
     try {
-      await markNotificationRead(id, TEST_CREATOR_ID);
+      await markNotificationRead(id, user.creator_id);
       loadNotifications();
     } catch (err) {
       setError(err.message);
@@ -36,7 +36,7 @@ export default function Notifications() {
   const handleCheckAlerts = async () => {
     setChecking(true);
     try {
-      await checkAlerts(TEST_CREATOR_ID);
+      await checkAlerts(user.creator_id);
       loadNotifications();
     } catch (err) {
       setError(err.message);

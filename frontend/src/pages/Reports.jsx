@@ -4,21 +4,21 @@ import Navbar from "../components/Navbar";
 import KPICard from "../components/KPICard";
 import DataTable from "../components/DataTable";
 import PageState from "../components/PageState";
+import { useAuth } from "../context/AuthContext";
 import { generateReport, downloadReportPdf, downloadReportExcel } from "../api/reports";
 
-// See note in Revenue.jsx — fixed test creator_id for now.
-const TEST_CREATOR_ID = 1;
-
 export default function Reports() {
+  const { user } = useAuth();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [downloading, setDownloading] = useState(null); // "pdf" | "excel" | null
+  const [downloading, setDownloading] = useState(null);
 
   const handleGenerate = () => {
+    if (!user?.creator_id) return;
     setLoading(true);
     setError(null);
-    generateReport(TEST_CREATOR_ID)
+    generateReport(user.creator_id)
       .then(setReport)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -27,8 +27,8 @@ export default function Reports() {
   const handleDownload = async (type) => {
     setDownloading(type);
     try {
-      if (type === "pdf") await downloadReportPdf(TEST_CREATOR_ID);
-      else await downloadReportExcel(TEST_CREATOR_ID);
+      if (type === "pdf") await downloadReportPdf(user.creator_id);
+      else await downloadReportExcel(user.creator_id);
     } catch (err) {
       setError(err.message);
     } finally {
