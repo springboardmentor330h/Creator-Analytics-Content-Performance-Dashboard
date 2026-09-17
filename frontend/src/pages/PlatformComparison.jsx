@@ -47,6 +47,7 @@ export default function PlatformComparison() {
       </div>
 
       <div className="p-6 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-400 border-b border-gray-100 dark:text-gray-500 dark:border-gray-700">
@@ -77,6 +78,7 @@ export default function PlatformComparison() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

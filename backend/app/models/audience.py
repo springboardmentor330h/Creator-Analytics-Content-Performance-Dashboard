@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, ForeignKey
 from app.db.database import Base
 
 class Audience(Base):
     __tablename__ = "audience"
 
     id = Column(Integer, primary_key=True, index=True)
-    creator_id = Column(Integer, nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     age_group = Column(String(20), nullable=False)
     gender = Column(String(20), nullable=False)
     country = Column(String(100), nullable=False)

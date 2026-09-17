@@ -1,11 +1,11 @@
-from sqlalchemy import Column, Integer, String, Float, Date
+from sqlalchemy import Column, Integer, String, Float, Date, ForeignKey
 from app.db.database import Base
 
 class Content(Base):
     __tablename__ = "content"
 
     id = Column(Integer, primary_key=True, index=True)
-    creator_id = Column(Integer, nullable=False)
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     platform = Column(String(50), nullable=False)
     external_content_id = Column(String(255), nullable=True, index=True)  # NEW
     content_title = Column(String(255), nullable=False)

@@ -1,8 +1,10 @@
+from datetime import date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.sponsorship import Sponsorship
+from app.models.revenue import Revenue
 from app.models.user import User
 from app.schemas.sponsorship import SponsorshipCreate, SponsorshipUpdate
 from app.core.auth import get_current_user
@@ -24,6 +26,35 @@ def serialize_sponsorship(record: Sponsorship) -> dict:
     }
 
 
+def sync_revenue_for_paid_sponsorship(db: Session, sponsorship: Sponsorship) -> None:
+    """
+    Ensures a paid sponsorship has a matching Revenue record. Called whenever a
+    sponsorship is created or updated. Idempotent - if a revenue record for this
+    exact sponsorship already exists, nothing new is created.
+    """
+    if sponsorship.payment_status != "paid":
+        return
+
+    description = f"{sponsorship.brand_name} - {sponsorship.campaign_name}"
+    existing = db.query(Revenue).filter(
+        Revenue.creator_id == sponsorship.creator_id,
+        Revenue.source == "Sponsorship",
+        Revenue.description == description,
+    ).first()
+    if existing:
+        return
+
+    revenue_entry = Revenue(
+        creator_id=sponsorship.creator_id,
+        source="Sponsorship",
+        amount=sponsorship.contract_value,
+        description=description,
+        date=sponsorship.end_date or sponsorship.start_date or date.today(),
+    )
+    db.add(revenue_entry)
+    db.commit()
+
+
 @router.post("/sponsorships")
 def create_sponsorship(
     record: SponsorshipCreate,
@@ -37,6 +68,7 @@ def create_sponsorship(
     db.add(new_record)
     db.commit()
     db.refresh(new_record)
+    sync_revenue_for_paid_sponsorship(db, new_record)
     return serialize_sponsorship(new_record)
 
 
@@ -74,6 +106,7 @@ def update_sponsorship(
 
     db.commit()
     db.refresh(record)
+    sync_revenue_for_paid_sponsorship(db, record)
     return serialize_sponsorship(record)
 
 

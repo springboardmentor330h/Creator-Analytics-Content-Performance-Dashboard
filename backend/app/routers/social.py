@@ -10,6 +10,10 @@ from app.services import youtube_service
 from app.services.youtube_service import YouTubeAPIError
 from app.services import instagram_service
 from app.services.instagram_service import InstagramAPIError
+from app.services import facebook_service
+from app.services.facebook_service import FacebookAPIError
+from app.services import linkedin_service
+from app.services.linkedin_service import LinkedInAPIError
 
 router = APIRouter()  # <-- THIS MUST COME BEFORE ANY @router.xxx DECORATOR
 
@@ -199,3 +203,90 @@ def sync_instagram_data(request: InstagramSyncRequest, db: Session = Depends(get
         "status": "success",
         "records_synced": records_synced
     }
+    
+class FacebookSyncRequest(BaseModel):
+    page_id: str
+    creator_id: int
+    max_results: int = 10
+
+
+@router.post("/social/facebook/sync")
+def sync_facebook_data(request: FacebookSyncRequest, db: Session = Depends(get_db)):
+    try:
+        transformed_records = facebook_service.get_page_content_in_common_format(
+            page_id=request.page_id,
+            creator_id=request.creator_id,
+            max_results=request.max_results
+        )
+    except FacebookAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error during Facebook sync: {str(e)}")
+
+    records_synced = 0
+    for record in transformed_records:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == record["platform"],
+                Content.external_content_id == record["external_content_id"],
+                Content.creator_id == record["creator_id"]
+            )
+            .first()
+        )
+        if existing:
+            existing.content_title = record["content_title"]
+            existing.likes = record["likes"]
+            existing.comments = record["comments"]
+            existing.shares = record["shares"]
+            existing.published_date = record["published_date"]
+        else:
+            db.add(Content(**record))
+        records_synced += 1
+
+    db.commit()
+    return {"platform": "Facebook", "status": "success", "records_synced": records_synced}
+
+class LinkedInSyncRequest(BaseModel):
+    li_org_id: str
+    creator_id: int
+    max_results: int = 10
+
+
+@router.post("/social/linkedin/sync")
+def sync_linkedin_data(request: LinkedInSyncRequest, db: Session = Depends(get_db)):
+    try:
+        transformed_records = linkedin_service.get_account_content_in_common_format(
+            li_org_id=request.li_org_id,
+            creator_id=request.creator_id,
+            max_results=request.max_results
+        )
+    except LinkedInAPIError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unexpected error during LinkedIn sync: {str(e)}")
+
+    records_synced = 0
+    for record in transformed_records:
+        existing = (
+            db.query(Content)
+            .filter(
+                Content.platform == record["platform"],
+                Content.external_content_id == record["external_content_id"],
+                Content.creator_id == record["creator_id"]
+            )
+            .first()
+        )
+        if existing:
+            existing.content_title = record["content_title"]
+            existing.views = record["views"]
+            existing.likes = record["likes"]
+            existing.comments = record["comments"]
+            existing.reach = record["reach"]
+            existing.published_date = record["published_date"]
+        else:
+            db.add(Content(**record))
+        records_synced += 1
+
+    db.commit()
+    return {"platform": "LinkedIn", "status": "success", "records_synced": records_synced}

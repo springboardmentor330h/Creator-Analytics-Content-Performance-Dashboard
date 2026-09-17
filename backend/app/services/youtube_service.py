@@ -1,4 +1,5 @@
 import os
+from urllib import response
 import requests
 from datetime import datetime
 from dotenv import load_dotenv
@@ -33,6 +34,7 @@ def fetch_channel_videos(channel_id: str, max_results: int = 10) -> list:
     }
 
     response = requests.get(search_url, params=params)
+    
 
     if response.status_code == 401:
         raise YouTubeAPIError("Invalid YouTube API key (401 Unauthorized).")

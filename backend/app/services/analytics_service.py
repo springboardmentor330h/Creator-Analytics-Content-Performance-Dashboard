@@ -19,9 +19,11 @@ def calculate_engagement(content: Content) -> dict:
     }
 
 
-def get_content_engagement(db: Session, content_id: int):
-    """Task 1: engagement details for a single content item."""
-    content = db.query(Content).filter(Content.id == content_id).first()
+def get_content_engagement(db: Session, content_id: int, creator_id: int):
+    """Task 1: engagement details for a single content item, scoped to the requesting creator."""
+    content = db.query(Content).filter(
+        Content.id == content_id, Content.creator_id == creator_id
+    ).first()
     if not content:
         return None
 
@@ -37,9 +39,9 @@ def get_content_engagement(db: Session, content_id: int):
     }
 
 
-def get_top_content(db: Session, limit: int = 5):
-    """Task 2: top-performing content ranked by engagement rate."""
-    all_content = db.query(Content).all()
+def get_top_content(db: Session, creator_id: int, limit: int = 5):
+    """Task 2: top-performing content ranked by engagement rate, scoped to the creator."""
+    all_content = db.query(Content).filter(Content.creator_id == creator_id).all()
 
     ranked = []
     for content in all_content:
@@ -57,8 +59,10 @@ def get_top_content(db: Session, limit: int = 5):
     return ranked[:limit]
 
 
-def get_platform_comparison(db: Session) -> dict:
-    all_content = db.query(Content).order_by(Content.published_date.asc()).all()
+def get_platform_comparison(db: Session, creator_id: int) -> dict:
+    all_content = db.query(Content).filter(
+        Content.creator_id == creator_id
+    ).order_by(Content.published_date.asc()).all()
 
     platforms = {}
     for c in all_content:
@@ -113,9 +117,9 @@ def get_platform_comparison(db: Session) -> dict:
     return result
 
 
-def get_dashboard_summary(db: Session):
-    """Task 4: overall dashboard summary."""
-    all_content = db.query(Content).all()
+def get_dashboard_summary(db: Session, creator_id: int):
+    """Task 4: overall dashboard summary, scoped to the creator."""
+    all_content = db.query(Content).filter(Content.creator_id == creator_id).all()
 
     if not all_content:
         return {
@@ -134,7 +138,7 @@ def get_dashboard_summary(db: Session):
     engagement_rates = [calculate_engagement(c)["engagement_rate"] for c in all_content]
     average_engagement_rate = round(sum(engagement_rates) / total_content, 2)
 
-    platform_stats = get_platform_comparison(db)
+    platform_stats = get_platform_comparison(db, creator_id)
     best_platform = max(platform_stats, key=lambda p: platform_stats[p]["engagement_rate"]) if platform_stats else None
 
     top = max(all_content, key=lambda c: calculate_engagement(c)["engagement_rate"])
@@ -148,14 +152,15 @@ def get_dashboard_summary(db: Session):
         "best_platform": best_platform,
         "top_content": top_content_title
     }
-    
-def get_kpi_summary(db: Session, platform: str | None = None) -> dict:
-    query = db.query(Content)
+
+
+def get_kpi_summary(db: Session, creator_id: int, platform: str | None = None) -> dict:
+    query = db.query(Content).filter(Content.creator_id == creator_id)
     if platform:
         query = query.filter(Content.platform == platform)
     all_content = query.all()
 
-    all_audience = db.query(Audience).all()
+    all_audience = db.query(Audience).filter(Audience.creator_id == creator_id).all()
 
     total_views = sum(c.views for c in all_content)
     total_likes = sum(c.likes for c in all_content)
@@ -181,8 +186,8 @@ def get_kpi_summary(db: Session, platform: str | None = None) -> dict:
     }
 
 
-def get_engagement_chart(db: Session, platform: str | None = None) -> dict:
-    query = db.query(Content)
+def get_engagement_chart(db: Session, creator_id: int, platform: str | None = None) -> dict:
+    query = db.query(Content).filter(Content.creator_id == creator_id)
     if platform:
         query = query.filter(Content.platform == platform)
     all_content = query.order_by(Content.published_date.asc()).all()
@@ -199,9 +204,47 @@ def get_engagement_chart(db: Session, platform: str | None = None) -> dict:
     return {"labels": labels, "values": values}
 
 
-# ----- Sprint 4: Follower Growth Chart -----
-def get_followers_chart(db: Session) -> dict:
-    all_records = db.query(Growth).order_by(Growth.date.asc()).all()
+# ----- Content Growth Tracking (distinct from follower growth) -----
+def get_content_growth(db: Session, creator_id: int, start_date=None, end_date=None) -> dict:
+    """
+    Tracks the VOLUME of content published over time (how many pieces of
+    content per day), as opposed to get_followers_chart which tracks audience
+    size. Also returns a running cumulative total, useful for a "total content
+    over time" growth line.
+    """
+    query = db.query(Content).filter(Content.creator_id == creator_id)
+    if start_date:
+        query = query.filter(Content.published_date >= start_date)
+    if end_date:
+        query = query.filter(Content.published_date <= end_date)
+    all_content = query.order_by(Content.published_date.asc()).all()
+
+    daily_counts = {}
+    for c in all_content:
+        daily_counts[c.published_date] = daily_counts.get(c.published_date, 0) + 1
+
+    sorted_dates = sorted(daily_counts.keys())
+    labels = [str(d) for d in sorted_dates]
+    daily_values = [daily_counts[d] for d in sorted_dates]
+
+    cumulative = []
+    running_total = 0
+    for v in daily_values:
+        running_total += v
+        cumulative.append(running_total)
+
+    return {
+        "labels": labels,
+        "daily_content_count": daily_values,
+        "cumulative_content_count": cumulative,
+        "total_content": running_total
+    }
+
+
+def get_followers_chart(db: Session, creator_id: int) -> dict:
+    all_records = db.query(Growth).filter(
+        Growth.creator_id == creator_id
+    ).order_by(Growth.date.asc()).all()
 
     daily_totals = {}
     for r in all_records:
@@ -212,5 +255,3 @@ def get_followers_chart(db: Session) -> dict:
     values = [daily_totals[d] for d in sorted_dates]
 
     return {"labels": labels, "values": values}
-
-

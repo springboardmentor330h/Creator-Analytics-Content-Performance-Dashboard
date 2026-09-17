@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
+import { useAuth } from "../context/AuthContext";
 import KpiCard from "../components/KpiCard";
 import Modal from "../components/Modal";
 import ConfirmDeleteButton from "../components/ConfirmDeleteButton";
@@ -8,9 +9,10 @@ import { LoadingState, ErrorState, EmptyState } from "../components/LoadingState
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 const ALL_PLATFORMS = ["YouTube", "Instagram", "TikTok", "Facebook", "LinkedIn","X", "Twitter", "Threads", "Pinterest", "Snapchat", "Twitch"];
-const emptyForm = { creator_id: "", platform: "", content_title: "", views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0, published_date: "" };
+const emptyForm = { platform: "", content_title: "", views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0, published_date: "" };
 
 export default function Content() {
+  const { user } = useAuth();
   const [summary, setSummary] = useState(null);
   const [contentList, setContentList] = useState([]);
   const [chartData, setChartData] = useState([]);
@@ -42,14 +44,14 @@ export default function Content() {
   const openEdit = (item) => { setEditingId(item.id); setForm({ ...item }); setFormError(""); setShowModal(true); };
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const numeric = ["creator_id", "views", "likes", "comments", "shares", "saves", "watch_time", "reach"];
+    const numeric = ["views", "likes", "comments", "shares", "saves", "watch_time", "reach"];
     setForm({ ...form, [name]: numeric.includes(name) ? Number(value) : value });
   };
   const handleSubmit = async (e) => {
     e.preventDefault(); setFormError("");
     try {
       if (editingId) await api.put(`/content/${editingId}`, form);
-      else await api.post("/content", form);
+      else await api.post("/content", { ...form, creator_id: user.id });
       setShowModal(false); fetchAll();
     } catch (err) { setFormError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || "Save failed."); }
   };
@@ -92,7 +94,7 @@ export default function Content() {
         <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">All Content</h3>
         {contentList.length === 0 ? <EmptyState message="No content yet." /> : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="text-left text-gray-400 border-b border-gray-100 dark:text-gray-500 dark:border-gray-700">
                   <th className="py-2">Title</th><th className="py-2">Platform</th><th className="py-2">Views</th><th className="py-2">Likes</th><th className="py-2">Published</th><th className="py-2">Actions</th>
@@ -101,7 +103,7 @@ export default function Content() {
               <tbody>
                 {contentList.map((c) => (
                   <tr key={c.id} className="border-b border-gray-50 dark:border-gray-700/50">
-                    <td className="py-2 text-gray-800 dark:text-gray-200">{c.content_title}</td>
+                    <td className="py-2 text-gray-800 dark:text-gray-200 max-w-[220px] truncate" title={c.content_title}>{c.content_title}</td>
                     <td className="py-2"><span className="px-2 py-1 text-xs rounded-full bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-400">{c.platform}</span></td>
                     <td className="py-2 text-gray-600 dark:text-gray-400">{c.views.toLocaleString()}</td>
                     <td className="py-2 text-gray-600 dark:text-gray-400">{c.likes.toLocaleString()}</td>
@@ -122,8 +124,10 @@ export default function Content() {
         <Modal title={editingId ? "Edit Content" : "Add Content"} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
             {formError && <p className="text-sm text-red-500">{formError}</p>}
-            <input name="creator_id" type="number" placeholder="Creator ID" className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white" value={form.creator_id} onChange={handleChange} required />
-            <input name="platform" placeholder="Platform" className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white" value={form.platform} onChange={handleChange} required />
+            <select name="platform" className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white" value={form.platform} onChange={handleChange} required>
+              <option value="" disabled>Select platform</option>
+              {ALL_PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
             <input name="content_title" placeholder="Content Title" className="w-full px-3 py-2 text-gray-900 bg-white border border-gray-200 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white" value={form.content_title} onChange={handleChange} required minLength={3} />
             <div className="grid grid-cols-2 gap-3">
               {["views","likes","comments","shares","saves","watch_time","reach"].map((f) => (

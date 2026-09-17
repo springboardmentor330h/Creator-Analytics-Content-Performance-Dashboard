@@ -55,6 +55,23 @@ def generate_pdf_report(report: dict) -> io.BytesIO:
     elements.append(Paragraph(f"Top Country: {audience['top_country']}", styles["Normal"]))
     elements.append(Paragraph(f"Top City: {audience['top_city']}", styles["Normal"]))
     elements.append(Paragraph(f"Top Device: {audience['top_device']}", styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    # Growth Summary
+    growth = report.get("growth_analytics", [])
+    if growth:
+        elements.append(Paragraph("Growth (Last 30 Days)", styles["Heading2"]))
+        growth_data = [["Date", "Followers", "Daily Growth", "Growth %"]] + [
+            [str(g["date"]), str(g["followers"]), str(g["daily_growth"]), str(g["growth_percentage"])]
+            for g in growth
+        ]
+        t3 = Table(growth_data, hAlign="LEFT")
+        t3.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a4a4a")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ]))
+        elements.append(t3)
 
     doc.build(elements)
     buffer.seek(0)
@@ -86,18 +103,23 @@ def generate_excel_report(report: dict) -> io.BytesIO:
 
     # Sheet 3: Platform Comparison
     ws3 = wb.create_sheet("Platform Comparison")
-    ws3.append(["Platform", "Views", "Reach", "Likes", "Comments", "Engagement Rate"])
+    ws3.append(["Platform", "Views", "Reach", "Likes", "Comments", "Engagement Rate", "Growth Rate"])
     for cell in ws3[1]:
         cell.font = Font(bold=True)
-    for platform, data in report["platform_comparison"].items() if isinstance(report["platform_comparison"], dict) else []:
-        pass  # handled below depending on structure
 
-    # platform_comparison from get_platform_performance is a list of dicts
-    if isinstance(report["platform_comparison"], list):
-        for p in report["platform_comparison"]:
+    # platform_comparison is a dict keyed by platform name, e.g.
+    # {"YouTube": {"views": ..., "reach": ..., "likes": ..., "comments": ...,
+    #              "engagement_rate": ..., "growth_rate": ...}, ...}
+    if isinstance(report["platform_comparison"], dict):
+        for platform, data in report["platform_comparison"].items():
             ws3.append([
-                p.get("platform"), p.get("total_views"), p.get("total_reach"),
-                p.get("total_likes"), p.get("total_comments"), p.get("average_engagement_rate")
+                platform,
+                data.get("views"),
+                data.get("reach"),
+                data.get("likes"),
+                data.get("comments"),
+                data.get("engagement_rate"),
+                data.get("growth_rate"),
             ])
 
     # Sheet 4: Revenue
@@ -122,6 +144,19 @@ def generate_excel_report(report: dict) -> io.BytesIO:
     ws5.append(["Top Country", audience["top_country"]])
     ws5.append(["Top City", audience["top_city"]])
     ws5.append(["Top Device", audience["top_device"]])
+
+    # Sheet 6: Growth
+    ws6 = wb.create_sheet("Growth")
+    ws6.append(["Date", "Followers", "Daily Growth", "Growth %"])
+    for cell in ws6[1]:
+        cell.font = Font(bold=True)
+    for entry in report.get("growth_analytics", []):
+        ws6.append([
+            str(entry.get("date")),
+            entry.get("followers"),
+            entry.get("daily_growth"),
+            entry.get("growth_percentage"),
+        ])
 
     wb.save(buffer)
     buffer.seek(0)

@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.security import get_password_hash
+from app.core.auth import get_current_user
 from app.db.database import get_db
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 
 router = APIRouter()
 
-# Create User
+# Create User (public - registration)
 @router.post("/users")
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user.email).first()
@@ -33,9 +34,12 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
         "role": new_user.role
     }
 
-# Get All Users
+# Get All Users - administrators only
 @router.get("/users")
-def get_users(db: Session = Depends(get_db)):
+def get_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="Only administrators can view all users")
+
     users = db.query(User).all()
     result = []
     for user in users:
@@ -47,9 +51,12 @@ def get_users(db: Session = Depends(get_db)):
         })
     return result
 
-# Search Users by Role — must come BEFORE /users/{user_id}
+# Search Users by Role - administrators only. Must come BEFORE /users/{user_id}
 @router.get("/users/search")
-def search_users(role: str, db: Session = Depends(get_db)):
+def search_users(role: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="Only administrators can search users")
+
     users = db.query(User).filter(User.role == role).all()
     result = []
     for user in users:
@@ -64,9 +71,12 @@ def search_users(role: str, db: Session = Depends(get_db)):
         "data": result
     }
 
-# Get User By ID
+# Get User By ID - self or administrator only
 @router.get("/users/{user_id}")
-def get_user(user_id: int, db: Session = Depends(get_db)):
+def get_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.id != user_id and current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="You can only view your own profile")
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -78,9 +88,12 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
         "role": user.role
     }
 
-# Update User
+# Update User - self or administrator only
 @router.put("/users/{user_id}")
-def update_user(user_id: int, updated_user: UserUpdate, db: Session = Depends(get_db)):
+def update_user(user_id: int, updated_user: UserUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.id != user_id and current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="You can only update your own profile")
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -90,12 +103,16 @@ def update_user(user_id: int, updated_user: UserUpdate, db: Session = Depends(ge
         if existing_user and existing_user.id != user_id:
             raise HTTPException(status_code=400, detail="Email already exists")
 
+    # Only administrators may change a user's role
+    if updated_user.role is not None and current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="Only administrators can change roles")
+
     if updated_user.full_name is not None:
         user.full_name = updated_user.full_name
     if updated_user.email is not None:
         user.email = updated_user.email
     if updated_user.password is not None:
-        user.password = updated_user.password
+        user.password = get_password_hash(updated_user.password)
     if updated_user.role is not None:
         user.role = updated_user.role
 
@@ -112,9 +129,12 @@ def update_user(user_id: int, updated_user: UserUpdate, db: Session = Depends(ge
         }
     }
 
-# Delete User
+# Delete User - administrators only
 @router.delete("/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if current_user.role != "administrator":
+        raise HTTPException(status_code=403, detail="Only administrators can delete users")
+
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

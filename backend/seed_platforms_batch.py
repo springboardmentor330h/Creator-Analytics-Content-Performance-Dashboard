@@ -2,7 +2,8 @@ from app.db.database import SessionLocal, engine, Base
 from app.models.user import User
 from app.models.content import Content
 
-from app.services import instagram_service
+from app.services import instagram_service, facebook_service, linkedin_service
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -20,6 +21,8 @@ selected_users = users[:NUM_CREATORS]
 
 PLATFORM_JOBS = [
     ("Instagram", instagram_service.get_account_content_in_common_format, "demo_creator_ig"),
+    ("Facebook", facebook_service.get_page_content_in_common_format, "demo_creator_page"),
+    ("LinkedIn", linkedin_service.get_account_content_in_common_format, "demo_creator_linkedin"),
 ]
 
 total_created = 0
@@ -54,7 +57,8 @@ for user in selected_users:
                 total_created += 1
 
     db.commit()
-    print(f"Synced Instagram for user {user.id} ({user.full_name})")
+    platform_names = [p[0] for p in PLATFORM_JOBS]
+    print(f"Synced {', '.join(platform_names)} for user {user.id} ({user.full_name})")
 
 print(f"\nDone. Created {total_created} new records, updated {total_updated} existing records.")
 

@@ -5,7 +5,8 @@ import { useTheme } from "../context/ThemeContext";
 import api from "../api/axios";
 import {
   LayoutDashboard, BarChart3, Users, TrendingUp, DollarSign,
-  Handshake, Bell, FileText, UserCircle, LogOut, Sparkles, GitCompare, Sun, Moon
+  Handshake, Bell, FileText, UserCircle, LogOut, Sparkles, GitCompare, Sun, Moon,
+  Menu, X
 } from "lucide-react";
 
 const navItems = [
@@ -26,19 +27,49 @@ export default function Layout() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     api.get("/notifications?unread_only=true").then((res) => setUnreadCount(res.data.length)).catch(() => {});
   }, []);
 
+  // Close the mobile sidebar whenever the route changes (i.e. after tapping a nav link)
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="flex h-screen transition-colors bg-gray-50 dark:bg-gray-900">
-      <aside className="flex flex-col w-64 bg-white border-r border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-        <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-600">
-            <Sparkles className="w-4.5 h-4.5 text-white" />
+      {/* Backdrop overlay - only visible on mobile when sidebar is open */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 flex flex-col w-64 bg-white border-r border-gray-100
+          dark:bg-gray-800 dark:border-gray-700 transition-transform duration-200 ease-in-out
+          lg:static lg:translate-x-0
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        <div className="flex items-center justify-between gap-2 px-6 py-5 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-brand-600">
+              <Sparkles className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className="text-lg font-bold text-gray-900 dark:text-white">CreatorIQ</span>
           </div>
-          <span className="text-lg font-bold text-gray-900 dark:text-white">CreatorIQ</span>
+          {/* Close button - mobile only */}
+          <button
+            onClick={closeSidebar}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden"
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
@@ -47,6 +78,7 @@ export default function Layout() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={closeSidebar}
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
                     isActive
@@ -72,11 +104,21 @@ export default function Layout() {
       </aside>
 
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100 dark:bg-gray-800 dark:border-gray-700">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Welcome back, {user?.full_name?.split(" ")[0]} 👋
-          </h1>
-          <div className="flex items-center gap-3">
+        <header className="flex items-center justify-between px-4 py-4 bg-white border-b border-gray-100 dark:bg-gray-800 dark:border-gray-700 sm:px-8">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Hamburger button - mobile only */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 -ml-2 transition rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+            </button>
+            <h1 className="text-base font-semibold text-gray-900 truncate dark:text-white sm:text-lg">
+              Welcome back, {user?.full_name?.split(" ")[0]} 👋
+            </h1>
+          </div>
+          <div className="flex items-center flex-shrink-0 gap-2 sm:gap-3">
             <button onClick={toggleTheme} className="p-2 transition rounded-full hover:bg-gray-50 dark:hover:bg-gray-700">
               {theme === "light" ? <Moon className="w-5 h-5 text-gray-500" /> : <Sun className="w-5 h-5 text-yellow-400" />}
             </button>
@@ -93,7 +135,7 @@ export default function Layout() {
             </Link>
           </div>
         </header>
-        <main className="flex-1 p-8 overflow-y-auto"><Outlet /></main>
+        <main className="flex-1 p-4 overflow-y-auto sm:p-8"><Outlet /></main>
       </div>
     </div>
   );

@@ -78,6 +78,7 @@ export default function Revenue() {
       <div className="p-6 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700">
         <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Revenue Records</h3>
         {revenueList.length === 0 ? <EmptyState message="No revenue records yet." /> : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-400 border-b border-gray-100 dark:text-gray-500 dark:border-gray-700">
@@ -99,6 +100,7 @@ export default function Revenue() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
