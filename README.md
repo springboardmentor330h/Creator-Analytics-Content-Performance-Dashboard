@@ -58,7 +58,7 @@ Social Media Services (YouTube live API, Instagram mock/manual data)
 | **Growth & Trend Analysis** | 30-day follower growth report, audience trend chart data |
 | **Revenue Analytics** | Revenue CRUD scoped per creator, revenue-by-source, monthly revenue, revenue trend chart |
 | **Sponsorship Management** | Brand/campaign tracking, contract value, status, payment status |
-| **Social Media Integration** | YouTube (live API), Instagram (documented mock data) — common data structure |
+| **Social Media Integration** | YouTube (live API), Instagram/LinkedIn/Twitter (documented mock data) — common data structure |
 | **Analytics Dashboard** | KPI summary, engagement chart, follower chart, platform comparison (with growth rate) |
 | **Notifications** | Auto-generated performance/engagement/revenue alerts, read/unread tracking |
 | **Reports & Export** | Combined analytics report generation, PDF export, Excel export |
@@ -92,15 +92,26 @@ Social Media Services (YouTube live API, Instagram mock/manual data)
 
 ## 6. Social Media Integration
 
-### YouTube — Live API Integration
+### Implemented
+
+**YouTube — Live API Integration**
 Uses the real **YouTube Data API v3** (`search.list` + `videos.list`). Requires a `YOUTUBE_API_KEY` in `.env`. Fetches real video titles, views, likes, and comments; transforms them into CreatorIQ's common `Content` format.
 
 **Known API limitations (not fabricated, left as 0):** `shares`, `saves`, `watch_time` — not exposed by the public YouTube Data API without OAuth-based YouTube Analytics API access.
 
-### Instagram — Documented Mock Data
+**Instagram — Documented Mock Data**
 Real Instagram Graph API access requires a linked Facebook Business account and Meta app review, which wasn't feasible to obtain within the sprint timeframe. Instagram data is generated via a dedicated `instagram_service.py` module that mirrors the exact structure a real API integration would use — the same sync workflow, deduplication logic, and common data format apply.
 
 **Known limitations (explicitly set to 0, not invented):** `views`, `shares` — not exposed by Instagram's Graph API at standard permission tiers.
+
+**LinkedIn — Documented Mock Data**
+Built the same way as Instagram: a dedicated `linkedin_service.py` module generates data matching the common `Content` format, mirroring the sync/deduplication workflow a real LinkedIn API integration would use.
+
+**Twitter/X — Documented Mock Data**
+Also built as documented mock data via a dedicated `twitter_service.py` module, following the same common data structure and sync pattern as the other mock integrations.
+
+### Planned (per original project scope, not yet implemented)
+TikTok, Facebook — the original project brief scoped support for six platforms; YouTube (live API) plus Instagram, LinkedIn, and Twitter/X (documented mock data) now have working integrations in the current build.
 
 ### Common Platform Data Structure
 Every platform integration (real or mock) transforms its data into the same shape before storage:
@@ -199,12 +210,9 @@ App available at `http://localhost:5173`.
 
 ## 9. Testing
 
-All endpoints were manually tested via Swagger UI and verified against PostgreSQL using pgAdmin, covering:
-- CRUD success and validation error cases (422 for bad input, 404 for missing records)
-- Authentication (401 for missing/invalid tokens, 403 for accessing another user's data on scoped endpoints)
-- Duplicate-sync handling (re-running a platform sync updates existing records rather than duplicating them, scoped per creator)
-- Platform filtering and comparison accuracy
-- PDF/Excel export file integrity
+Manual API testing was carried out against the live FastAPI server (via PowerShell `Invoke-RestMethod` and Swagger UI) and tracked in a dedicated test case spreadsheet, covering CRUD success/validation errors (422/404), authentication (401 for missing/invalid tokens), role-based access, duplicate-sync handling, platform filtering, and export file integrity.
+
+**Status: 167/167 test cases Pass**, across Authentication, Role-Based Access, Profile, Content, Audience, Revenue, Notifications, Reports, Security, Performance, and Database modules. See the Known Issues section below for a couple of items surfaced during testing that are still open despite passing their originally-scoped test case.
 
 ---
 
@@ -213,7 +221,8 @@ All endpoints were manually tested via Swagger UI and verified against PostgreSQ
 A running bug/issue log is tracked separately during development and resolved before each milestone review. Notable items addressed during this project:
 - Sync deduplication was corrected to scope by `creator_id` in addition to `platform` + `external_content_id`, preventing cross-creator data collisions.
 - Duplicate notification generation was fixed by checking for an existing equivalent alert before creating a new one.
-- Some analytics endpoints (Content, Audience, Growth) currently return platform-wide aggregates rather than creator-scoped data — flagged for follow-up alignment with Revenue/Sponsorship/Notifications, which are already creator-scoped.
+- Some analytics endpoints (Content, Audience, Growth) currently return platform-wide aggregates rather than creator-scoped data — flagged for follow-up alignment with Revenue/Sponsorship/Notifications, which are already creator-scoped. **Confirmed during API testing:** `GET /content` currently returns content across all creators regardless of the authenticated user's role (Creator, Agency, and Marketing Team all receive the same unscoped list) — needs a fix to filter by the requesting user where appropriate.
+- **Confirmed during API testing:** the `role` field on `POST /users` has no enum/allow-list validation at the schema level, so any string value is currently accepted as a role rather than being restricted to `creator`, `agency`, `marketing_team`, `administrator`.
 
 ---
 
@@ -224,4 +233,10 @@ A running bug/issue log is tracked separately during development and resolved be
 | Milestone 1 — Initialization, Auth, Core Setup | Complete |
 | Milestone 2 — Content Analytics & Social Media Integration | Complete |
 | Milestone 3 — Revenue Analytics & Reporting | Complete |
-| Milestone 4 — Testing, Deployment & Documentation | Complete |
+| Milestone 4 — Testing, Deployment & Documentation | In progress |
+
+---
+
+## Author
+
+**Harvi Gothi**
