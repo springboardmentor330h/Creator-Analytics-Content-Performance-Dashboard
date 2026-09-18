@@ -2,7 +2,7 @@ from collections import defaultdict
 from uuid import UUID
 
 from sqlalchemy.orm import Session
-
+from sqlalchemy import func
 from app.models.audience import Audience
 from app.models.content import Content
 from app.models.growth import Growth
@@ -376,3 +376,37 @@ def growth_report(
         "latest_followers": rows[-1].followers or 0,
         "growth_records": len(rows),
     }
+def platform_comparison(db):
+    rows = (
+        db.query(
+            Content.platform,
+            func.count(Content.id).label("content_count"),
+            func.coalesce(func.sum(Content.views), 0).label("views"),
+            func.coalesce(func.sum(Content.likes), 0).label("likes"),
+            func.coalesce(func.sum(Content.comments), 0).label("comments"),
+            func.coalesce(func.sum(Content.shares), 0).label("shares"),
+            func.coalesce(func.sum(Content.saves), 0).label("saves"),
+            func.coalesce(func.sum(Content.reach), 0).label("reach"),
+            func.coalesce(func.sum(Content.impressions), 0).label("impressions"),
+        )
+        .group_by(Content.platform)
+        .order_by(Content.platform)
+        .all()
+    )
+
+    result = []
+
+    for row in rows:
+        result.append({
+            "platform": row.platform,
+            "content_count": int(row.content_count or 0),
+            "views": int(row.views or 0),
+            "likes": int(row.likes or 0),
+            "comments": int(row.comments or 0),
+            "shares": int(row.shares or 0),
+            "saves": int(row.saves or 0),
+            "reach": int(row.reach or 0),
+            "impressions": int(row.impressions or 0),
+        })
+
+    return result
