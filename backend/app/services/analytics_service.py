@@ -180,8 +180,12 @@ def get_followers_chart(db: Session):
     return {"labels": labels, "values": values}
 
 
-def get_platform_comparison(db: Session):
-    content_items = db.query(Content).all()
+def get_platform_comparison(db: Session, allowed):
+    query = db.query(Content)
+    if allowed is not None:
+        query = query.filter(Content.creator_id.in_(allowed))
+    content_items = query.all()
+
     grouped: dict[str, list[Content]] = defaultdict(list)
     for c in content_items:
         grouped[c.platform].append(c)
@@ -192,8 +196,8 @@ def get_platform_comparison(db: Session):
         result[platform] = {
             "views": sum(i.views or 0 for i in items),
             "reach": sum(i.reach or 0 for i in items),
-            "likes": sum(i.likes for i in items),
-            "comments": sum(i.comments for i in items),
+            "likes": sum(i.likes or 0 for i in items),
+            "comments": sum(i.comments or 0 for i in items),
             "engagement_rate": round(sum(rates) / len(rates), 2) if rates else 0.0,
         }
-    return result
+    return result   

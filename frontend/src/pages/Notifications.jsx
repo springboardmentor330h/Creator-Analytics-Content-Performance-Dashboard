@@ -12,6 +12,12 @@ export default function Notifications() {
   const [loading, setLoading] = useState(false);
 
   const load = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setNotifications([]);
+      setCounts({ total: 0, unread: 0 });
+      return;
+    }
     setError("");
     try {
       const [listRes, countRes] = await Promise.all([
@@ -21,20 +27,23 @@ export default function Notifications() {
       setNotifications(listRes.data);
       setCounts(countRes.data);
     } catch (err) {
-      setError(err.response?.status === 403 ? "You can only view your own notifications" : "Could not load notifications");
+      setError(err.response?.status === 403 ? "You can only view your own notifications" : (err.response?.data?.detail || "Could not load notifications"));
     }
   };
 
-  useEffect(() => { load(); }, [creatorId]);
+  useEffect(() => {
+    load();
+  }, [creatorId]);
 
   const handleGenerate = async () => {
+    if (!creatorId) return;
     setLoading(true);
     setError("");
     try {
       await api.post(`/notifications/generate/${creatorId}`);
       await load();
-    } catch {
-      setError("Failed to generate notifications");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Failed to generate notifications");
     } finally {
       setLoading(false);
     }
@@ -48,6 +57,7 @@ export default function Notifications() {
   };
 
   const handleMarkAllRead = async () => {
+    if (!creatorId) return;
     try {
       await api.put(`/notifications/creator/${creatorId}/read-all`);
       await load();
@@ -64,17 +74,19 @@ export default function Notifications() {
             <h1 className="text-xl font-semibold sm:text-2xl">
               Notifications {counts.unread > 0 && <span className="ml-2 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{counts.unread} unread</span>}
             </h1>
-            <div className="flex gap-2">
-              <button onClick={handleGenerate} disabled={loading} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
-                {loading ? "Scanning..." : "Check for New Alerts"}
-              </button>
-              <button onClick={handleMarkAllRead} className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700">
-                Mark All Read
-              </button>
-            </div>
+            {creatorId && (
+              <div className="flex gap-2">
+                <button onClick={handleGenerate} disabled={loading} className="rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  {loading ? "Scanning..." : "Check for New Alerts"}
+                </button>
+                <button onClick={handleMarkAllRead} className="rounded bg-gray-200 px-3 py-1.5 text-sm text-gray-700">
+                  Mark All Read
+                </button>
+              </div>
+            )}
           </div>
 
-          {error && <p className="mb-4 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
 
           <div className="space-y-2">
             {notifications.map((n) => (

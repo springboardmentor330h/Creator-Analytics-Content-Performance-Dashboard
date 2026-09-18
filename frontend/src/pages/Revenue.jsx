@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
@@ -12,32 +12,28 @@ export default function Revenue() {
   const [trend, setTrend] = useState(null);
   const [sponsorships, setSponsorships] = useState([]);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
-    platform: "YouTube",
-    source: "ad_revenue",
-    description: "",
-    amount: "",
-    currency: "USD",
-    earned_date: new Date().toISOString().slice(0, 10),
+    platform: "YouTube", source: "ad_revenue", description: "", amount: "",
+    currency: "USD", earned_date: new Date().toISOString().slice(0, 10),
   });
   const [sponsorForm, setSponsorForm] = useState({
-    brand_name: "",
-    campaign_name: "",
-    contract_value: "",
+    brand_name: "", campaign_name: "", contract_value: "",
     start_date: new Date().toISOString().slice(0, 10),
-    status: "active",
-    payment_status: "pending",
+    status: "active", payment_status: "pending",
   });
 
-  const load = useCallback(async () => {
-    if (!creatorId) return;
+  const load = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setSummary(null);
+      setRecords([]);
+      setSponsorships([]);
+      return;
+    }
     setError("");
-    setLoading(true);
     try {
-
       const [listRes, summaryRes, monthlyRes, trendRes, sponsorRes] = await Promise.all([
-        api.get(`/revenue`),
+        api.get(`/revenue/creator/${creatorId}`),
         api.get(`/revenue/creator/${creatorId}/summary`),
         api.get(`/revenue/creator/${creatorId}/monthly`),
         api.get(`/revenue/creator/${creatorId}/trend`),
@@ -52,40 +48,23 @@ export default function Revenue() {
       if (err.response?.status === 403) {
         setError("You don't have permission to view this creator's revenue.");
       } else if (err.response?.status === 401) {
-        setError("Session expired. Please log in again.");
+        setError("Session expired or not logged in. Please log in again.");
       } else {
-        setError("Could not load revenue data.");
+        setError(err.response?.data?.detail || "Could not load revenue data");
       }
-    } finally {
-      setLoading(false);
     }
-  }, [creatorId]);
+  };
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [creatorId]);
 
   const handleRevenueSubmit = async (e) => {
     e.preventDefault();
-    if (!form.amount || Number(form.amount) <= 0) {
-      setError("Enter a valid amount");
-      return;
-    }
     try {
-      await api.post("/revenue", {
-        ...form,
-        creator_id: creatorId,
-        amount: Number(form.amount),
-      });
-
-
-      setForm({
-        platform: "YouTube",
-        source: "ad_revenue",
-        description: "",
-        amount: "",
-        currency: "USD",
-        earned_date: new Date().toISOString().slice(0, 10),
-      });
+      await api.post("/revenue", { ...form, creator_id: creatorId, amount: Number(form.amount) });
       await load();
+      setForm({ ...form, description: "", amount: "" });
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add revenue record");
     }
@@ -93,32 +72,18 @@ export default function Revenue() {
 
   const handleSponsorSubmit = async (e) => {
     e.preventDefault();
-    if (!sponsorForm.contract_value || Number(sponsorForm.contract_value) <= 0) {
-      setError("Enter a valid contract value");
-      return;
-    }
     try {
       await api.post("/sponsorships", {
         ...sponsorForm,
         creator_id: creatorId,
         contract_value: Number(sponsorForm.contract_value),
       });
-
-      setSponsorForm({
-        brand_name: "",
-        campaign_name: "",
-        contract_value: "",
-        start_date: new Date().toISOString().slice(0, 10),
-        status: "active",
-        payment_status: "pending",
-      });
       await load();
+      setSponsorForm({ ...sponsorForm, brand_name: "", campaign_name: "", contract_value: "" });
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to add sponsorship");
     }
   };
-
-  if (loading) return <div>Loading...</div>;
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
@@ -127,7 +92,7 @@ export default function Revenue() {
         <Navbar />
         <main className="p-4 sm:p-6">
           <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Revenue Analytics</h1>
-          {error && <p className="mb-4 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
 
           {summary && (
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -138,35 +103,37 @@ export default function Revenue() {
             </div>
           )}
 
-          {/* Revenue form */}
-          <form onSubmit={handleRevenueSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-3 lg:grid-cols-6">
-            <input name="platform" placeholder="Platform" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} className="rounded border px-2 py-1 text-sm" />
-            <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} className="rounded border px-2 py-1 text-sm">
-              <option value="sponsorship">Sponsorship</option>
-              <option value="ad_revenue">Ad Revenue</option>
-              <option value="affiliate">Affiliate</option>
-              <option value="brand_collab">Brand Collab</option>
-              <option value="subscription">Subscription</option>
-            </select>
-            <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="rounded border px-2 py-1 text-sm" required />
-            <input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded border px-2 py-1 text-sm" />
-            <input type="date" value={form.earned_date} onChange={(e) => setForm({ ...form, earned_date: e.target.value })} className="rounded border px-2 py-1 text-sm" />
-            <button type="submit" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Add Revenue</button>
-          </form>
+          {creatorId && (
+            <>
+              <form onSubmit={handleRevenueSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-3 lg:grid-cols-6">
+                <input name="platform" placeholder="Platform" value={form.platform} onChange={(e) => setForm({ ...form, platform: e.target.value })} className="rounded border px-2 py-1 text-sm" />
+                <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} className="rounded border px-2 py-1 text-sm">
+                  <option value="sponsorship">Sponsorship</option>
+                  <option value="ad_revenue">Ad Revenue</option>
+                  <option value="affiliate">Affiliate</option>
+                  <option value="brand_collab">Brand Collab</option>
+                  <option value="subscription">Subscription</option>
+                </select>
+                <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="rounded border px-2 py-1 text-sm" required />
+                <input placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="rounded border px-2 py-1 text-sm" />
+                <input type="date" value={form.earned_date} onChange={(e) => setForm({ ...form, earned_date: e.target.value })} className="rounded border px-2 py-1 text-sm" />
+                <button type="submit" className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Add Revenue</button>
+              </form>
 
-          {/* Sponsorship form */}
-          <form onSubmit={handleSponsorSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-3 lg:grid-cols-6">
-            <input placeholder="Brand Name" value={sponsorForm.brand_name} onChange={(e) => setSponsorForm({ ...sponsorForm, brand_name: e.target.value })} className="rounded border px-2 py-1 text-sm" required minLength={2} />
-            <input placeholder="Campaign Name" value={sponsorForm.campaign_name} onChange={(e) => setSponsorForm({ ...sponsorForm, campaign_name: e.target.value })} className="rounded border px-2 py-1 text-sm" required minLength={2} />
-            <input type="number" placeholder="Contract Value" value={sponsorForm.contract_value} onChange={(e) => setSponsorForm({ ...sponsorForm, contract_value: e.target.value })} className="rounded border px-2 py-1 text-sm" required />
-            <input type="date" value={sponsorForm.start_date} onChange={(e) => setSponsorForm({ ...sponsorForm, start_date: e.target.value })} className="rounded border px-2 py-1 text-sm" />
-            <select value={sponsorForm.payment_status} onChange={(e) => setSponsorForm({ ...sponsorForm, payment_status: e.target.value })} className="rounded border px-2 py-1 text-sm">
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="overdue">Overdue</option>
-            </select>
-            <button type="submit" className="rounded bg-emerald-600 px-3 py-1 text-sm text-white">Add Sponsorship</button>
-          </form>
+              <form onSubmit={handleSponsorSubmit} className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-3 lg:grid-cols-6">
+                <input placeholder="Brand Name" value={sponsorForm.brand_name} onChange={(e) => setSponsorForm({ ...sponsorForm, brand_name: e.target.value })} className="rounded border px-2 py-1 text-sm" required minLength={2} />
+                <input placeholder="Campaign Name" value={sponsorForm.campaign_name} onChange={(e) => setSponsorForm({ ...sponsorForm, campaign_name: e.target.value })} className="rounded border px-2 py-1 text-sm" required minLength={2} />
+                <input type="number" placeholder="Contract Value" value={sponsorForm.contract_value} onChange={(e) => setSponsorForm({ ...sponsorForm, contract_value: e.target.value })} className="rounded border px-2 py-1 text-sm" required />
+                <input type="date" value={sponsorForm.start_date} onChange={(e) => setSponsorForm({ ...sponsorForm, start_date: e.target.value })} className="rounded border px-2 py-1 text-sm" />
+                <select value={sponsorForm.payment_status} onChange={(e) => setSponsorForm({ ...sponsorForm, payment_status: e.target.value })} className="rounded border px-2 py-1 text-sm">
+                  <option value="pending">Pending</option>
+                  <option value="paid">Paid</option>
+                  <option value="overdue">Overdue</option>
+                </select>
+                <button type="submit" className="rounded bg-emerald-600 px-3 py-1 text-sm text-white">Add Sponsorship</button>
+              </form>
+            </>
+          )}
 
           {summary && (
             <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -231,7 +198,7 @@ function Stat({ label, value }) {
   return (
     <div className="rounded-xl bg-white p-3 shadow sm:p-4">
       <p className="text-xs text-gray-500 sm:text-sm">{label}</p>
-      <p className="text-lg font-bold capitalize sm:text-2xl">{value}</p>
+      <p className="text-lg font-bold sm:text-2xl">{value}</p>
     </div>
   );
 }

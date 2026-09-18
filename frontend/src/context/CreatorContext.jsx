@@ -5,19 +5,27 @@ import { useRole } from "./RoleContext";
 const CreatorContext = createContext();
 
 export function CreatorProvider({ children }) {
-  const { role } = useRole();
+  const { role, userId } = useRole();
   const [managedCreators, setManagedCreators] = useState([]);
   const [creatorId, setCreatorId] = useState(null);
 
   useEffect(() => {
-    if (!role) return;
+    if (!role) {
+      setManagedCreators([]);
+      setCreatorId(null);
+      return;
+    }
+    setCreatorId(null); 
     api.get("/access/my-creators")
       .then((res) => {
         setManagedCreators(res.data);
-        if (res.data.length > 0) setCreatorId(res.data[0].creator_id);
+        setCreatorId(res.data.length > 0 ? res.data[0].creator_id : null);
       })
-      .catch(() => setManagedCreators([]));
-  }, [role]);
+      .catch(() => {
+        setManagedCreators([]);
+        setCreatorId(null);
+      });
+  }, [role, userId]); 
 
   return (
     <CreatorContext.Provider value={{ creatorId, setCreatorId, managedCreators }}>

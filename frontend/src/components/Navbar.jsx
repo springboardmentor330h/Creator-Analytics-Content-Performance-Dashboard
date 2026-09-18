@@ -22,13 +22,16 @@ export default function Navbar() {
           <span className="w-full rounded border bg-gray-50 px-2 py-1 text-sm text-gray-500 sm:w-auto">
             Creator #{creatorId ?? "—"}
           </span>
+        ) : managedCreators.length === 0 ? (
+          <span className="w-full rounded border bg-yellow-50 px-2 py-1 text-xs text-yellow-700 sm:w-auto">
+            No creators linked yet
+          </span>
         ) : (
           <select
             value={creatorId ?? ""}
             onChange={(e) => setCreatorId(Number(e.target.value))}
             className="w-full rounded border px-2 py-1 text-sm sm:w-auto"
           >
-            {managedCreators.length === 0 && <option value="">No creators available</option>}
             {managedCreators.map((c) => (
               <option key={c.creator_id} value={c.creator_id}>Creator #{c.creator_id}</option>
             ))}

@@ -3,6 +3,7 @@ import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { useRole } from "../context/RoleContext";
+import { useCreator } from "../context/CreatorContext";
 
 const AGE_GROUPS = ["13-17", "18-24", "25-34", "35-44", "45+"];
 const GENDERS = ["male", "female", "other"];
@@ -20,6 +21,7 @@ const COUNTRIES = Object.keys(COUNTRY_CITY_MAP);
 
 export default function AudienceAnalytics() {
   const { role } = useRole();
+  const { creatorId } = useCreator();
   const [report, setReport] = useState(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -37,18 +39,23 @@ export default function AudienceAnalytics() {
   const canAddAudience = role === "admin";
 
   const load = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setReport(null);
+      return;
+    }
     setError("");
     try {
-      const res = await api.get("/analytics/audience");
+      const res = await api.get("/analytics/audience", { params: { creator_id: creatorId } });
       setReport(res.data);
-    } catch {
-      setError("Could not load audience analytics");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Could not load audience analytics");
     }
   };
 
   useEffect(() => {
     load();
-  }, []);
+  }, [creatorId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -65,7 +72,7 @@ export default function AudienceAnalytics() {
     try {
       await api.post("/audience", {
         ...form,
-        creator_id: 1,
+        creator_id: creatorId,
         active_hour: Number(form.active_hour),
         followers: Number(form.followers),
         impressions: Number(form.impressions),
@@ -84,9 +91,9 @@ export default function AudienceAnalytics() {
         <Navbar />
         <main className="p-4 sm:p-6">
           <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Audience Analytics</h1>
-          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
 
-          {canAddAudience && (
+          {canAddAudience && creatorId && (
             <form
               onSubmit={handleSubmit}
               className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-9"

@@ -3,10 +3,12 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import api from "../api/axios";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import { useCreator } from "../context/CreatorContext";
 
 const PLATFORMS = ["All", "YouTube", "Instagram", "TikTok", "Facebook", "LinkedIn", "X"];
 
 export default function Dashboard() {
+  const { creatorId, managedCreators } = useCreator();
   const [platform, setPlatform] = useState("All");
   const [kpi, setKpi] = useState(null);
   const [engagementChart, setEngagementChart] = useState([]);
@@ -14,23 +16,32 @@ export default function Dashboard() {
   const [error, setError] = useState("");
 
   const load = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setKpi(null);
+      return;
+    }
     setError("");
     try {
-      const kpiRes = await api.get("/analytics/summary", { params: { platform: platform === "All" ? undefined : platform } });
+      const kpiRes = await api.get("/analytics/summary", {
+        params: { platform: platform === "All" ? undefined : platform, creator_id: creatorId },
+      });
       setKpi(kpiRes.data);
 
       const [engRes, folRes] = await Promise.all([
-        api.get("/analytics/chart/engagement"),
-        api.get("/analytics/chart/followers"),
+        api.get("/analytics/chart/engagement", { params: { creator_id: creatorId } }),
+        api.get("/analytics/chart/followers", { params: { creator_id: creatorId } }),
       ]);
       setEngagementChart(engRes.data.labels.map((label, i) => ({ date: label, value: engRes.data.values[i] })));
       setFollowersChart(folRes.data.labels.map((label, i) => ({ date: label, value: folRes.data.values[i] })));
-    } catch {
-      setError("Could not load dashboard data");
+    } catch (err) {
+      setError(err.response?.data?.detail || "Could not load dashboard data");
     }
   };
 
-  useEffect(() => { load(); }, [platform]);
+  useEffect(() => {
+    load();
+  }, [platform, creatorId]);
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50 md:flex-row">
@@ -40,11 +51,16 @@ export default function Dashboard() {
         <main className="p-4 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-xl font-semibold sm:text-2xl">Overview</h1>
-            <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="rounded border px-3 py-2 text-sm">
-              {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
+            {managedCreators.length > 0 && (
+              <select value={platform} onChange={(e) => setPlatform(e.target.value)} className="rounded border px-3 py-2 text-sm">
+                {PLATFORMS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            )}
           </div>
-          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
 
           {kpi && (
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -53,7 +69,7 @@ export default function Dashboard() {
               <Stat label="Total Comments" value={kpi.total_comments?.toLocaleString()} />
               <Stat label="Total Shares" value={kpi.total_shares?.toLocaleString()} />
               <Stat label="Total Reach" value={kpi.total_reach?.toLocaleString()} />
-              <Stat label="Total Followers" value={kpi.total_followers != null ? kpi.total_followers.toLocaleString() : "N/A (all platforms only)"} />
+              <Stat label="Total Followers" value={kpi.total_followers != null ? kpi.total_followers.toLocaleString() : "N/A"} />
               <Stat label="Avg Engagement Rate" value={`${kpi.average_engagement_rate}%`} />
               <Stat label="Content Count" value={kpi.content_count} />
             </div>
@@ -72,7 +88,9 @@ export default function Dashboard() {
                     <Line type="monotone" dataKey="value" stroke="#4F46E5" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : <p className="text-sm text-gray-500">No growth data yet.</p>}
+              ) : (
+                <p className="text-sm text-gray-500">No growth data yet.</p>
+              )}
             </div>
 
             <div className="rounded-xl bg-white p-4 shadow">
@@ -87,7 +105,9 @@ export default function Dashboard() {
                     <Line type="monotone" dataKey="value" stroke="#059669" strokeWidth={2} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
-              ) : <p className="text-sm text-gray-500">No growth data yet.</p>}
+              ) : (
+                <p className="text-sm text-gray-500">No growth data yet.</p>
+              )}
             </div>
           </div>
         </main>

@@ -8,8 +8,11 @@ from app.schemas.content import ContentCreate, ContentUpdate, ContentOut, YouTub
 from app.services import youtube_service
 from app.services.access_service import get_allowed_creator_ids
 from app.core.deps import get_current_user
-router = APIRouter(prefix="/content", tags=["content"])
+from app.services.access_service import resolve_creator_filter
 
+
+
+router = APIRouter(prefix="/content", tags=["content"])
 
 
 @router.post("/sync/youtube", response_model=list[ContentOut])
@@ -114,3 +117,15 @@ def delete_content(id: int, db: Session = Depends(get_db)):
     db.delete(content)
     db.commit()
     return {"message": "Content deleted successfully"}   
+
+
+@router.get("", response_model=list[ContentOut])
+def get_all_content(platform: str | None = Query(None), creator_id: int | None = Query(None),
+                     db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    allowed = resolve_creator_filter(db, current_user, creator_id)
+    query = db.query(Content)
+    if allowed is not None:
+        query = query.filter(Content.creator_id.in_(allowed))
+    if platform and platform != "All":
+        query = query.filter(Content.platform == platform)
+    return query.all()

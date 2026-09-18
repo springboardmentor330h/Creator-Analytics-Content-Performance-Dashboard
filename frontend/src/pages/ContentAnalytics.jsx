@@ -5,15 +5,15 @@ import Navbar from "../components/Navbar";
 import { useCreator } from "../context/CreatorContext";
 
 export default function ContentAnalytics() {
-  const { creatorId } = useCreator();
+  const { creatorId, managedCreators } = useCreator();
   const [content, setContent] = useState([]);
   const [summary, setSummary] = useState(null);
   const [topContent, setTopContent] = useState([]);
   const [platformPerf, setPlatformPerf] = useState([]);
   const [platformFilter, setPlatformFilter] = useState("All");
-  const [expandedId, setExpandedId] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
   const [form, setForm] = useState({
     platform: "YouTube",
     content_title: "",
@@ -28,23 +28,28 @@ export default function ContentAnalytics() {
   });
 
   const loadData = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setContent([]);
+      setSummary(null);
+      return;
+    }
     setError("");
     setLoading(true);
     try {
-      const contentRes = await api.get("/content");
+      const contentRes = await api.get("/content", { params: { creator_id: creatorId } });
       setContent(Array.isArray(contentRes.data) ? contentRes.data : []);
 
-      const summaryRes = await api.get("/analytics/summary");
+      const summaryRes = await api.get("/analytics/summary", { params: { creator_id: creatorId } });
       setSummary(summaryRes.data);
 
-      const topRes = await api.get("/analytics/top-content");
+      const topRes = await api.get("/analytics/top-content", { params: { creator_id: creatorId } });
       setTopContent(topRes.data);
 
-      const platRes = await api.get("/analytics/platform-comparison");
+      const platRes = await api.get("/analytics/platform-comparison", { params: { creator_id: creatorId } });
       setPlatformPerf(Object.entries(platRes.data).map(([platform, stats]) => ({ platform, ...stats })));
     } catch (err) {
-      console.error("ContentAnalytics load error:", err);
-      setError("Could not load content analytics");
+      setError(err.response?.data?.detail || "Could not load content analytics");
     } finally {
       setLoading(false);
     }
@@ -73,7 +78,7 @@ export default function ContentAnalytics() {
       await loadData();
       setForm({ ...form, content_title: "", views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time: 0, reach: 0 });
     } catch (err) {
-      setError(err.response?.data?.detail?.[0]?.msg || "Failed to add content");
+      setError(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || "Failed to add content");
     }
   };
 
@@ -88,55 +93,47 @@ export default function ContentAnalytics() {
         <main className="p-4 sm:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-xl font-semibold sm:text-2xl">Content Analytics</h1>
-            <select
-              value={platformFilter}
-              onChange={(e) => setPlatformFilter(e.target.value)}
-              className="rounded border px-3 py-2 text-sm"
-            >
-              {uniquePlatforms.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-          </div>
-
-          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
-          {loading && <p className="mb-4 text-sm text-gray-500">Loading...</p>}
-
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat label="Total Content" value={content.length} />
-            {summary && (
-              <>
-                <Stat label="Total Views" value={summary.total_views?.toLocaleString() ?? 0} />
-                <Stat label="Total Likes" value={summary.total_likes?.toLocaleString() ?? 0} />
-                <Stat label="Total Reach" value={summary.total_reach?.toLocaleString() ?? 0} />
-                <Stat label="Avg Engagement" value={`${summary.average_engagement_rate ?? 0}%`} />
-              </>
+            {managedCreators.length > 0 && (
+              <select
+                value={platformFilter}
+                onChange={(e) => setPlatformFilter(e.target.value)}
+                className="rounded border px-3 py-2 text-sm"
+              >
+                {uniquePlatforms.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             )}
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-8"
-          >
-            <input
-              name="content_title"
-              placeholder="Title"
-              value={form.content_title}
-              onChange={handleChange}
-              className="col-span-2 rounded border px-2 py-1 text-sm"
-              required
-              minLength={3}
-            />
-            <input name="platform" placeholder="Platform" value={form.platform} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="views" type="number" placeholder="Views" value={form.views} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="likes" type="number" placeholder="Likes" value={form.likes} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="comments" type="number" placeholder="Comments" value={form.comments} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <input name="published_date" type="date" value={form.published_date} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
-            <button type="submit" className="col-span-2 rounded bg-indigo-600 px-3 py-1 text-sm text-white sm:col-span-1">
-              Add
-            </button>
-          </form>
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
+          {loading && <p className="mb-4 text-sm text-gray-500">Loading...</p>}
+
+          {summary && (
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              <Stat label="Total Content" value={content.length} />
+              <Stat label="Total Views" value={summary.total_views?.toLocaleString() ?? 0} />
+              <Stat label="Total Likes" value={summary.total_likes?.toLocaleString() ?? 0} />
+              <Stat label="Total Reach" value={summary.total_reach?.toLocaleString() ?? 0} />
+              <Stat label="Avg Engagement" value={`${summary.average_engagement_rate ?? 0}%`} />
+            </div>
+          )}
+
+          {creatorId && (
+            <form
+              onSubmit={handleSubmit}
+              className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-white p-4 shadow sm:grid-cols-4 lg:grid-cols-8"
+            >
+              <input name="content_title" placeholder="Title" value={form.content_title} onChange={handleChange} className="col-span-2 rounded border px-2 py-1 text-sm" required minLength={3} />
+              <input name="platform" placeholder="Platform" value={form.platform} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="views" type="number" placeholder="Views" value={form.views} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="likes" type="number" placeholder="Likes" value={form.likes} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="comments" type="number" placeholder="Comments" value={form.comments} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="reach" type="number" placeholder="Reach" value={form.reach} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <input name="published_date" type="date" value={form.published_date} onChange={handleChange} className="rounded border px-2 py-1 text-sm" />
+              <button type="submit" className="col-span-2 rounded bg-indigo-600 px-3 py-1 text-sm text-white sm:col-span-1">Add</button>
+            </form>
+          )}
 
           <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="rounded-xl bg-white p-4 shadow">
@@ -155,9 +152,7 @@ export default function ContentAnalytics() {
               {platformPerf.map((p) => (
                 <div key={p.platform} className="flex justify-between border-b py-1 text-sm">
                   <span>{p.platform}</span>
-                  <span>
-                    {p.views != null ? p.views.toLocaleString() : "N/A"} views · {p.engagement_rate}%
-                  </span>
+                  <span>{p.views != null ? p.views.toLocaleString() : "N/A"} views · {p.engagement_rate}%</span>
                 </div>
               ))}
               {platformPerf.length === 0 && <p className="text-sm text-gray-500">No data yet.</p>}
@@ -206,9 +201,10 @@ export default function ContentAnalytics() {
                 ))}
               </tbody>
             </table>
-            {filteredContent.length === 0 && <p className="p-4 text-center text-sm text-gray-500">No content for this platform yet.</p>}
+            {filteredContent.length === 0 && (
+              <p className="p-4 text-center text-sm text-gray-500">No content for this platform yet.</p>
+            )}
           </div>
-
         </main>
       </div>
     </div>

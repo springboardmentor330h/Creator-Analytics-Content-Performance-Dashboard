@@ -10,17 +10,32 @@ export default function Reports() {
   const [error, setError] = useState("");
   const base = "http://localhost:8000";
 
-  const downloadLinks = [
-    { label: "Content Report (PDF)", url: base + "/reports/content/pdf/" + creatorId },
-    { label: "Content Report (Excel)", url: base + "/reports/content/excel/" + creatorId },
-    { label: "Audience Report (Excel)", url: base + "/reports/audience/excel/" + creatorId },
-    { label: "Revenue Report (Excel)", url: base + "/reports/revenue/excel/" + creatorId },
-  ];
+  const downloadLinks = creatorId
+    ? [
+        { label: "Content Report (PDF)", url: base + "/reports/content/pdf/" + creatorId },
+        { label: "Content Report (Excel)", url: base + "/reports/content/excel/" + creatorId },
+        { label: "Audience Report (Excel)", url: base + "/reports/audience/excel/" + creatorId },
+        { label: "Revenue Report (Excel)", url: base + "/reports/revenue/excel/" + creatorId },
+      ]
+    : [];
+
+  const load = async () => {
+    if (!creatorId) {
+      setError("No creator selected. If you're an agency or marketing team, ask a creator to add you as a manager from their Profile page.");
+      setReport(null);
+      return;
+    }
+    setError("");
+    try {
+      const res = await api.get(`/reports/creator/${creatorId}/generate`);
+      setReport(res.data);
+    } catch (err) {
+      setError(err.response?.status === 403 ? "You can only view your own reports" : (err.response?.data?.detail || "Could not generate report"));
+    }
+  };
 
   useEffect(() => {
-    api.get(`/reports/creator/${creatorId}/generate`)
-      .then((res) => setReport(res.data))
-      .catch((err) => setError(err.response?.status === 403 ? "You can only view your own reports" : "Could not generate report"));
+    load();
   }, [creatorId]);
 
   return (
@@ -30,7 +45,7 @@ export default function Reports() {
         <Navbar />
         <main className="p-4 sm:p-6">
           <h1 className="mb-4 text-xl font-semibold sm:text-2xl">Reports & Export</h1>
-          {error && <p className="mb-4 rounded bg-red-50 p-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="mb-4 rounded bg-yellow-50 p-3 text-sm text-yellow-700">{error}</p>}
 
           {report && (
             <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -41,14 +56,16 @@ export default function Reports() {
             </div>
           )}
 
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {downloadLinks.map((link) => (
-              <a key={link.label} href={link.url} target="_blank" rel="noreferrer" className="rounded-xl bg-white p-4 shadow hover:bg-indigo-50">
-                <p className="font-medium text-indigo-700">{link.label}</p>
-                <p className="text-sm text-gray-500">Click to download</p>
-              </a>
-            ))}
-          </div>
+          {downloadLinks.length > 0 && (
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {downloadLinks.map((link) => (
+                <a key={link.label} href={link.url} target="_blank" rel="noreferrer" className="rounded-xl bg-white p-4 shadow hover:bg-indigo-50">
+                  <p className="font-medium text-indigo-700">{link.label}</p>
+                  <p className="text-sm text-gray-500">Click to download</p>
+                </a>
+              ))}
+            </div>
+          )}
 
           {report && (
             <div className="rounded-xl bg-white p-4 shadow">
