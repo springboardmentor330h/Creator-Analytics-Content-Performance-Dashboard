@@ -1,175 +1,70 @@
-from collections import Counter
+from collections import defaultdict
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.models.audience import Audience
-from app.models.growth import Growth
 
 
-def _distribution(rows, attribute):
-    counts = Counter(
-        getattr(row, attribute)
-        for row in rows
-    )
+def report(
+    db: Session,
+    creator_id: UUID | None = None,
+):
+    query = db.query(Audience)
 
-    total = sum(counts.values())
-
-    if not total:
-        return {}
-
-    return {
-        key: round((value / total) * 100, 2)
-        for key, value in counts.items()
-    }
-
-
-def report(db: Session):
-    rows = db.query(Audience).all()
-
-    gender = _distribution(rows, "gender")
-    age = _distribution(rows, "age_group")
-
-    countries = Counter(
-        row.country for row in rows
-    )
-
-    cities = Counter(
-        row.city for row in rows
-    )
-
-    devices = Counter(
-        row.device_type for row in rows
-    )
-
-    return {
-        "total_followers": sum(
-            row.followers or 0
-            for row in rows
-        ),
-
-        "total_reach": sum(
-            row.reach or 0
-            for row in rows
-        ),
-
-        "total_impressions": sum(
-            row.impressions or 0
-            for row in rows
-        ),
-
-        "gender_distribution": gender,
-
-        "age_distribution": age,
-
-        "top_countries": [
-            {
-                "country": key,
-                "count": value,
-            }
-            for key, value in countries.most_common(5)
-        ],
-
-        "top_cities": [
-            {
-                "city": key,
-                "count": value,
-            }
-            for key, value in cities.most_common(5)
-        ],
-
-        "device_usage": _distribution(
-            rows,
-            "device_type",
-        ),
-
-        "top_country": (
-            countries.most_common(1)[0][0]
-            if countries
-            else None
-        ),
-
-        "top_city": (
-            cities.most_common(1)[0][0]
-            if cities
-            else None
-        ),
-
-        "top_device": (
-            devices.most_common(1)[0][0]
-            if devices
-            else None
-        ),
-    }
-
-
-def growth_report(db: Session, days: int = 30):
-    rows = (
-        db.query(Growth)
-        .order_by(Growth.date.desc())
-        .limit(days)
-        .all()
-    )
-
-    rows = sorted(
-        rows,
-        key=lambda row: row.date,
-    )
-
-    result = []
-    previous_followers = None
-
-    for growth in rows:
-        followers = growth.followers or 0
-
-        if previous_followers is None:
-            daily_growth = 0
-            growth_percentage = 0
-        else:
-            daily_growth = (
-                followers - previous_followers
-            )
-
-            growth_percentage = (
-                (daily_growth / previous_followers) * 100
-                if previous_followers
-                else 0
-            )
-
-        result.append(
-            {
-                "date": growth.date.isoformat(),
-                "followers": followers,
-                "daily_growth": daily_growth,
-                "growth_percentage": round(
-                    growth_percentage,
-                    2,
-                ),
-            }
+    if creator_id is not None:
+        query = query.filter(
+            Audience.creator_id == creator_id
         )
 
-        previous_followers = followers
+    rows = query.all()
 
-    return result
-
-
-def trends(db: Session, days: int = 30):
-    rows = (
-        db.query(Growth)
-        .order_by(Growth.date.desc())
-        .limit(days)
-        .all()
-    )
-
-    rows = sorted(
-        rows,
-        key=lambda row: row.date,
-    )
-
-    return [
-        {
-            "date": growth.date.isoformat(),
-            "followers": growth.followers or 0,
-            "reach": growth.reach or 0,
+    if not rows:
+        return {
+            "total_records": 0,
+            "total_followers": 0,
+            "total_impressions": 0,
+            "total_reach": 0,
+            "age_distribution": {},
+            "gender_distribution": {},
+            "country_distribution": {},
+            "city_distribution": {},
+            "device_distribution": {},
+            "active_hours": {},
         }
-        for growth in rows
-    ]
+
+    age_distribution = defaultdict(int)
+    gender_distribution = defaultdict(int)
+    country_distribution = defaultdict(int)
+    city_distribution = defaultdict(int)
+    device_distribution = defaultdict(int)
+    active_hours = defaultdict(int)
+
+    total_followers = 0
+    total_impressions = 0
+    total_reach = 0
+
+    for row in rows:
+        total_followers += row.followers or 0
+        total_impressions += row.impressions or 0
+        total_reach += row.reach or 0
+
+        age_distribution[row.age_group] += 1
+        gender_distribution[row.gender] += 1
+        country_distribution[row.country] += 1
+        city_distribution[row.city] += 1
+        device_distribution[row.device_type] += 1
+        active_hours[str(row.active_hour)] += 1
+
+    return {
+        "total_records": len(rows),
+        "total_followers": total_followers,
+        "total_impressions": total_impressions,
+        "total_reach": total_reach,
+        "age_distribution": dict(age_distribution),
+        "gender_distribution": dict(gender_distribution),
+        "country_distribution": dict(country_distribution),
+        "city_distribution": dict(city_distribution),
+        "device_distribution": dict(device_distribution),
+        "active_hours": dict(active_hours),
+    }

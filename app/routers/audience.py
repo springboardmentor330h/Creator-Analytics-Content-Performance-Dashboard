@@ -21,11 +21,7 @@ from app.schemas.growth import (
     GrowthResponse,
 )
 
-from app.services.audience_service import (
-    report,
-    growth_report,
-    trends,
-)
+from app.services.audience_service import report
 
 
 router = APIRouter(
@@ -280,3 +276,7 @@ def audience_trends(
     db: Session = Depends(get_db),
 ):
     return trends(db)
+
+
+
+

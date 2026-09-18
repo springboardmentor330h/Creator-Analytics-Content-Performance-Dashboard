@@ -53,8 +53,12 @@ def top_content(
     db: Session,
     limit: int = 5,
     platform: str | None = None,
+    creator_id: UUID | None = None,
 ):
     query = db.query(Content)
+
+    if creator_id:
+        query = query.filter(Content.creator_id == creator_id)
 
     if platform:
         query = query.filter(Content.platform == platform)
@@ -76,10 +80,18 @@ def top_content(
     ]
 
 
-def platform_performance(db: Session):
+def platform_performance(
+    db: Session,
+    creator_id: UUID | None = None,
+):
+    query = db.query(Content)
+
+    if creator_id:
+        query = query.filter(Content.creator_id == creator_id)
+
     groups = defaultdict(list)
 
-    for content in db.query(Content).all():
+    for content in query.all():
         groups[content.platform].append(content)
 
     result = []
@@ -117,8 +129,12 @@ def platform_performance(db: Session):
 def summary(
     db: Session,
     platform: str | None = None,
+    creator_id: UUID | None = None,
 ):
     query = db.query(Content)
+
+    if creator_id:
+        query = query.filter(Content.creator_id == creator_id)
 
     if platform:
         query = query.filter(Content.platform == platform)
@@ -130,7 +146,10 @@ def summary(
         for content in rows
     ]
 
-    platforms = platform_performance(db)
+    platforms = platform_performance(
+        db,
+        creator_id=creator_id,
+    )
 
     if platform and rows:
         best_platform = platform
@@ -146,6 +165,7 @@ def summary(
         db,
         1,
         platform,
+        creator_id,
     )
 
     return {
@@ -175,15 +195,26 @@ def summary(
 def kpi_summary(
     db: Session,
     platform: str | None = None,
+    creator_id: UUID | None = None,
 ):
     query = db.query(Content)
+
+    if creator_id:
+        query = query.filter(Content.creator_id == creator_id)
 
     if platform:
         query = query.filter(Content.platform == platform)
 
     rows = query.all()
 
-    audience_rows = db.query(Audience).all()
+    audience_query = db.query(Audience)
+
+    if creator_id:
+        audience_query = audience_query.filter(
+            Audience.creator_id == creator_id
+        )
+
+    audience_rows = audience_query.all()
 
     rates = [
         engagement_rate(content)
@@ -226,8 +257,12 @@ def kpi_summary(
 def engagement_chart(
     db: Session,
     platform: str | None = None,
+    creator_id: UUID | None = None,
 ):
     query = db.query(Content)
+
+    if creator_id:
+        query = query.filter(Content.creator_id == creator_id)
 
     if platform:
         query = query.filter(
@@ -256,9 +291,19 @@ def engagement_chart(
     }
 
 
-def follower_chart(db: Session):
+def follower_chart(
+    db: Session,
+    creator_id: UUID | None = None,
+):
+    query = db.query(Growth)
+
+    if creator_id:
+        query = query.filter(
+            Growth.creator_id == creator_id
+        )
+
     rows = (
-        db.query(Growth)
+        query
         .order_by(Growth.date)
         .all()
     )
@@ -275,16 +320,59 @@ def follower_chart(db: Session):
     }
 
 
-def platform_comparison(db: Session):
-    return {
-        item["platform"]: {
-            "views": item["total_views"],
-            "reach": item["total_reach"],
-            "engagement_rate": item[
-                "average_engagement_rate"
-            ],
-            "likes": item["total_likes"],
-            "comments": item["total_comments"],
+def growth_report(
+    db: Session,
+    days: int = 30,
+    creator_id: UUID | None = None,
+):
+    query = db.query(Growth)
+
+    if creator_id:
+        query = query.filter(
+            Growth.creator_id == creator_id
+        )
+
+    rows = (
+        query
+        .order_by(Growth.date)
+        .all()
+    )
+
+    if not rows:
+        return {
+            "days": days,
+            "total_growth": 0,
+            "average_growth": 0,
+            "latest_followers": 0,
+            "growth_records": 0,
         }
-        for item in platform_performance(db)
+
+    follower_changes = []
+
+    for index in range(1, len(rows)):
+        previous = rows[index - 1].followers or 0
+        current = rows[index].followers or 0
+        follower_changes.append(current - previous)
+
+    total_growth = (
+        rows[-1].followers - rows[0].followers
+        if len(rows) > 1
+        else 0
+    )
+
+    average_growth = (
+        round(
+            sum(follower_changes) / len(follower_changes),
+            2,
+        )
+        if follower_changes
+        else 0
+    )
+
+    return {
+        "days": days,
+        "total_growth": total_growth,
+        "average_growth": average_growth,
+        "latest_followers": rows[-1].followers or 0,
+        "growth_records": len(rows),
     }

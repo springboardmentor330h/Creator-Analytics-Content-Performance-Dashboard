@@ -1,11 +1,13 @@
-from datetime import date
 from sqlalchemy import Column, Date, Float, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.database import Base
 
 class Revenue(Base):
     __tablename__ = "revenue"
+
     id = Column(Integer, primary_key=True, index=True)
     creator_id = Column(Integer, nullable=False, index=True)
+    creator_uuid = Column(UUID(as_uuid=True), nullable=True, index=True)
     source = Column(String(80), nullable=False, index=True)
     amount = Column(Float, nullable=False, default=0)
     currency = Column(String(10), nullable=False, default="INR")
