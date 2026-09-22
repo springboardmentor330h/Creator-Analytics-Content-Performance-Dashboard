@@ -26,8 +26,11 @@ def get_content_engagement(db: Session, content_id: int):
     }
 
 
-def get_top_performing_content(db: Session, limit: int = 5):
-    all_content = db.query(Content).all()
+def get_top_performing_content(db: Session, limit: int = 5, allowed: list[int] | None = None):
+    query = db.query(Content)
+    if allowed is not None:
+        query = query.filter(Content.creator_id.in_(allowed))
+    all_content = query.all()
     ranked = sorted(all_content, key=lambda c: calculate_engagement_rate(c), reverse=True)
     top = ranked[:limit]
     return [
@@ -125,8 +128,10 @@ def get_kpi_summary(db: Session):
     }
 
 
-def get_kpi_summary_filtered(db: Session, platform: str | None = None):
+def get_kpi_summary_filtered(db: Session, platform: str | None = None, allowed: list[int] | None = None):
     query = db.query(Content)
+    if allowed is not None:
+        query = query.filter(Content.creator_id.in_(allowed))
     if platform and platform != "All":
         query = query.filter(Content.platform == platform)
     content_items = query.all()
@@ -140,12 +145,15 @@ def get_kpi_summary_filtered(db: Session, platform: str | None = None):
     rates = [calculate_engagement_rate(c) for c in content_items]
     avg_rate = round(sum(rates) / len(rates), 2) if rates else 0.0
 
-    growth_rows = db.query(Growth).order_by(Growth.creator_id, Growth.date.asc()).all()
+    growth_query = db.query(Growth)
+    if allowed is not None:
+        growth_query = growth_query.filter(Growth.creator_id.in_(allowed))
+    growth_rows = growth_query.order_by(Growth.creator_id, Growth.date.asc()).all()
     latest_per_creator = {}
     for g in growth_rows:
         latest_per_creator[g.creator_id] = g.followers
-    total_followers = sum(latest_per_creator.values()) if not platform or platform == "All" else None
-    
+    total_followers = sum(latest_per_creator.values())
+
     return {
         "total_views": total_views,
         "total_likes": total_likes,
@@ -158,34 +166,37 @@ def get_kpi_summary_filtered(db: Session, platform: str | None = None):
     }
 
 
-def get_engagement_chart(db: Session):
-    rows = db.query(Growth).order_by(Growth.date.asc()).all()
+def get_engagement_chart(db: Session, allowed: list[int] | None = None):
+    query = db.query(Growth)
+    if allowed is not None:
+        query = query.filter(Growth.creator_id.in_(allowed))
+    rows = query.order_by(Growth.date.asc()).all()
     daily = defaultdict(list)
     for r in rows:
         daily[r.date.isoformat()].append(r.engagement_rate)
-
     labels = sorted(daily.keys())
     values = [round(sum(daily[d]) / len(daily[d]), 2) for d in labels]
     return {"labels": labels, "values": values}
 
 
-def get_followers_chart(db: Session):
-    rows = db.query(Growth).order_by(Growth.date.asc()).all()
+def get_followers_chart(db: Session, allowed: list[int] | None = None):
+    query = db.query(Growth)
+    if allowed is not None:
+        query = query.filter(Growth.creator_id.in_(allowed))
+    rows = query.order_by(Growth.date.asc()).all()
     daily = defaultdict(int)
     for r in rows:
         daily[r.date.isoformat()] += r.followers
-
     labels = sorted(daily.keys())
     values = [daily[d] for d in labels]
     return {"labels": labels, "values": values}
 
 
-def get_platform_comparison(db: Session, allowed):
+def get_platform_comparison(db: Session, allowed: list[int] | None = None):
     query = db.query(Content)
     if allowed is not None:
         query = query.filter(Content.creator_id.in_(allowed))
     content_items = query.all()
-
     grouped: dict[str, list[Content]] = defaultdict(list)
     for c in content_items:
         grouped[c.platform].append(c)
@@ -196,8 +207,8 @@ def get_platform_comparison(db: Session, allowed):
         result[platform] = {
             "views": sum(i.views or 0 for i in items),
             "reach": sum(i.reach or 0 for i in items),
-            "likes": sum(i.likes or 0 for i in items),
-            "comments": sum(i.comments or 0 for i in items),
+            "likes": sum(i.likes for i in items),
+            "comments": sum(i.comments for i in items),
             "engagement_rate": round(sum(rates) / len(rates), 2) if rates else 0.0,
         }
-    return result   
+    return result

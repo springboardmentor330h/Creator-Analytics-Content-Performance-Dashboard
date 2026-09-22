@@ -14,7 +14,6 @@ from app.services.access_service import resolve_creator_filter
 
 router = APIRouter(prefix="/content", tags=["content"])
 
-
 @router.post("/sync/youtube", response_model=list[ContentOut])
 def sync_youtube_content(payload: YouTubeSyncRequest, db: Session = Depends(get_db)):
     # 1. Validate creator exists
@@ -47,8 +46,9 @@ def sync_youtube_content(payload: YouTubeSyncRequest, db: Session = Depends(get_
         ).first()
 
         if existing:
+            # Only update safe fields, never id / creator_id
             for key, value in v.items():
-                if hasattr(existing, key):
+                if hasattr(existing, key) and key not in ("id", "creator_id"):
                     setattr(existing, key, value)
             saved.append(existing)
         else:
@@ -65,7 +65,8 @@ def sync_youtube_content(payload: YouTubeSyncRequest, db: Session = Depends(get_
 # ── CRUD ─────────────────────────────────────────────────────────────────
 
 @router.post("", response_model=ContentOut, status_code=201)
-def create_content(payload: ContentCreate, db: Session = Depends(get_db)):
+def create_content(payload: ContentCreate, db: Session = Depends(get_db),
+                   current_user=Depends(get_current_user)):
     new_content = Content(**payload.model_dump())
     db.add(new_content)
     db.commit()
@@ -74,9 +75,11 @@ def create_content(payload: ContentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[ContentOut])
-def get_all_content(platform: str | None = Query(None), db: Session = Depends(get_db),
-                     current_user=Depends(get_current_user)):
-    allowed = get_allowed_creator_ids(db, current_user)
+def get_all_content(platform: str | None = Query(None),
+                    creator_id: int | None = Query(None),
+                    db: Session = Depends(get_db),
+                    current_user=Depends(get_current_user)):
+    allowed = resolve_creator_filter(db, current_user, creator_id)
     query = db.query(Content)
     if allowed is not None:
         query = query.filter(Content.creator_id.in_(allowed))
@@ -86,18 +89,27 @@ def get_all_content(platform: str | None = Query(None), db: Session = Depends(ge
 
 
 @router.get("/{id}", response_model=ContentOut)
-def get_content_by_id(id: int, db: Session = Depends(get_db)):
+def get_content_by_id(id: int, db: Session = Depends(get_db),
+                      current_user=Depends(get_current_user)):
     content = db.query(Content).filter(Content.id == id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
+    # Ensure the user is allowed to view this content
+    allowed = get_allowed_creator_ids(db, current_user)
+    if allowed is not None and content.creator_id not in allowed:
+        raise HTTPException(status_code=403, detail="Not authorized to view this content")
     return content
 
 
 @router.put("/{id}", response_model=ContentOut)
-def update_content(id: int, payload: ContentUpdate, db: Session = Depends(get_db)):
+def update_content(id: int, payload: ContentUpdate, db: Session = Depends(get_db),
+                   current_user=Depends(get_current_user)):
     content = db.query(Content).filter(Content.id == id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
+    allowed = get_allowed_creator_ids(db, current_user)
+    if allowed is not None and content.creator_id not in allowed:
+        raise HTTPException(status_code=403, detail="Not authorized to update this content")
 
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -109,23 +121,15 @@ def update_content(id: int, payload: ContentUpdate, db: Session = Depends(get_db
 
 
 @router.delete("/{id}", status_code=200)
-def delete_content(id: int, db: Session = Depends(get_db)):
+def delete_content(id: int, db: Session = Depends(get_db),
+                   current_user=Depends(get_current_user)):
     content = db.query(Content).filter(Content.id == id).first()
     if not content:
         raise HTTPException(status_code=404, detail="Content not found")
+    allowed = get_allowed_creator_ids(db, current_user)
+    if allowed is not None and content.creator_id not in allowed:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this content")
 
     db.delete(content)
     db.commit()
     return {"message": "Content deleted successfully"}   
-
-
-@router.get("", response_model=list[ContentOut])
-def get_all_content(platform: str | None = Query(None), creator_id: int | None = Query(None),
-                     db: Session = Depends(get_db), current_user=Depends(get_current_user)):
-    allowed = resolve_creator_filter(db, current_user, creator_id)
-    query = db.query(Content)
-    if allowed is not None:
-        query = query.filter(Content.creator_id.in_(allowed))
-    if platform and platform != "All":
-        query = query.filter(Content.platform == platform)
-    return query.all()

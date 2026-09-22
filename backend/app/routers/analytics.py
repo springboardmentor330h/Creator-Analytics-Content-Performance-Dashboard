@@ -45,15 +45,12 @@ def platform_performance(
 
 
 @router.get("/summary")
-def kpi_summary(
-    platform: str | None = Query(None),
-    creator_id: int | None = Query(None),
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
+def kpi_summary(platform: str | None = Query(None), 
+                creator_id: int | None = Query(None),
+                 db: Session = Depends(get_db), 
+                 current_user=Depends(get_current_user)):
     allowed = resolve_creator_filter(db, current_user, creator_id)
     return analytics_service.get_kpi_summary_filtered(db, platform, allowed)
-
 
 @router.get("/chart/engagement")
 def engagement_chart(
